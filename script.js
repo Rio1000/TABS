@@ -47,7 +47,7 @@ addPersonBtn.addEventListener('click', () => {
         alert('Name cannot be empty');
         return;
     }
-    const amount = parseFloat(prompt("Enter Amount:"));
+    const amount = parseFloat(prompt("Amount owed:"));
     if (isNaN(amount) || amount < 0) {
         alert('Please enter a valid amount');
         return;
