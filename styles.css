@@ -1,0 +1,109 @@
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    scroll-behavior: smooth;
+    font-family: 'Montserrat', sans-serif;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+    width: 100%;
+    color: rgb(241, 241, 241);
+    background-color: rgb(3, 13, 22);
+}
+
+#title {
+    font-size: 100px;
+}
+
+.container {
+    display: flex;
+    text-align: center;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin: 0 auto;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.personlist {
+    border-radius: 18px;
+    font-size: 24px;
+    width: 342px;
+    padding: 10px;
+    border-style: solid;
+    background-color: transparent;
+    color: rgb(241, 241, 241);
+    border-color: rgb(241, 241, 241);
+    justify-content: space-between;
+    overflow-y: scroll;
+    text-align: center;
+}
+.personlist::-webkit-scrollbar {
+    display: none;
+}
+.personlist {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+#add-person-btn,
+#clear-list-btn {
+    display: block;
+    padding: 10px;
+    border-radius: 9px;
+    margin-top: 10px;
+    bottom: 10px;
+    left: 10px;
+    border-style: solid;
+    background-color: transparent;
+    color: rgb(241, 241, 241);
+    border-color: rgb(241, 241, 241);
+    width: 100%;
+}
+
+.dollar-sign {
+    line-height: 20px;
+    margin-left: 20px;
+}
+
+.amount-input {
+    background-color: transparent;
+    text-align: left;
+    border-style: none;
+    padding: 10px;
+    margin-left: -10px;
+    width: 50%;
+    font-size: 24px;
+    color: rgb(241, 241, 241);
+    outline: none;
+}
+
+.remove-btn {
+    display: block;
+    padding: 10px;
+    border-radius: 9px;
+    margin-top: 10px;
+    border-style: solid;
+    background-color: rgb(36, 105, 149);
+    text-align: center;
+    margin-bottom: 10px;
+    width: 75%;
+    cursor: pointer;
+}
+
+.personlist-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.personlist-item>div {
+    display: flex;
+    align-items: center;
+}
