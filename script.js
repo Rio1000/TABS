@@ -37,9 +37,13 @@ function addPerson(name, amount) {
         saveListToLocalStorage();
     });
 
+
     listItem.appendChild(removeBtn);
+
     peopleList.appendChild(listItem);
 }
+
+
 
 addPersonBtn.addEventListener('click', () => {
     const name = prompt("Enter Person's Name:");
@@ -52,6 +56,7 @@ addPersonBtn.addEventListener('click', () => {
         alert('Please enter a valid amount');
         return;
     }
+    const name = prompt("Enter Interest Rate in %")
     addPerson(name, amount);
     saveListToLocalStorage();
 });
@@ -60,7 +65,23 @@ clearListBtn.addEventListener('click', () => {
     peopleList.innerHTML = '';
     saveListToLocalStorage();
 });
+const loginBtn = document.getElementById('loginBtn');
+        const loginPopup = document.getElementById('loginPopup');
+        const closePopup = document.getElementById('closePopup');
 
+        loginBtn.addEventListener('click', () => {
+            loginPopup.style.display = 'flex';
+        });
+
+        closePopup.addEventListener('click', () => {
+            loginPopup.style.display = 'none';
+        });
+
+        window.addEventListener('click', (event) => {
+            if (event.target === loginPopup) {
+                loginPopup.style.display = 'none';
+            }
+        });
 function saveListToLocalStorage() {
     const listItems = peopleList.querySelectorAll('.personlist-item');
     const peopleData = [];
@@ -90,6 +111,3 @@ function debounce(func, wait) {
         timeout = setTimeout(() => func.apply(this, args), wait);
     };
 }
-
-// Load the list from local storage when the page loads
-loadListFromLocalStorage();
