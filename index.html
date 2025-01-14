@@ -1,1 +1,23 @@
-<!DOCTYPE html> <html lang="en"> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Popup Login Page</title> <style> body { font-family: Arial, sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f0f0; } .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: none; justify-content: center; align-items: center; } .popup { background: white; padding: 20px; border-radius: 10px; width: 300px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); text-align: center; } .popup h2 { margin-top: 0; } .popup input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; } .popup button { padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; } .popup button:hover { background-color: #0056b3; } .close-btn { background-color: #f44336; } .close-btn:hover { background-color: #d32f2f; } #loginBtn { padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; } #loginBtn:hover { background-color: #0056b3; } </style> </head> <body> <button id="loginBtn">Login</button> <div class="overlay" id="loginPopup"> <div class="popup"> <h2>Login</h2> <form id="loginForm"> <input type="text" placeholder="Username" required><br> <input type="password" placeholder="Password" required><br> <button type="submit">Submit</button> <button type="button" class="close-btn" id="closePopup">Close</button> </form> </div> </div> <script> const loginBtn = document.getElementById('loginBtn'); const loginPopup = document.getElementById('loginPopup'); const closePopup = document.getElementById('closePopup'); loginBtn.addEventListener('click', () => { loginPopup.style.display = 'flex'; }); closePopup.addEventListener('click', () => { loginPopup.style.display = 'none'; }); window.addEventListener('click', (event) => { if (event.target === loginPopup) { loginPopup.style.display = 'none'; } }); </script> </body> </html> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>TABS</title> <link rel="stylesheet" href="styles.css"> <link rel="icon" type="image/x-icon" href="Untitleawdawdd-1.ico"> <script src="https://cdn.userway.org/widget.js" data-account="wO6qWp3wiC"></script> </head> <body> <div class="container"> <h1 id="title">TABS</h1> <div class="personlist"> <div id="people-list"></div> <button id="add-person-btn">Add Person</button> <button id="clear-list-btn">Clear List</button> </div> </div> <script src="script.js"></script> </body> </html>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TABS</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1 id="title">TABS</h1>
+        <div class="personlist">
+            <div id="people-list"></div>
+            <button id="add-person-btn">Add Person</button>
+            <button id="clear-list-btn">Clear List</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
