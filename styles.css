@@ -1,109 +1,453 @@
-html {
-    scroll-behavior: smooth;
-}
-
+/* General Styles */
+html,
 body {
     scroll-behavior: smooth;
-    font-family: 'Montserrat', sans-serif;
     margin: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    height: 100vh;
-    width: 100%;
+    height: 100%;
+    font-family: 'Montserrat', sans-serif;
     color: rgb(241, 241, 241);
-    background-color: rgb(3, 13, 22);
-}
-
-#title {
-    font-size: 100px;
-}
-
-.container {
+    background: linear-gradient(180deg, rgba(79, 184, 186, 1) 0%, rgba(37, 87, 88, 1) 34%, rgba(3, 13, 22, 1) 83%, rgba(3, 13, 22, 1) 100%);
     display: flex;
-    text-align: center;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    width: 100%;
-    margin: 0 auto;
-    overflow: hidden;
-    margin-bottom: 20px;
+    transition: 0.3s;
+
 }
 
+body.blur-background {
+    backdrop-filter: blur(5px);
+    /* Apply blur to body when menu is open */
+}
+
+/* Title Styles */
+#TITLE {
+    
+    font-size: 100px;
+    z-index: 1;
+    transition: 0.3s;
+
+}
+
+/* Container Styles */
+.container {
+    text-align: center;
+}
+
+/* Input Box Styles */
+#friendInputBox,
+#Loginpage {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 400px;
+    padding: 20px;
+    background-color: rgba(0, 0, 0, 0.8);
+    border: 2px solid #fff;
+    border-radius: 10px;
+    text-align: center;
+    transition: 0.3s;
+
+}
+
+/* List Styles */
 .personlist {
     border-radius: 18px;
     font-size: 24px;
     width: 342px;
     padding: 10px;
-    border-style: solid;
     background-color: transparent;
+    border: 1px solid rgb(241, 241, 241);
     color: rgb(241, 241, 241);
-    border-color: rgb(241, 241, 241);
-    justify-content: space-between;
-    overflow-y: scroll;
+    overflow-y: auto;
     text-align: center;
+    transition: 0.3s;
+
 }
+
 .personlist::-webkit-scrollbar {
     display: none;
 }
+
 .personlist {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
-  }
-#add-person-btn,
-#clear-list-btn {
-    display: block;
-    padding: 10px;
-    border-radius: 9px;
-    margin-top: 10px;
-    bottom: 10px;
-    left: 10px;
-    border-style: solid;
-    background-color: transparent;
-    color: rgb(241, 241, 241);
-    border-color: rgb(241, 241, 241);
-    width: 100%;
-}
-
-.dollar-sign {
-    line-height: 20px;
-    margin-left: 20px;
-}
-
-.amount-input {
-    background-color: transparent;
-    text-align: left;
-    border-style: none;
-    padding: 10px;
-    margin-left: -10px;
-    width: 50%;
-    font-size: 24px;
-    color: rgb(241, 241, 241);
-    outline: none;
-}
-
-.remove-btn {
-    display: block;
-    padding: 10px;
-    border-radius: 9px;
-    margin-top: 10px;
-    border-style: solid;
-    background-color: rgb(36, 105, 149);
-    text-align: center;
-    margin-bottom: 10px;
-    width: 75%;
-    cursor: pointer;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 .personlist-item {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
     margin-bottom: 10px;
+    transition: 0.3s;
+
 }
 
-.personlist-item>div {
+/* Button Styles */
+button,
+.btn {
+    padding: 10px;
+    margin: 10px 0;
+    background-color: transparent;
+    border: 2px solid #fff;
+    color: #fff;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: 0.3s;
+
+}
+
+button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.hidden {
+    display: none;
+}
+
+#add-person-btn,
+#clear-list-btn {
+    margin-top: 10px;
+    transition: 0.3s;
+
+}
+
+.sidenav {
+    margin-top: 10px;
+    height: 70%;
+    width: 0;
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    right: 0;
+    background-color: #0b0910ed;
+    overflow-x: hidden;
+    transition: 0.5s;
+    padding-top: 60px;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+
+}
+
+.sidenav p {
+    position: absolute;
+    z-index: 1;
+    bottom: 10%;
+    left: 16px;
+    transition: 0.5s;
+    padding-top: 60px;
+    color: #ececec;
+}
+
+.sidenav a {
+    top: -80px;
+    position: relative;
+    color: #3c3838;
+    text-decoration: none;
+    border-style: hidden;
+    padding: 10px;
+    margin: 12px;
+    border-radius: 7px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: 0.3s;
+    z-index: 20;
+    display: flex;
+    transition: 1s;
+    background-color: #3a3736;
+    width: auto;
+}
+.sidenav label{
+    padding: 40px 8px 8px 40px;
+    text-align: left;
+    text-decoration: none;
+    font-size: 100%;
+    width: 100%;
+    color: #c7c7c7;
+    display: block;
+    transition: 0.3s;
+}
+.open-btn {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    text-align: center;
+    color: #e6e6e6;
+    border-style: hidden;
+    border-radius: 18px;
+    opacity: 0.8;
+    padding: 20px;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    font-size: 40px;
+    cursor: pointer;
+    transition: 0.3s;
+    z-index: 10;
+    width: auto;
+    height: auto;
+
+}
+#Login{
+    background-color: #c7522a;
+}
+#AddFriend{
+    background-color: #74a892;
+}
+#Profile{
+background-color:#008585;
+}
+#FriendsTab{
+background-color:#fbf2c4 ;
+}
+#closeButton {
+    margin: 0px 0px 50px 50px;
+    position: relative;
+    color: #ececec;
+    text-decoration: none;
+    border-style: hidden;
+    padding: 10px;
+    top: -50px;
+    right: 40px;
+    font-size: 35px;
+    cursor: pointer;
+    transition: 0.3s;
+    z-index: 20;
+    display: flex;
+    transition: 1s;
+    background-color: #322d2d;
+    width: 100%;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+  }
+.sidenav a:hover {
+    color: #f1f1f1;
+}
+.sidenav .closebtn {
+    position: absolute;
+    top: 0;
+    right: 25px;
+    font-size: 36px;
+    margin-left: 50px;
+}
+
+@media screen and (max-height: 450px) {
+    .sidenav {
+        padding-top: 15px;
+    }
+
+    .sidenav a {
+        font-size: 18px;
+    }
+}
+
+
+
+/* Input Fields */
+input {
+    background-color: transparent;
+    color: rgb(241, 241, 241);
+    border: none;
+    border-bottom: solid;
+    padding-left: 17px;
+    font-size: 18px;
+    outline: none;
+    margin-left: -10px;
+    transition: 0.3s;
+
+}
+
+.amount-container {
+    display: flex;
+    /* Aligns dollar sign and input horizontally */
+    align-items: center;
+    /* Centers vertically */
+    transition: 0.3s;
+
+}
+
+.remove-btn {
+    margin-left: 10px;
+    /* Space from other elements */
+    width: 30px;
+    /* Compact width */
+    height: 30px;
+    /* Compact height */
     display: flex;
     align-items: center;
+    justify-content: center;
+    background-color: #e74c3c;
+    /* Red background */
+    color: #fff;
+    /* White "X" */
+    border: none;
+    border-radius: 10px;
+    /* Makes it circular */
+    font-size: 16px;
+    /* Size of "X" */
+    cursor: pointer;
+    text-decoration: none;
+    font-weight: bold;
+    line-height: 1;
+    padding: 0;
+    /* Removes extra padding */
 }
+
+/* Special Sections */
+#Special,
+#Special2 {
+    font-size: 50px;
+    display: none;
+    margin-bottom: 170px;
+    transition: 0.3s;
+
+}
+
+/* Logo Styles */
+.Logo {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 100px;
+    /* Adjust the size as needed */
+    margin: 0;
+    transform: none;
+    opacity: 80%;
+    transition: 0.3s;
+
+}
+
+/* Utility Classes */
+.hidden {
+    display: none !important;
+}
+
+.flex-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.3s;
+
+}
+
+/* Container for name and amount */
+.name-amount-container {
+    display: flex;
+    /* Aligns name and amount horizontally */
+    align-items: center;
+    /* Centers them vertically */
+    gap: 10px;
+    /* Adds space between name and amount */
+    transition: 0.3s;
+
+}
+
+/* Styling for name */
+.name-span {
+    font-weight: bold;
+    font-size: 16px;
+    transition: 0.3s;
+
+}
+
+/* Styling for the dollar sign */
+.dollar-sign {
+    font-weight: bold;
+    margin-right: -5px;
+    font-size: 18px;
+    transition: 0.3s;
+
+}
+#Subscript{
+    transition: 0.3s;
+
+}
+/* Styling for amount input */
+.amount-input {
+    width: 80px;
+    /* Control width of input box */
+    text-align: left;
+    /* Align number to the right */
+    font-weight: bold;
+    transition: 0.3s;
+
+}
+
+#currencySelect {
+    margin: 10px;
+    padding: 5px;
+    border: 2px solid rgb(255, 255, 255);
+    background-color: transparent;
+    color: rgb(241, 241, 241);
+    border-radius: 5px;
+    font-size: 16px;
+    font-family: 'Montserrat', sans-serif;
+    transition: 0.3s;
+
+}
+
+#currencySelect option {
+    background-color: rgba(0, 0, 0, 0.9);
+    color: rgb(255, 255, 255);
+    transition: 0.3s;
+
+}
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    width: 300px;
+}
+
+.close-btn {
+    margin-top: 10px;
+    color: white;
+    background-color: red;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+}
+/* Responsive Design */
+@media (max-width: 768px) {
+    #TITLE {
+        font-size: 50px;
+    }
+
+    .personlist {
+        width: 90%;
+    }
+
+    button {
+        width: 90%;
+    }
+}
+
+  
+  @media screen and (max-height: 450px) {
+    .sidenav {
+      padding-top: 15px;
+    }
+  
+    .sidenav a {
+      font-size: 18px;
+    }
+  }

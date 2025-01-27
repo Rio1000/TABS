@@ -6,17 +6,58 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TABS</title>
     <link rel="stylesheet" href="styles.css">
+    <img class="Logo" src="logo.png" alt="logo">
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth.js"></script>
+
 </head>
 
 <body>
     <div class="container">
-        <h1 id="title">TABS</h1>
+        <h1 id="TITLE">TABS</h1>
+
+        <div id="mySidenav" class="sidenav">
+            <a href="javascript:void(0)" class="closebtn" id="closeButton" onclick="closeNav()">&times;</a>
+            <a id="Login">Login or Signup</a>
+            <a id="AddFriend">Add Friend</a>
+            <a id="FriendsTab" onclick="window.location.href='friends.html'">Friends</a>
+            <a id="Profile">Profile</a>
+            <label for="currencySelect" style="color: rgb(255, 255, 255);">Currency:</label>
+        </div>
+        <!-- Dropdown Menu -->
+        <span class="open-btn" id="openButton" onclick="openNav()">&#9776;</span>
+
+
         <div class="personlist">
             <div id="people-list"></div>
             <button id="add-person-btn">Add Person</button>
             <button id="clear-list-btn">Clear List</button>
         </div>
+
+        <!-- Add Friend Modal -->
+        <div id="friendInputBox">
+            <input id="Big-ol-input" type="number" placeholder="Friend Code">
+            <button id="Add-Friend">Add Friend</button>
+            <button id="closefriend">Close</button>
+            <h1 id="Special2">TABS</h1>
+        </div>
+
+        <!-- Login/Signup Modal -->
+        <div id="Loginpage" class="modal">
+            <div class="modal-content">
+                <h2>Login or Signup</h2>
+                <input id="login-email" type="email" placeholder="Email" required>
+                <input id="login-password" type="password" placeholder="Password" required>
+                <button id="login-btn">Login</button>
+                <button id="signup-btn">Sign Up</button>
+                <button id="closeLogin" class="close-btn">Close</button>
+            </div>
+        </div>
+        <button id="logout-btn" style="display: none;">Logout</button>
+
+        <h4 id="Subscript">Designed and Created by: Parker Heikes<br>Co-Founded by: Finley Cryan</h4>
     </div>
+
     <script src="script.js"></script>
 </body>
 
