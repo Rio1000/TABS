@@ -3,6 +3,84 @@ const addPersonBtn = document.getElementById('add-person-btn');
 const clearListBtn = document.getElementById('clear-list-btn');
 const addFriendModal = document.getElementById('friendInputBox');
 const container = document.querySelector('.container');
+document.addEventListener('DOMContentLoaded', () => {
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+    apiKey: "AIzaSyA93Cfu5ehpOeZMCBKtiTvw1kJZZU_EvkE",
+    authDomain: "tabs-4a0eb.firebaseapp.com",
+    projectId: "tabs-4a0eb",
+    storageBucket: "tabs-4a0eb.firebasestorage.app",
+    messagingSenderId: "295362517303",
+    appId: "1:295362517303:web:fbd0037e697eade181a2b2",
+    measurementId: "G-Y9CWXD96D9"
+  };
+    
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    
+    // DOM Elements
+    const loginModal = document.getElementById('Loginpage');
+    const loginEmail = document.getElementById('login-email');
+    const loginPassword = document.getElementById('login-password');
+    const loginButton = document.getElementById('login-btn');
+    const signupButton = document.getElementById('signup-btn');
+    const logoutButton = document.getElementById('logout-btn');
+
+    // Show Modal for Login
+    document.getElementById('Login').addEventListener('click', () => {
+        showModal(loginModal);
+    });
+
+    // Login Event
+    loginButton.addEventListener('click', async () => {
+        const email = loginEmail.value;
+        const password = loginPassword.value;
+
+        try {
+            const userCredential = await auth.signInWithEmailAndPassword(email, password);
+            alert(`Welcome back, ${userCredential.user.email}!`);
+            hideModal(loginModal);
+        } catch (error) {
+            alert(`Login failed: ${error.message}`);
+        }
+    });
+
+    // Signup Event
+    signupButton.addEventListener('click', async () => {
+        const email = loginEmail.value;
+        const password = loginPassword.value;
+
+        try {
+            const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+            alert(`Account created for ${userCredential.user.email}!`);
+            hideModal(loginModal);
+        } catch (error) {
+            alert(`Signup failed: ${error.message}`);
+        }
+    });
+
+    // Logout Event
+    logoutButton.addEventListener('click', async () => {
+        try {
+            await auth.signOut();
+            alert("Logged out successfully.");
+        } catch (error) {
+            alert(`Logout failed: ${error.message}`);
+        }
+    });
+
+    // Optional: Track Auth State
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            console.log(`User logged in: ${user.email}`);
+            logoutButton.style.display = 'block';
+        } else {
+            console.log('No user logged in');
+            logoutButton.style.display = 'none';
+        }
+    });
+});
 const currencySymbols = {
     USD: "$",
     EUR: "€",
@@ -28,21 +106,7 @@ currencySelect.value = selectedCurrency;
 
 // Append the currency selector to the page (or a specific div)
 document.body.appendChild(currencySelect);
-function showModal(modal) {
-    // Hide everything else on the screen
-    container.style.opacity = '0';
-    container.style.pointerEvents = 'none'; // Disable interactions with the main content
-    modal.style.display = 'flex'; // Make the modal visible
-    modal.style.opacity = '1';   // Ensure the modal is fully opaque
-}
 
-// Helper Function to Hide Modal
-function hideModal(modal) {
-    // Restore everything else on the screen
-    container.style.opacity = '1';
-    container.style.pointerEvents = 'auto'; // Re-enable interactions with the main content
-    modal.style.display = 'none'; // Hide the modal
-}
 function addPerson(name, amount) {
     const listItem = document.createElement('div');
     listItem.classList.add('personlist-item');
@@ -157,22 +221,7 @@ function debounce(func, wait) {
     };
 }
 // Modal Event Listeners
-document.getElementById('AddFriend').addEventListener('click', () => {
-    showModal(addFriendModal); // Show the Add Friend modal
-});
 
-document.getElementById('Login').addEventListener('click', () => {
-    showModal(loginModal); // Show the Login/Signup modal
-});
-
-// Event Listeners for Closing Modals
-document.getElementById('closefriend').addEventListener('click', () => {
-    hideModal(addFriendModal); // Hide the Add Friend modal
-});
-
-document.getElementById('Submit').addEventListener('click', () => {
-    hideModal(loginModal); // Hide the Login modal after submission (if desired)
-});
 function openNav() {
     document.getElementById("mySidenav").style.width = "250px";
     document.getElementById("openButton").style.display = "none";
@@ -196,93 +245,46 @@ function openNav() {
     document.getElementById("Subscript").style.opacity = "1";
 
   }
-// Optional: Dismiss modals when clicking outside
-window.addEventListener('click', (event) => {
-    if (event.target === addFriendModal) {
-        hideModal(addFriendModal);
-    } else if (event.target === loginModal) {
-        hideModal(loginModal);
-    }
-});
-
-// Firebase configuration
-const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
-};
-
-// Initialize Firebase
-const app = firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-
-// DOM Elements
-const loginModal = document.getElementById('Loginpage');
-const loginEmail = document.getElementById('login-email');
-const loginPassword = document.getElementById('login-password');
-const loginButton = document.getElementById('login-btn');
-const signupButton = document.getElementById('signup-btn');
-const logoutButton = document.getElementById('logout-btn');
-
-// Show Modal for Login
-document.getElementById('Login').addEventListener('click', () => {
-    showModal(loginModal);
-});
-
-// Login Event
-loginButton.addEventListener('click', async () => {
-    const email = loginEmail.value;
-    const password = loginPassword.value;
-
-    try {
-        const userCredential = await auth.signInWithEmailAndPassword(email, password);
-        alert(`Welcome back, ${userCredential.user.email}!`);
-        hideModal(loginModal);
-    } catch (error) {
-        alert(`Login failed: ${error.message}`);
-    }
-});
-
-// Signup Event
-signupButton.addEventListener('click', async () => {
-    const email = loginEmail.value;
-    const password = loginPassword.value;
-
-    try {
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        alert(`Account created for ${userCredential.user.email}!`);
-        hideModal(loginModal);
-    } catch (error) {
-        alert(`Signup failed: ${error.message}`);
-    }
-});
-
-// Logout Event
-logoutButton.addEventListener('click', async () => {
-    try {
-        await auth.signOut();
-        alert("Logged out successfully.");
-    } catch (error) {
-        alert(`Logout failed: ${error.message}`);
-    }
-});
-
-// Optional: Track Auth State
-auth.onAuthStateChanged(user => {
-    if (user) {
-        console.log(`User logged in: ${user.email}`);
-        logoutButton.style.display = 'block';
-    } else {
-        console.log('No user logged in');
-        logoutButton.style.display = 'none';
-    }
-});
-
-
 // Load list from local storage on page load
 document.addEventListener('DOMContentLoaded', loadListFromLocalStorage);
 
+function openLogin() {
+   document.getElementById("Loginpage").style.display = "flex";
+   document.getElementById("signupPage").style.display = "none";
+   const personlist = document.getElementById("personlist");
+   const subscript = document.getElementById("Subscript");
+
+   if (personlist) personlist.style.display = "none";
+   if (subscript) subscript.style.display = "none";
+
+   closeNav();
+}
+function openSignUp() {
+    document.getElementById("signupPage").style.display = "flex";
+    document.getElementById("Loginpage").style.display = "none";
+}
+
+
+function windowClosed() {
+    console.log("closed");
+
+    // Hide Login and Signup pages
+    const loginPage = document.getElementById("Loginpage");
+    const signupPage = document.getElementById("signupPage");
+
+    if (loginPage) loginPage.style.display = "none";
+    if (signupPage) signupPage.style.display = "none";
+
+    // Load the add window
+    loadAddWindow();
+}
+
+function loadAddWindow() {
+    // Show Person List and Subscript
+    const personlist = document.getElementById("personlist");
+    const subscript = document.getElementById("Subscript");
+
+    if (personlist) personlist.style.display = "flex";
+    if (subscript) subscript.style.display = "flex";
+}
 

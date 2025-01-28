@@ -7,8 +7,7 @@
     <title>TABS</title>
     <link rel="stylesheet" href="styles.css">
     <img class="Logo" src="logo.png" alt="logo">
-    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth.js"></script>
+
 
 </head>
 
@@ -18,7 +17,7 @@
 
         <div id="mySidenav" class="sidenav">
             <a href="javascript:void(0)" class="closebtn" id="closeButton" onclick="closeNav()">&times;</a>
-            <a id="Login">Login or Signup</a>
+            <a href="javascript:void(0)" id="Login" onclick="openLogin()">Login or Signup</a>
             <a id="AddFriend">Add Friend</a>
             <a id="FriendsTab" onclick="window.location.href='friends.html'">Friends</a>
             <a id="Profile">Profile</a>
@@ -28,7 +27,7 @@
         <span class="open-btn" id="openButton" onclick="openNav()">&#9776;</span>
 
 
-        <div class="personlist">
+        <div class="personlist" >
             <div id="people-list"></div>
             <button id="add-person-btn">Add Person</button>
             <button id="clear-list-btn">Clear List</button>
@@ -43,21 +42,35 @@
         </div>
 
         <!-- Login/Signup Modal -->
-        <div id="Loginpage" class="modal">
+        <div  id="Loginpage" style="display: none;">
             <div class="modal-content">
-                <h2>Login or Signup</h2>
-                <input id="login-email" type="email" placeholder="Email" required>
-                <input id="login-password" type="password" placeholder="Password" required>
+                <h2>Login</h2>
+                <input class="login-input" id="login-email" type="email" placeholder="Email" required><br>
+                <input class="login-input" id="login-password" type="password" placeholder="Password" required><br>
                 <button id="login-btn">Login</button>
+                <button onclick="openSignUp()">Sign Up</button>
+                <button id="closeLogin" class="close-btn" onclick="windowClosed()">Close</button>
+            </div>
+        </div>
+        <div  id="signupPage" style="display: none;">
+            <div class="modal-content">
+                <h2>Signup</h2>
+                <input class="login-input" id="first-name" type="text" placeholder="First Name" required><br>
+                <input class="login-input" id="last-name" type="text" placeholder="Last Name" required><br>
+                <input class="login-input" id="phonenumber" type="number" placeholder="Phone Number" required><br>
+                <input class="login-input" id="signup-email" type="email" placeholder="Email" required><br>
+                <input class="login-input" id="signup-password" type="password" placeholder="Password" required><br>
                 <button id="signup-btn">Sign Up</button>
-                <button id="closeLogin" class="close-btn">Close</button>
+                <button id="login-btn" onclick="openLogin()">Login</button>
+                <button id="closeSignup" class="close-btn" onclick="windowClosed()">Close</button>
             </div>
         </div>
         <button id="logout-btn" style="display: none;">Logout</button>
 
-        <h4 id="Subscript">Designed and Created by: Parker Heikes<br>Co-Founded by: Finley Cryan</h4>
+        <h4 id="Subscript" style="display: flex;">Designed and Created by: Parker Heikes<br>Co-Founded by: Finley Cryan </h4>
     </div>
-
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js"></script>
     <script src="script.js"></script>
 </body>
 
