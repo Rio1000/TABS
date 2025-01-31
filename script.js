@@ -180,12 +180,10 @@ function promptForExtraInfo(listItem) {
     const extraInfo = prompt("Enter extra information:");
 
     if (extraInfo) {
-        // Create a new list item for the extra info
         const extraInfoElement = document.createElement('div');
         extraInfoElement.classList.add('extra-info-item');
         extraInfoElement.textContent = extraInfo;
 
-        // Create a container for the extra info list (if it doesn't exist yet)
         let extraInfoContainer = listItem.querySelector('.extra-info-container');
         if (!extraInfoContainer) {
             extraInfoContainer = document.createElement('div');
@@ -193,11 +191,10 @@ function promptForExtraInfo(listItem) {
             listItem.appendChild(extraInfoContainer);
         }
 
-        // Add the new extra info item to the container
         extraInfoContainer.appendChild(extraInfoElement);
 
-        // Ensure that the text wraps correctly inside the extra-info-item
-        extraInfoElement.style.wordWrap = 'break-word';  // Allow the text to wrap
+        // Save updated list to local storage
+        saveListToLocalStorage();
     } else {
         alert('Information cannot be empty');
     }
@@ -226,20 +223,52 @@ function saveListToLocalStorage() {
     listItems.forEach(item => {
         const name = item.querySelector('.name-span').textContent;
         const amount = parseFloat(item.querySelector('.amount-input').value) || 0;
-        peopleData.push({ name, amount });
+
+        // Collect extra info elements
+        let extraInfoElements = item.querySelectorAll('.extra-info-item');
+        let extraInfoArray = [];
+        extraInfoElements.forEach(infoElement => {
+            extraInfoArray.push(infoElement.textContent);
+        });
+
+        peopleData.push({ name, amount, extraInfo: extraInfoArray });
     });
 
     localStorage.setItem('peopleList', JSON.stringify(peopleData));
-    console.log('Data saved to local storage');
+    console.log('Data saved to local storage:', peopleData);
 }
+
 
 function loadListFromLocalStorage() {
     const peopleData = JSON.parse(localStorage.getItem('peopleList')) || [];
+    peopleList.innerHTML = ''; // Clear existing list
+
     peopleData.forEach(person => {
-        addPerson(person.name, person.amount);
+        const listItem = addPerson(person.name, person.amount);
+
+        // Restore extra info
+        if (person.extraInfo && person.extraInfo.length > 0) {
+            person.extraInfo.forEach(info => {
+                const extraInfoElement = document.createElement('div');
+                extraInfoElement.classList.add('extra-info-item');
+                extraInfoElement.textContent = info;
+
+                // Find or create an extra info container
+                let extraInfoContainer = listItem.querySelector('.extra-info-container');
+                if (!extraInfoContainer) {
+                    extraInfoContainer = document.createElement('div');
+                    extraInfoContainer.classList.add('extra-info-container');
+                    listItem.appendChild(extraInfoContainer);
+                }
+
+                extraInfoContainer.appendChild(extraInfoElement);
+            });
+        }
     });
-    console.log('Data loaded from local storage');
+
+    console.log('Data loaded from local storage:', peopleData);
 }
+
 
 function debounce(func, wait) {
     let timeout;
