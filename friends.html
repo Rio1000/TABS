@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="friendstyles.css">
+    <title>Friends</title>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=home" />
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=arrow_drop_down" />
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=arrow_drop_up" />
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=home" />
+</head>
+
+<body>
+    <img class="Logo2" src="logo1.png" alt="logo">
+    <a id="home" href="index.html">
+        <span class="material-symbols-outlined">
+            home
+        </span>
+    </a>
+    <div id="FriendsList">
+        <button id="ViewFriends">VIEW FRIENDS LIST</button>
+        <div class="friend">
+            <h3 class="personName"></h3>
+            <button class="toggle-info" onclick="toggleFriendInfo(this)">
+                <span class="material-symbols-outlined">
+                </span> </button>
+            <div class="friend-info" style="display:none;">
+                <p>More information about this friend...</p>
+                <!-- Add more details here as needed -->
+            </div>
+        </div>
+    </div>
+</body>
+</head>

@@ -27,8 +27,12 @@
         <span class="open-btn" id="openButton" onclick="openNav()">&#9776;</span>
 
 
-        <div class="personlist" >
-            <div id="people-list"></div>
+        <div class="personlist">
+            <div id="people-list">
+                <div id="extra-info-container">
+                    <h2></h2>
+                </div>
+            </div>
             <button id="add-person-btn">Add Person</button>
             <button id="clear-list-btn">Clear List</button>
         </div>
@@ -42,7 +46,7 @@
         </div>
 
         <!-- Login/Signup Modal -->
-        <div  id="Loginpage" style="display: none;">
+        <div id="Loginpage" style="display: none;">
             <div class="modal-content">
                 <h2>Login</h2>
                 <input class="login-input" id="login-email" type="email" placeholder="Email" required><br>
@@ -52,7 +56,7 @@
                 <button id="closeLogin" class="close-btn" onclick="windowClosed()">Close</button>
             </div>
         </div>
-        <div  id="signupPage" style="display: none;">
+        <div id="signupPage" style="display: none;">
             <div class="modal-content">
                 <h2>Signup</h2>
                 <input class="login-input" id="first-name" type="text" placeholder="First Name" required><br>
@@ -67,7 +71,8 @@
         </div>
         <button id="logout-btn" style="display: none;">Logout</button>
 
-        <h4 id="Subscript" style="display: flex;">Designed and Created by: Parker Heikes<br>Co-Founded by: Finley Cryan </h4>
+        <h4 id="Subscript" style="display: flex;">Designed and Created by: Parker Heikes<br>Co-Founded by: Finley Cryan
+        </h4>
     </div>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js"></script>

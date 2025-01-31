@@ -1,8 +1,6 @@
 const peopleList = document.getElementById('people-list');
 const addPersonBtn = document.getElementById('add-person-btn');
 const clearListBtn = document.getElementById('clear-list-btn');
-const addFriendModal = document.getElementById('friendInputBox');
-const container = document.querySelector('.container');
 document.addEventListener('DOMContentLoaded', () => {
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
@@ -111,15 +109,16 @@ function addPerson(name, amount) {
     const listItem = document.createElement('div');
     listItem.classList.add('personlist-item');
 
+    // Container for name and amount
     const nameAmountContainer = document.createElement('div');
-    nameAmountContainer.classList.add('name-amount-container'); // Container for name and amount
+    nameAmountContainer.classList.add('name-amount-container');
 
     const nameSpan = document.createElement('span');
     nameSpan.textContent = name;
     nameSpan.classList.add('name-span');
 
     const amountContainer = document.createElement('div');
-    amountContainer.classList.add('amount-container'); // Container for amount and currency symbol
+    amountContainer.classList.add('amount-container');
 
     const currencySymbol = currencySymbols[selectedCurrency]; // Get symbol based on selected currency
     const dollarSpan = document.createElement('span');
@@ -142,6 +141,7 @@ function addPerson(name, amount) {
 
     listItem.appendChild(nameAmountContainer);
 
+    // Remove Button
     const removeBtn = document.createElement('a');
     removeBtn.textContent = 'X'; // X for remove button
     removeBtn.classList.add('remove-btn');
@@ -150,10 +150,17 @@ function addPerson(name, amount) {
         saveListToLocalStorage();
     });
 
-    listItem.appendChild(removeBtn);
+    // More Button (Expand/Collapse)
+    const addInfoBtn = document.createElement('button');
+    addInfoBtn.textContent = "+";
+    addInfoBtn.classList.add('add-info-btn');
+    addInfoBtn.addEventListener('click', () => promptForExtraInfo(listItem)); // Trigger input for extra info
+    listItem.appendChild(addInfoBtn);
+
+    nameAmountContainer.appendChild(removeBtn);
+    nameAmountContainer.appendChild(addInfoBtn);
     peopleList.appendChild(listItem);
 }
-
 // Listen for currency change
 currencySelect.addEventListener('change', (e) => {
     selectedCurrency = e.target.value;
@@ -169,8 +176,34 @@ function reloadListWithSelectedCurrency() {
         addPerson(person.name, person.amount);
     });
 }
+function promptForExtraInfo(listItem) {
+    const extraInfo = prompt("Enter extra information:");
 
+    if (extraInfo) {
+        // Create a new list item for the extra info
+        const extraInfoElement = document.createElement('div');
+        extraInfoElement.classList.add('extra-info-item');
+        extraInfoElement.textContent = extraInfo;
 
+        // Create a container for the extra info list (if it doesn't exist yet)
+        let extraInfoContainer = listItem.querySelector('.extra-info-container');
+        if (!extraInfoContainer) {
+            extraInfoContainer = document.createElement('div');
+            extraInfoContainer.classList.add('extra-info-container');
+            listItem.appendChild(extraInfoContainer);
+        }
+
+        // Add the new extra info item to the container
+        extraInfoContainer.appendChild(extraInfoElement);
+
+        // Ensure that the text wraps correctly inside the extra-info-item
+        extraInfoElement.style.wordWrap = 'break-word';  // Allow the text to wrap
+    } else {
+        alert('Information cannot be empty');
+    }
+}
+
+// Event listener to add a person when the button is clicked
 addPersonBtn.addEventListener('click', () => {
     const name = prompt("Enter Person's Name:");
     if (!name || name.trim() === '') {
@@ -183,11 +216,6 @@ addPersonBtn.addEventListener('click', () => {
         return;
     }
     addPerson(name, amount);
-    saveListToLocalStorage();
-});
-
-clearListBtn.addEventListener('click', () => {
-    peopleList.innerHTML = '';
     saveListToLocalStorage();
 });
 
@@ -253,9 +281,15 @@ function openLogin() {
    document.getElementById("signupPage").style.display = "none";
    const personlist = document.getElementById("personlist");
    const subscript = document.getElementById("Subscript");
+   const peopleList = document.getElementById("people-list");
+   const addPersonBtn = document.getElementById("add-person-btn");
+   const clearListBtn = document.getElementById("clear-list-btn");
 
    if (personlist) personlist.style.display = "none";
    if (subscript) subscript.style.display = "none";
+   if (peopleList) peopleList.style.display = "none";
+   if (addPersonBtn) addPersonBtn.style.display = "none";
+   if (clearListBtn) clearListBtn.style.display = "none";
 
    closeNav();
 }
@@ -274,7 +308,8 @@ function windowClosed() {
 
     if (loginPage) loginPage.style.display = "none";
     if (signupPage) signupPage.style.display = "none";
-
+    if (addPersonBtn) addPersonBtn.style.display = "flex";
+    if (clearListBtn) clearListBtn.style.display = "flex";
     // Load the add window
     loadAddWindow();
 }
@@ -283,8 +318,10 @@ function loadAddWindow() {
     // Show Person List and Subscript
     const personlist = document.getElementById("personlist");
     const subscript = document.getElementById("Subscript");
+    const peopleList = document.getElementById("people-list");
 
     if (personlist) personlist.style.display = "flex";
     if (subscript) subscript.style.display = "flex";
+    if (peopleList) peopleList.style.display = "block";
 }
 

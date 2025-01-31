@@ -1,0 +1,73 @@
+#home {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 30px;
+    border-width: 8px;
+    padding: 10px;
+    background-color: transparent;
+    color: rgb(255, 255, 255);
+    border-color: rgb(255, 255, 255);
+    margin-top: 30px;
+    text-decoration: none;
+    border-style: solid;
+    border-width: 2px;
+}
+
+#FriendsList {
+    background-color: transparent;
+    border-style: solid;
+    width: 500px;
+    height: auto; /* Adjusted height to auto for flexibility */
+    margin-top: 10px;
+    border-radius: px;
+    border-width: 10px;
+}
+
+#ViewFriends {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 20px;
+    border-style: solid;
+    border-width: 2px;
+    padding: 15px;
+    background-color: transparent;
+    color: rgb(255, 255, 255);
+    border-color: rgb(255, 255, 255);
+    text-decoration: none;
+    border-radius: 1px;
+    padding-left: 160px;
+    padding-right: 160px;
+}
+
+.personName {
+    font-size: larger;
+    padding: 10px;
+    justify-content: left;
+}
+
+.friend {
+    display: flex;
+    border-radius: 8px;
+    border-style: solid;
+    margin: 10px;
+    flex-direction: column; /* Makes sure that content is stacked vertically */
+}
+
+.toggle-info {
+    border: none;
+    background: transparent;
+    color: rgb(255, 255, 255);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.friend-info {
+    display: none;
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.1); /* Slightly transparent background */
+    margin-top: 10px;
+}
+.Logo2{
+    width: 220px;
+    margin-bottom: -50px;
+    transform: translateY(10px);
+}
