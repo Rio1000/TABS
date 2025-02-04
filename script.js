@@ -207,11 +207,15 @@ addPersonBtn.addEventListener('click', () => {
         alert('Name cannot be empty');
         return;
     }
-    const amount = parseFloat(prompt("Enter Amount:"));
-    if (isNaN(amount) || amount < 0) {
+    
+    const amountInput = prompt("Enter Amount:");
+    const amount = parseFloat(amountInput.replace(/[^0-9.]/g, '')); // Extract only numbers and decimal points
+    
+    if (isNaN(amount)) {
         alert('Please enter a valid amount');
         return;
     }
+    
     addPerson(name, amount);
     saveListToLocalStorage();
 });
