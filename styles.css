@@ -5,7 +5,11 @@ body {
     height: 100%;
     font-family: 'Montserrat', sans-serif;
     color: rgb(241, 241, 241);
-    background: linear-gradient(180deg, rgba(79, 184, 186, 1) 0%, rgba(37, 87, 88, 1) 34%, rgba(3, 13, 22, 1) 83%, rgba(3, 13, 22, 1) 100%);
+    background: rgb(0,0,0);
+    background: -moz-linear-gradient(319deg, rgba(0,0,0,1) 0%, rgba(58,116,134,1) 55%);
+    background: -webkit-linear-gradient(319deg, rgba(0,0,0,1) 0%, rgba(58,116,134,1) 55%);
+    background: linear-gradient(319deg, rgba(0,0,0,1) 0%, rgba(58,116,134,1) 55%);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#000000",endColorstr="#3a7486",GradientType=1); 
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -65,8 +69,7 @@ body.blur-background {
     font-size: 24px;
     padding: 10px;
     background-color: transparent;
-    border: 1px solid rgb(241, 241, 241);
-    color: rgb(241, 241, 241);
+        color: rgb(241, 241, 241);
     text-align: center;
     transition: 0.3s;
     display: block;
@@ -93,7 +96,7 @@ body.blur-background {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px;
+    padding: 15px;
     border: 1px solid #ccc;
     border-radius: 5px;
     margin-bottom: 10px;
@@ -186,7 +189,7 @@ button:hover {
     z-index: 1;
     top: 0;
     right: 0;
-    background-color: #0b0910ed;
+    background-color: #0b0910c4;
     overflow-x: hidden;
     transition: 0.5s;
     padding-top: 60px;
@@ -208,7 +211,7 @@ button:hover {
 .sidenav a {
     top: -80px;
     position: relative;
-    color: #3c3838;
+    color: #b6c5b9;
     text-decoration: none;
     border-style: hidden;
     padding: 10px;
@@ -255,16 +258,20 @@ button:hover {
 
 }
 #Login{
-    background-color: #c7522a;
+    background-color: #1F4A5A;
+    color: #7FBAC5;
 }
 #AddFriend{
-    background-color: #74a892;
+    background-color: #D98B7D;
+    color: #4A2F2A;
 }
 #Profile{
-background-color:#008585;
+background-color:#7FBAC5;
+color: #1F4A5A;
 }
 #FriendsTab{
-background-color:#fbf2c4 ;
+background-color:#A8A39D ;
+color: #2B2B2B;
 }
 #closeButton {
     margin: 0px 0px 50px 50px;
@@ -281,7 +288,7 @@ background-color:#fbf2c4 ;
     z-index: 20;
     display: flex;
     transition: 1s;
-    background-color: #322d2d;
+    background-color: #746f8ada;
     width: 100%;
     border-top-left-radius: 10px;
     border-bottom-left-radius: 10px;
@@ -391,10 +398,9 @@ more-btn{
 /* Logo Styles */
 .Logo {
     position: absolute;
-    top: 20px;
-    left: 20px;
+    top: 10px;
+    left: 10px;
     width: 100px;
-    /* Adjust the size as needed */
     margin: 0;
     transform: none;
     opacity: 80%;
@@ -442,6 +448,10 @@ more-btn{
 }
 #Subscript{
     transition: 0.3s;
+    text-align: left;
+    margin-left: 10px;
+    font-size: 10x;
+
 
 }
 /* Styling for amount input */

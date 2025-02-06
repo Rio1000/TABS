@@ -7,8 +7,7 @@
     <title>TABS</title>
     <link rel="stylesheet" href="styles.css">
     <img class="Logo" src="logo.png" alt="logo">
-
-
+    <script type="module" src="firebase-setup.js"></script>
 </head>
 
 <body>
@@ -18,10 +17,11 @@
         <div id="mySidenav" class="sidenav">
             <a href="javascript:void(0)" class="closebtn" id="closeButton" onclick="closeNav()">&times;</a>
             <a href="javascript:void(0)" id="Login" onclick="openLogin()">Login or Signup</a>
+            <a id="logout-btn" style="display: none;">Logout</a>
             <a id="AddFriend">Add Friend</a>
             <a id="FriendsTab" onclick="window.location.href='friends.html'">Friends</a>
             <a id="Profile">Profile</a>
-            <label for="currencySelect" style="color: rgb(255, 255, 255);">Currency:</label>
+            <h4 id="Subscript" style="display: flex;">Designed and Created by:<br> Parker Heikes<br>Co-Founded by:<br> Finley Cryan</h4>
         </div>
         <!-- Dropdown Menu -->
         <span class="open-btn" id="openButton" onclick="openNav()">&#9776;</span>
@@ -69,10 +69,8 @@
                 <button id="closeSignup" class="close-btn" onclick="windowClosed()">Close</button>
             </div>
         </div>
-        <button id="logout-btn" style="display: none;">Logout</button>
 
-        <h4 id="Subscript" style="display: flex;">Designed and Created by: Parker Heikes<br>Co-Founded by: Finley Cryan
-        </h4>
+  
     </div>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js"></script>
