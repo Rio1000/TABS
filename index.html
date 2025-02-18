@@ -6,8 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TABS</title>
     <link rel="stylesheet" href="styles.css">
-    <img class="Logo" src="logo.png" alt="logo">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=more_horiz" />    <img class="Logo" src="logo.png" alt="logo">
     <script type="module" src="firebase-setup.js"></script>
+    <link rel="stylesheet" href="toastify.css">
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
 </head>
 
 <body>
@@ -34,7 +37,7 @@
                 </div>
             </div>
             <button id="add-person-btn">Add Person</button>
-            <button id="clear-list-btn">Clear List</button>
+            <button id="clear-list-btn" >Clear List</button>
         </div>
 
         <!-- Add Friend Modal -->
@@ -47,7 +50,7 @@
 
         <!-- Login/Signup Modal -->
         <div id="Loginpage" style="display: none;">
-            <div class="modal-content">
+            <div class="login-content">
                 <h2>Login</h2>
                 <input class="login-input" id="login-email" type="email" placeholder="Email" required><br>
                 <input class="login-input" id="login-password" type="password" placeholder="Password" required><br>
@@ -57,7 +60,7 @@
             </div>
         </div>
         <div id="signupPage" style="display: none;">
-            <div class="modal-content">
+            <div class="login-content">
                 <h2>Signup</h2>
                 <input class="login-input" id="first-name" type="text" placeholder="First Name" required><br>
                 <input class="login-input" id="last-name" type="text" placeholder="Last Name" required><br>
@@ -69,8 +72,17 @@
                 <button id="closeSignup" class="close-btn" onclick="windowClosed()">Close</button>
             </div>
         </div>
-
-  
+        <div class="modal" id="customModal">
+            <div class="modal-content">
+                
+                <button class="info-b" id="add-more-money-btn">Add Money</button>
+                <button class="danger-btn" id="remove-money-btn">Remove Money</button>
+                <button class="no-btn"  id="add-extra-info-btn">Add Info</button>
+                <button class="edt-name"  id="edit-name-btn">Edit Name</button>
+                <button class="close-btn"  id="close-prompt">close</button>
+            </div>
+        </div>
+        
     </div>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js"></script>

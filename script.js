@@ -2,12 +2,7 @@ const peopleList = document.getElementById("people-list");
 const addPersonBtn = document.getElementById("add-person-btn");
 const clearListBtn = document.getElementById("clear-list-btn");
 
-document.addEventListener("DOMContentLoaded", () => {
-  // Show Modal for Login
-  document.getElementById("Login").addEventListener("click", () => {
-    showModal(loginModal);
-  });
-});
+
 
 
 
@@ -56,84 +51,10 @@ function reloadListWithSelectedCurrency() {
     addPerson(person.name, person.amount);
   });
 }
-function promptForExtraInfo(listItem) {
-  const extraInfo = prompt("Enter extra information:");
-
-  if (extraInfo) {
-    const extraInfoElement = document.createElement("div");
-    extraInfoElement.classList.add("extra-info-item");
-    extraInfoElement.textContent = extraInfo;
-
-    let extraInfoContainer = listItem.querySelector(".extra-info-container");
-    if (!extraInfoContainer) {
-      extraInfoContainer = document.createElement("div");
-      extraInfoContainer.classList.add("extra-info-container");
-      listItem.appendChild(extraInfoContainer);
-    }
-
-    extraInfoContainer.appendChild(extraInfoElement);
-
-    // Save updated list to local storage
-    saveListToLocalStorage();
-  } else {
-    alert("Information cannot be empty");
-  }
-}
 
 
-function saveListToLocalStorage() {
-  const listItems = peopleList.querySelectorAll(".personlist-item");
-  const peopleData = [];
 
-  listItems.forEach((item) => {
-    const name = item.querySelector(".name-span").textContent;
-    const amount = parseFloat(item.querySelector(".amount-input").value) || 0;
 
-    // Collect extra info elements
-    let extraInfoElements = item.querySelectorAll(".extra-info-item");
-    let extraInfoArray = [];
-    extraInfoElements.forEach((infoElement) => {
-      extraInfoArray.push(infoElement.textContent);
-    });
-
-    peopleData.push({ name, amount, extraInfo: extraInfoArray });
-  });
-
-  localStorage.setItem("peopleList", JSON.stringify(peopleData));
-  console.log("Data saved to local storage:", peopleData);
-}
-
-function loadListFromLocalStorage() {
-  const peopleData = JSON.parse(localStorage.getItem("peopleList")) || [];
-  peopleList.innerHTML = ""; // Clear existing list
-
-  peopleData.forEach((person) => {
-    const listItem = addPerson(person.name, person.amount);
-
-    // Restore extra info
-    if (person.extraInfo && person.extraInfo.length > 0) {
-      person.extraInfo.forEach((info) => {
-        const extraInfoElement = document.createElement("div");
-        extraInfoElement.classList.add("extra-info-item");
-        extraInfoElement.textContent = info;
-
-        // Find or create an extra info container
-        let extraInfoContainer = listItem.querySelector(
-          ".extra-info-container"
-        );
-        if (!extraInfoContainer) {
-          extraInfoContainer = document.createElement("div");
-          extraInfoContainer.classList.add("extra-info-container");
-          listItem.appendChild(extraInfoContainer);
-        }
-
-        extraInfoContainer.appendChild(extraInfoElement);
-      });
-    }
-  });
-
-  console.log("Data loaded from local storage:", peopleData);
-}
 
 function debounce(func, wait) {
   let timeout;
@@ -148,11 +69,12 @@ function openNav() {
   document.getElementById("mySidenav").style.width = "250px";
   document.getElementById("openButton").style.display = "none";
   document.getElementById("closeButton").style.display = "flex";
-  document.getElementById("TITLE").style.opacity = "0.3";
-  document.getElementById("add-person-btn").style.opacity = "0.3";
-  document.getElementById("clear-list-btn").style.opacity = "0.3";
-  document.getElementById("people-list").style.opacity = "0.3";
-  document.getElementById("Subscript").style.opacity = "0.3";
+  document.getElementById("TITLE").style.opacity = "0";
+  document.getElementById("add-person-btn").style.opacity = "0";
+  document.getElementById("clear-list-btn").style.opacity = "0";
+  document.getElementById("people-list").style.opacity = "0";
+  document.getElementById("Subscript").style.opacity = "0";
+  document.getElementById("customModal").style.opacity = "0";
 }
 
 function closeNav() {
@@ -163,9 +85,10 @@ function closeNav() {
   document.getElementById("clear-list-btn").style.opacity = "1";
   document.getElementById("people-list").style.opacity = "1";
   document.getElementById("Subscript").style.opacity = "1";
+  document.getElementById("customModal").style.opacity = "1";
+
 }
 // Load list from local storage on page load
-document.addEventListener("DOMContentLoaded", loadListFromLocalStorage);
 
 function openLogin() {
   document.getElementById("Loginpage").style.display = "flex";
@@ -175,6 +98,7 @@ function openLogin() {
   const peopleList = document.getElementById("people-list");
   const addPersonBtn = document.getElementById("add-person-btn");
   const clearListBtn = document.getElementById("clear-list-btn");
+  const modal = document.getElementsByClassName("modal-content");
 
   if (personlist) personlist.style.display = "none";
   if (subscript) subscript.style.display = "none";
@@ -213,4 +137,6 @@ function loadAddWindow() {
   if (personlist) personlist.style.display = "flex";
   if (subscript) subscript.style.display = "flex";
   if (peopleList) peopleList.style.display = "block";
-}
+};
+
+
