@@ -1,4 +1,6 @@
 .toastify {
+  font-size: 16px;
+
   position: fixed;
   width: auto;
   border-radius: 12px;
@@ -10,25 +12,38 @@
   transition: all 0.4s cubic-bezier(0.215, 0.61, 0.355, 1);
   cursor: pointer;
   text-decoration: none;
-  max-width: calc(50% - 20px);
   z-index: 2147483647;
 }
 .toastify.on {
   opacity: 1;
 }
 .toast-close {
-  background: 0 0;
+  font-size: 24px;
   border: 0;
-  color: #fff;
+  color: #ececec;
   cursor: pointer;
   font-family: inherit;
-  font-size: 1em;
-  opacity: 0.4;
   padding: 0 5px;
+  margin: 5px;
 }
-.toastify-right {
-  right: 23%;
+.toastify::before {
+  content: "";
+  display: inline-block;
+  width: 34px;
+  height: 34px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  margin-right: 8px;
 }
+
+.toastify-success::before {
+  background-image: url("check_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg"); /* Replace with actual icon */
+}
+
+.toastify-error::before {
+  background-image: url("error_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg");
+}
+
 
 .toastify-top {
   top: -150px;
@@ -50,8 +65,6 @@
   margin-right: auto;
   left: 0;
   right: 0;
-  max-width: fit-content;
-  max-width: -moz-fit-content;
 }
 @media only screen and (max-width: 360px) {
   .toastify-left,
@@ -60,7 +73,6 @@
     margin-right: auto;
     left: 0;
     right: 0;
-    max-width: fit-content;
   }
 }
 /*# sourceMappingURL=/sm/cb4335d1b03e933ed85cb59fffa60cf51f07567ed09831438c60f59afd166464.map */

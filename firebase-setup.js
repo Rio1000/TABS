@@ -29,19 +29,24 @@ const firebaseConfig = {
   appId: "1:295362517303:web:fbd0037e697eade181a2b2",
   measurementId: "G-Y9CWXD96D9",
 };
-
 function showToast(message, type = "success") {
+
   Toastify({
-    text: message,
+    text: `${message}`, // Prepend icon to message
     duration: 3000,
     close: true,
-    gravity: "top", // "top", "bottom"
-    position: "right", // "left", "center", "right"
+    gravity: "top",
+    position: "right",
+    className: type === "error" ? "toastify toastify-error" : "toastify toastify-success", // Set class dynamically
     style: {
-      background: type === "error" ? "red" : "#50c444", // Corrected syntax ✅
+      background: type === "error" ? "#ef4444" : "#50c444",
+      display: "flex",
+      alignItems: "center",
+      gap: "8px", // Space between icon & text
     },
   }).showToast();
 }
+
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
