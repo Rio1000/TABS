@@ -5,11 +5,11 @@ body {
     height: 100%;
     font-family: 'Montserrat', sans-serif;
     color: rgb(241, 241, 241);
-    background: rgb(0,0,0);
-    background: -moz-linear-gradient(319deg, rgba(0,0,0,1) 0%, rgba(58,116,134,1) 55%);
-    background: -webkit-linear-gradient(319deg, rgba(0,0,0,1) 0%, rgba(58,116,134,1) 55%);
-    background: linear-gradient(319deg, rgba(0,0,0,1) 0%, rgba(58,116,134,1) 55%);
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#000000",endColorstr="#3a7486",GradientType=1); 
+    background: rgb(0, 0, 0);
+    background: -moz-linear-gradient(319deg, rgba(0, 0, 0, 1) 0%, rgba(58, 116, 134, 1) 55%);
+    background: -webkit-linear-gradient(319deg, rgba(0, 0, 0, 1) 0%, rgba(58, 116, 134, 1) 55%);
+    background: linear-gradient(319deg, rgba(0, 0, 0, 1) 0%, rgba(58, 116, 134, 1) 55%);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#000000", endColorstr="#3a7486", GradientType=1);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -17,17 +17,14 @@ body {
     background-repeat: no-repeat;
     background-size: cover;
     background-position: center;
-    background-attachment: fixed; /* Keeps the background fixed */
+    background-attachment: fixed;
+    /* Keeps the background fixed */
 }
 
-body.blur-background {
-    backdrop-filter: blur(5px);
-    /* Apply blur to body when menu is open */
-}
 
 /* Title Styles */
 #TITLE {
-    
+
     font-size: 100px;
     z-index: 1;
     transition: 0.3s;
@@ -53,16 +50,18 @@ body.blur-background {
     left: 50%;
     transform: translate(-50%, -50%);
     padding: 20px;
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: rgba(0, 0, 0, 0.61);
     border: 2px solid #fff;
     border-radius: 10px;
     text-align: center;
     transition: 0.3s;
 
 }
-.login-input{
+
+.login-input {
     margin-bottom: 10px;
 }
+
 /* List Styles */
 .personlist {
     display: flex;
@@ -83,23 +82,23 @@ body.blur-background {
     display: none;
 }
 
-.personlist {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
+
 #people-list {
     align-items: center;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;  /* Align children to the left */
+    align-items: flex-start;
+    /* Align children to the left */
     padding: 10px;
     background-color: transparent;
 }
+
 .personlist-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 15px;
+    padding-left: 15px;
+    padding-right: 15px;
     border: 1px solid #ccc;
     border-radius: 5px;
     margin-bottom: 10px;
@@ -108,69 +107,100 @@ body.blur-background {
     width: 93%;
 
 }
+
 .add-info-btn {
     margin-left: 10px;
-    /* Space from other elements */
-    width: 30px;
-    /* Compact width */
+    width: 100%;
     height: 30px;
-    /* Compact height */
     display: flex;
     align-items: center;
     justify-content: center;
     background-color: #3c94e7;
-    /* Red background */
     color: #fff;
-    /* White "X" */
     border: none;
     border-radius: 10px;
-    /* Makes it circular */
     font-size: 16px;
-    /* Size of "X" */
+    cursor: pointer;
+    text-decoration: none;
+    font-weight: bold;
+    line-height: 1;
+}
+
+/* Button Styles */
+.extra-info-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    /* Stack extra info vertically */
+    margin-top: 10px;
+    /* Adds space between nameAmountContainer and extra-info-container */
+    padding-left: 10px;
+    padding-right: 10px;
+}
+.friend-extra-info-container{
+    width: auto;
+    display: flex;
+    flex-direction: row;
+    margin-top: 10px;
+    /* Adds space between nameAmountContainer and extra-info-container */
+    padding-left: 10px;
+    padding-right: 10px;
+}
+/* Each extra info item */
+.extra-info-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; 
+    margin-bottom: 5px;
+    word-wrap: break-word;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    width: 100%;
+    margin-bottom: 10px;
+}
+.add-friend-to-list{
+    margin-left: 10px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #3c94e7;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
     cursor: pointer;
     text-decoration: none;
     font-weight: bold;
     line-height: 1;
     padding: 0;
-  }
-/* Button Styles */
-.extra-info-container {
-    width: 100%;
-    display: flex;
-    flex-direction: column;  /* Stack extra info vertically */
-    margin-top: 10px;  /* Adds space between nameAmountContainer and extra-info-container */
-    padding-left: 10px;
-    padding-right: 10px;
 }
 
-/* Each extra info item */
-.extra-info-item {
-    display: flex;
-    align-items: last baseline; /* Vertically center the content */
-    justify-content:right;
-    margin-bottom: 5px; /* Adds space between individual extra-info items */
-    word-wrap: break-word; /* Ensures text wraps properly */
-    padding: 5px; /* Optional: Adds space inside each item */
-    background-color: rgba(255, 255, 255, 0.2); /* Optional: Light background */
-    border-radius: 5px; /* Optional: Rounded corners */
-    text-align: right; /* Aligns text to the left */
-    word-break: break-word; /* Breaks long words */
-    width: 97%; /* Ensure it takes full width */
+
+.extra-info-text {
+    flex-grow: 1; /* Allows it to take up the remaining space */
+    text-align: left;
+    word-break: break-word;
+    padding-left: 10px;
 }
+
 .remove-info-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 30px; /* Adjust width as needed */
-    height: 30px; /* Adjust height as needed */
+    width: 30px;
+    height: 30px;
     background-color: #8fadbd;
     color: #fff;
     border: none;
     border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
-    font-size: 16px; /* Adjust font size as needed */
-    flex-shrink: 0; /* Prevents the button from shrinking */
+    font-size: 20px;
+    flex-shrink: 0; /* Prevents shrinking */
+    margin-left: 10px; /* Adds some spacing between text and button */
+    margin-right: 10px;
 }
 button,
 .btn {
@@ -200,12 +230,14 @@ button:hover {
 #clear-list-btn {
     margin-top: 10px;
     transition: 0.3s;
+    text-align: center;
+    justify-content: center;
 
 }
 
 .sidenav {
     margin-top: 10px;
-    height: 70%;
+    height: auto;
     width: 0;
     position: fixed;
     z-index: 1;
@@ -217,6 +249,7 @@ button:hover {
     padding-top: 60px;
     border-top-left-radius: 10px;
     border-bottom-left-radius: 10px;
+    max-height: 90%;
 
 }
 
@@ -230,7 +263,7 @@ button:hover {
     color: #ececec;
 }
 
-.sidenav a {
+.sideNavA {
     top: -80px;
     position: relative;
     color: #b6c5b9;
@@ -245,10 +278,10 @@ button:hover {
     z-index: 20;
     display: flex;
     transition: 1s;
-    background-color: #3a3736;
     width: auto;
 }
-.sidenav label{
+
+.sidenav label {
     padding: 40px 8px 8px 40px;
     text-align: left;
     text-decoration: none;
@@ -258,6 +291,7 @@ button:hover {
     display: block;
     transition: 0.3s;
 }
+
 .open-btn {
     position: absolute;
     align-items: center;
@@ -273,28 +307,106 @@ button:hover {
     right: 20px;
     font-size: 40px;
     cursor: pointer;
-    transition: 0.3s;
+    transition: 0.5s;
     z-index: 10;
     width: auto;
     height: auto;
 
 }
-#Login{
+
+
+/* Dropdown container (hidden by default). Optional: add a lighter background color and some left padding to change the design of the dropdown content */
+#friendBox {
+    position: relative;
+    padding: 10px;
+    overflow-x: hidden;
+    height: auto;
+    color: #b6c5b9;
+    border-style: hidden;
+    border-radius: 7px;
+    font-size: 20px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    transition: 0.5s;
+margin-left: -12px;
+}
+.dropdown-container {
+    padding: 10px;
+    width: 200px;
+}
+#friendsList {
+    list-style-type: none;
+    padding: 10px;
+}
+
+#friendsList li {
+    display: flex;
+    color: rgb(66, 14, 5);
+    background-color: rgb(98, 128, 118);
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+    margin-top: 10px;
+    border-radius: 8px;
+    padding: 8px;
+    overflow-x: hidden;
+    text-wrap: wrap;
+}
+
+#friendsList li button {
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+#friendsList li button:hover {
+    background-color: #cc0000;
+}
+#addFriendIcon{
+    z-index: 10px;
+    background-color: #cc0000;
+}
+.dropdown-container a {
+    text-align: left;
+    background-color: #4A2F2A;
+    padding: 8px;
+    margin: 8px;
+    text-decoration: none;
+    font-size: 20px;
+    color: #818181;
+    transition: 0.3s;
+}
+
+
+#Login {
     background-color: #1F4A5A;
     color: #7FBAC5;
 }
-#AddFriend{
-    background-color: #D98B7D;
+#logout-btn{
+    background-color: #1F4A5A;
+    color: #7FBAC5;
+}
+#addFriendBtn {
+    margin-top: 10px;
+    background-color: #85d97d;
     color: #4A2F2A;
+    cursor: pointer;
+    font-size: 20px;
 }
-#Profile{
-background-color:#7FBAC5;
-color: #1F4A5A;
+
+#Profile {
+    background-color: #7FBAC5;
+    color: #1F4A5A;
 }
-#FriendsTab{
-background-color:#A8A39D ;
-color: #2B2B2B;
+
+#FriendsTab {
+    background-color: #A8A39D;
+    color: #2B2B2B;
 }
+
 #closeButton {
     margin: 0px 0px 50px 50px;
     position: relative;
@@ -314,10 +426,12 @@ color: #2B2B2B;
     width: 100%;
     border-top-left-radius: 10px;
     border-bottom-left-radius: 10px;
-  }
+}
+
 .sidenav a:hover {
     color: #f1f1f1;
 }
+
 .sidenav .closebtn {
     position: absolute;
     top: 0;
@@ -354,41 +468,35 @@ input {
 
 .amount-container {
     display: flex;
-    /* Aligns dollar sign and input horizontally */
     align-items: center;
-    /* Centers vertically */
     transition: 0.3s;
-
+    width: 100%;
+    white-space: nowrap; /* Prevents wrapping */
+    overflow: hidden; /* Hides overflow */
+    text-overflow: ellipsis; /* Shows "..." if text is too long */
+    display: inline-block;
 }
+
 
 .remove-btn {
     margin-left: 10px;
-    /* Space from other elements */
-    width: 30px;
-    /* Compact width */
+    width: 100%;
     height: 30px;
-    /* Compact height */
     display: flex;
     align-items: center;
     justify-content: center;
     background-color: #e74c3c;
-    /* Red background */
     color: #fff;
-    /* White "X" */
     border: none;
     border-radius: 10px;
-    /* Makes it circular */
     font-size: 16px;
-    /* Size of "X" */
     cursor: pointer;
     text-decoration: none;
     font-weight: bold;
-    line-height: 1;
     padding: 0;
-    /* Removes extra padding */
 }
 
-#more-btn{
+#more-btn {
     margin-left: 10px;
     width: 30px;
     height: 30px;
@@ -407,6 +515,7 @@ input {
     line-height: 1;
     padding: 0;
 }
+
 /* Special Sections */
 #Special,
 #Special2 {
@@ -446,10 +555,27 @@ input {
 /* Container for name and amount */
 .name-amount-container {
     display: flex;
+    justify-content: space-between;
+    align-items: left;
+    text-align: left;
+    margin-top: 10px;
+    border-radius: 8px;
+    padding: 8px;
+    text-wrap: wrap;
+    width: 100%;
+    flex-direction: column;
+    max-width: 40vh;
+    text-wrap: wrap;
+    overflow: hidden; 
+
+}
+.extra-info-box{
+    display: flex;
+    flex-direction: row;
     align-items: center;
-    gap: 10px;
-    transition: 0.3s;
-    margin-bottom: 10px;  /* Adds space between the name-amount-container and extra-info-container */
+    text-align: center;
+    justify-content: space-between;
+    
 }
 
 /* Styling for name */
@@ -457,8 +583,16 @@ input {
     font-weight: bold;
     font-size: 26px;
     transition: 0.3s;
+    flex-grow: 1; /* Makes name take up available space */
+    text-align: left; /* Aligns text to the left */
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
 
 }
+
 
 /* Styling for the dollar sign */
 .dollar-sign {
@@ -467,7 +601,8 @@ input {
     transition: 0.3s;
 
 }
-#Subscript{
+
+#Subscript {
     transition: 0.3s;
     text-align: left;
     margin-left: 10px;
@@ -475,47 +610,21 @@ input {
 
 
 }
-/* Styling for amount input */
-.amount-input {
-    width: 80px;
-    /* Control width of input box */
-    text-align: left;
-    /* Align number to the right */
-    margin-bottom: -4.5px;
-    transition: 0.3s;
-}   
 
-#currencySelect {
-    margin: 10px;
-    padding: 5px;
-    border: 2px solid rgb(255, 255, 255);
-    background-color: transparent;
-    color: rgb(241, 241, 241);
-    border-radius: 5px;
-    font-size: 16px;
-    font-family: 'Montserrat', sans-serif;
-    transition: 0.3s;
-    display: none;
-
-}
-
-#currencySelect option {
-    background-color: rgba(0, 0, 0, 0.9);
-    color: rgb(255, 255, 255);
-    transition: 0.3s;
-}
-
-
-
-
-.close-btn {
+#closeSignup,#closeLogin {
+    top: 0;
+    right: 10px;
+    position: absolute;
     margin-top: 10px;
     color: white;
     background-color: red;
     border: none;
     padding: 10px 20px;
     cursor: pointer;
+    font-size: 18px;
+    
 }
+
 .modal {
     display: none;
     position: fixed;
@@ -523,37 +632,105 @@ input {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(40, 40, 46, 0.781);
+    background: rgba(14, 53, 59, 0.781);
     justify-content: center;
     align-items: center;
 }
+
 .modal-content {
     display: flex;
     flex-direction: column;
-    background: rgba(75, 98, 109, 0.8);
+    background: rgba(50, 59, 59, 0.8);
     padding: 20px;
     border-radius: 10px;
     text-align: center;
     box-shadow: 0px 0px 10px 0px #000000;
 }
-.modal button {
+#currency-select{
+    top: -80px;
+    right: -2px;
+    position: relative;
+    color: #b6c5b9;
+    text-decoration: none;
+    border-style: hidden;
+    padding: 10px;
+    margin: 12px;   
+    border-radius: 7px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: 0.3s;
+    z-index: 20;
+    display: flex;
+    transition: 1s;
+    width: 90%;
+}
+.modal button,#currency-select {
     margin: 10px;
     padding: 10px 20px;
     border: none;
     border-radius: 5px;
     cursor: pointer;
 }
-#add-more-money-btn, #add-extra-info-btn , #remove-money-btn, #edit-name-btn{
-    background-color: rgb(111, 134, 138);
-    border: 2px solid rgb(206, 206, 206);
-    color: rgb(228, 255, 254);
+.button-container {
+    display: flex;
+    gap: 10px; /* Adds space between buttons */
+}
+#add-more-money-btn,
+#add-extra-info-btn,
+#remove-money-btn,
+#edit-name-btn,#currency-select {
+    background-color: rgba(80, 202, 211, 0.8);
+    border: 2px;
+    color: rgb(194, 233, 232);
     font-size: 20px;
 }
-#close-prompt{
-    background-color: rgb(90, 42, 42);
-    border: 2px solid rgb(206, 206, 206);
+
+#close-prompt {
+    background-color: rgba(175, 53, 44, 0.8);
+    border: 2px;
     color: rgb(216, 216, 216);
+    font-size: 20px;
+
 }
+#friendModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(14, 53, 59, 0.781);
+    justify-content: center;
+    align-items: center;
+    transition: 0.3s;
+
+}
+
+.friend-content {
+    display: flex;
+    flex-direction: column;
+    background: rgba(50, 59, 59, 0.8);
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0px 0px 10px 0px #000000;
+    width: 70%;
+    margin-top: 60px;
+    height: 70%;
+    position: relative; /* Needed for absolute positioning inside */
+}
+
+#closeFriendModal {
+        background-color: rgba(175, 53, 44, 0.8);
+
+    position: absolute;
+    top: 10px;
+    right: -15px;
+    transform: translateX(-50%); /* Centers it horizontally */
+    font-size: 20px;
+    border-radius: 15px;
+}
+
 
 /* Responsive Design */
 @media (max-width: 768px) {
@@ -575,29 +752,30 @@ input {
         line-height: 1;
         padding: 0;
     }
-    
+
     #TITLE {
         font-size: 50px;
     }
 
     .personlist {
-        width: 90%;
+        width: 100%;
     }
 
     #add-person-btn {
         width: 90%;
     }
+
     #clear-list-btn {
         width: 90%;
     }
 }
-  
-  @media screen and (max-height: 450px) {
+
+@media screen and (max-height: 450px) {
     .sidenav {
-      padding-top: 15px;
+        padding-top: 15px;
     }
-  
+
     .sidenav a {
-      font-size: 18px;
+        font-size: 18px;
     }
-  }
+}

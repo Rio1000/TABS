@@ -2,21 +2,6 @@ const peopleList = document.getElementById("people-list");
 const addPersonBtn = document.getElementById("add-person-btn");
 const clearListBtn = document.getElementById("clear-list-btn");
 
-
-
-
-
-
-const currencySymbols = {
-  USD: "$",
-  EUR: "€",
-  GBP: "£",
-  JPY: "¥",
-  INR: "₹",
-  AUD: "A$",
-  CAD: "C$",
-};
-
 const currencySelect = document.createElement("select");
 currencySelect.id = "currencySelect";
 Object.keys(currencySymbols).forEach((currency) => {
@@ -73,8 +58,9 @@ function openNav() {
   document.getElementById("add-person-btn").style.opacity = "0";
   document.getElementById("clear-list-btn").style.opacity = "0";
   document.getElementById("people-list").style.opacity = "0";
-  document.getElementById("Subscript").style.opacity = "0";
+  document.getElementById("Subscript").style.opacity = "1";
   document.getElementById("customModal").style.opacity = "0";
+  document.getElementById("friendModal").style.opacity = "0"; 
 }
 
 function closeNav() {
@@ -84,8 +70,9 @@ function closeNav() {
   document.getElementById("add-person-btn").style.opacity = "1";
   document.getElementById("clear-list-btn").style.opacity = "1";
   document.getElementById("people-list").style.opacity = "1";
-  document.getElementById("Subscript").style.opacity = "1";
+  document.getElementById("Subscript").style.opacity = "0";
   document.getElementById("customModal").style.opacity = "1";
+  document.getElementById("friendModal").style.opacity = "1";
 
 }
 // Load list from local storage on page load
@@ -113,30 +100,14 @@ function openSignUp() {
   document.getElementById("Loginpage").style.display = "none";
 }
 
-function windowClosed() {
-  console.log("closed");
 
-  // Hide Login and Signup pages
-  const loginPage = document.getElementById("Loginpage");
-  const signupPage = document.getElementById("signupPage");
-
-  if (loginPage) loginPage.style.display = "none";
-  if (signupPage) signupPage.style.display = "none";
-  if (addPersonBtn) addPersonBtn.style.display = "flex";
-  if (clearListBtn) clearListBtn.style.display = "flex";
-  // Load the add window
-  loadAddWindow();
+function openFriends() {
+  document.getElementById("friendModal").style.display = "flex";
+  closeNav();
 }
 
-function loadAddWindow() {
-  // Show Person List and Subscript
-  const personlist = document.getElementById("personlist");
-  const subscript = document.getElementById("Subscript");
-  const peopleList = document.getElementById("people-list");
 
-  if (personlist) personlist.style.display = "flex";
-  if (subscript) subscript.style.display = "flex";
-  if (peopleList) peopleList.style.display = "block";
+
+window.onload = () => {
+  loadAddWindow();
 };
-
-

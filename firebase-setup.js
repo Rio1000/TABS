@@ -14,8 +14,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
+  sendPasswordResetEmail,
 } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-auth.js";
-
 
 
 // Firebase configuration
@@ -29,19 +29,24 @@ const firebaseConfig = {
   appId: "1:295362517303:web:fbd0037e697eade181a2b2",
   measurementId: "G-Y9CWXD96D9",
 };
-
 function showToast(message, type = "success") {
+
   Toastify({
-    text: message,
+    text: `${message}`, // Prepend icon to message
     duration: 3000,
     close: true,
-    gravity: "top", // "top", "bottom"
-    position: "right", // "left", "center", "right"
+    gravity: "top",
+    position: "right",
+    className: type === "error" ? "toastify toastify-error" : "toastify toastify-success", // Set class dynamically
     style: {
-      background: type === "error" ? "red" : "#50c444", // Corrected syntax ✅
+      background: type === "error" ? "#ef4444" : "#50c444",
+      display: "flex",
+      alignItems: "center",
+      gap: "8px", // Space between icon & text
     },
   }).showToast();
 }
+
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -65,11 +70,13 @@ const loginButton = document.getElementById("login-btn");
 const signupButton = document.getElementById("signup-btn");
 const logoutButton = document.getElementById("logout-btn");
 const loginSignup = document.getElementById("Login");
+const resetPassword = document.getElementById("reset-password");
 
 const addMoreMoneyBtn = document.getElementById("add-more-money-btn");
 const addExtraInfoBtn = document.getElementById("add-extra-info-btn");
 const closePrompt = document.getElementById("close-prompt");
 const removeMoneyBtn = document.getElementById("remove-money-btn");
+
 // Function to show the modal
 
 // Auth State Listener
@@ -82,7 +89,16 @@ onAuthStateChanged(auth, (user) => {
     logoutButton.style.display = "block";
     loginSignup.style.display = "none";
     loadListFromFirebase();
-    windowClosed();
+    populateFriendsList(); // Call the function only after auth is ready
+    const loginPage = document.getElementById("Loginpage");
+    const signupPage = document.getElementById("signupPage");
+    const friendBox = document.getElementById("friendModal");
+  
+    if (loginPage) loginPage.style.display = "none";
+    if (signupPage) signupPage.style.display = "none";
+    if (addPersonBtn) addPersonBtn.style.display = "flex";
+    if (clearListBtn) clearListBtn.style.display = "flex";
+    if (friendBox) friendBox.style.display = "none";    loadAddWindow();
   } else {
     currentUser = null;
     console.log("No user logged in");
@@ -133,13 +149,17 @@ signupButton.addEventListener("click", async () => {
     const friendCode = generateFriendCode();
 
     // Save additional user info along with friend code to Realtime Database
-    await set(ref(database, `users/${user.uid}/profile`), {
-      firstName: nameFirst,
-      lastName: nameLast,
-      phoneNumber: number,
-      email: email,
-      friendCode: friendCode, // Save friend code
-    });
+// Save profile data excluding friend code
+await set(ref(database, `users/${user.uid}/profile`), {
+  firstName: nameFirst,
+  lastName: nameLast,
+  phoneNumber: number,
+  email: email,
+});
+
+// Save friend code in the friendCodes node
+await set(ref(database, `friendCodes/${user.uid}`), friendCode);
+
 
     // Make friend code accessible outside the signup function
     window.userFriendCode = friendCode; // Store in a global variable for external use
@@ -149,6 +169,29 @@ signupButton.addEventListener("click", async () => {
     showToast(`Signup failed: ${error.message}`, "error");
   }
 });
+
+resetPassword.addEventListener("click", async () => {
+  const email = signupEmail.value || loginEmail.value;
+
+  if (!email) {
+    showToast("Please enter your email.", "error");
+    return;
+  }
+
+  const actionCodeSettings = {
+    url: "https://tabsonfriends.com", 
+    handleCodeInApp: false, // Set to true if you want to handle the reset in your app
+  };
+
+  sendPasswordResetEmail(auth, email, actionCodeSettings)
+    .then(() => {
+      showToast("Password reset link sent! Check your email.", "success");
+    })
+    .catch((error) => {
+      showToast("Password reset failed: " + error.message, "error");
+    });
+});
+
 
 
 
@@ -239,9 +282,24 @@ function addPerson(name, amount, extraInfoArray = []) {
   const amountContainer = document.createElement("div");
   amountContainer.classList.add("amount-container");
 
+  const currencySelect = document.getElementById("currency-select");
+  let selectedCurrency = currencySelect.value;
+  const currencySymbols = {
+      USD: "$",
+      EUR: "€",
+      GBP: "£",
+      JPY: "¥"
+  };
   const dollarSpan = document.createElement("span");
   dollarSpan.textContent = currencySymbols[selectedCurrency];
   dollarSpan.classList.add("dollar-sign");
+  document.body.appendChild(dollarSpan);
+  
+  currencySelect.addEventListener("change", () => {
+      selectedCurrency = currencySelect.value;
+      dollarSpan.textContent = currencySymbols[selectedCurrency];
+      console.log("Selected currency:", selectedCurrency);
+  });
 
   const amountSpan = document.createElement("span");
   amountSpan.textContent = amount.toFixed(2);
@@ -253,8 +311,9 @@ function addPerson(name, amount, extraInfoArray = []) {
   amountContainer.appendChild(dollarSpan);
   amountContainer.appendChild(amountSpan);
 
-  nameAmountContainer.appendChild(nameSpan);
-  nameAmountContainer.appendChild(amountContainer);
+  const personItem = document.createElement('div');
+  personItem.appendChild(nameSpan);
+  personItem.appendChild(amountContainer);
 
   listItem.appendChild(nameAmountContainer);
 
@@ -285,8 +344,13 @@ function addPerson(name, amount, extraInfoArray = []) {
   addInfoBtn.classList.add('add-info-btn');
   addInfoBtn.addEventListener('click', () => openModal(listItem)); // Pass the specific listItem
 
-  nameAmountContainer.appendChild(removeBtn);
-  nameAmountContainer.appendChild(addInfoBtn);
+  const extraBox = document.createElement('div');
+  extraBox.classList.add('extra-info-box');
+  extraBox.appendChild(removeBtn);
+  extraBox.appendChild(addInfoBtn);
+  nameAmountContainer.appendChild(personItem);
+  nameAmountContainer.appendChild(extraBox);
+  
   peopleList.appendChild(listItem);
 }
 
@@ -420,6 +484,7 @@ function createExtraInfoElement(container, text) {
 
   // Create a span for the text
   const textSpan = document.createElement("span");
+  textSpan.classList.add("extra-info-text");
   textSpan.textContent = text; // Store only the text in the span
   extraInfoElement.appendChild(textSpan);
 
@@ -445,7 +510,7 @@ function createExtraInfoElement(container, text) {
 addPersonBtn.addEventListener("click", () => {
   const name = prompt("Enter Person's Name:");
   if (!name || name.trim() === "") {
-    alert("Name cannot be empty");
+    showToast(`Name cannot be empty`, "error");
     return;
   }
 
@@ -473,3 +538,194 @@ clearListBtn.addEventListener("click", () => {
   }
   
 });
+
+async function addFriend() {
+  if (!currentUser) {
+    showToast("You need to be logged in to add friends.", "error");
+    return;
+  }
+
+  const friendCode = prompt("Enter your friend's code:");
+  if (!friendCode || friendCode.trim() === "") {
+    showToast("Friend code cannot be empty.", "error");
+    return;
+  }
+
+  try {
+    // Search for the user by friend code in the friendCodes node in Firebase
+    const friendCodeRef = ref(database, `friendCodes`);
+    const snapshot = await get(friendCodeRef);
+
+    if (snapshot.exists()) {
+      let friendUserId = null;
+      snapshot.forEach((childSnapshot) => {
+        const userFriendCode = childSnapshot.val();
+        if (userFriendCode === friendCode) {
+          friendUserId = childSnapshot.key;
+        }
+      });
+
+      if (!friendUserId) {
+        showToast("Friend not found. Check the friend code and try again.", "error");
+        return;
+      }
+
+      // Now fetch the friend’s profile data
+      const friendProfileRef = ref(database, `users/${friendUserId}/profile`);
+      const friendProfileSnapshot = await get(friendProfileRef);
+
+      if (friendProfileSnapshot.exists()) {
+        const friendData = friendProfileSnapshot.val();
+
+        // Check if friendCode exists before trying to write it
+        const friendCodeToAdd = friendData.friendCode || null; // Assign null if friendCode doesn't exist
+
+        // Save the friend to the current user's friends list in Firebase
+        const userFriendsRef = ref(database, `users/${currentUser.uid}/friendsList`);
+        const newFriendRef = push(userFriendsRef);  // Automatically generate a unique ID for this friend
+        await set(newFriendRef, {
+          userId: friendUserId,
+          firstName: friendData.firstName,
+          lastName: friendData.lastName,
+          friendCode: friendCodeToAdd,
+        });
+
+        showToast(`${friendData.firstName} ${friendData.lastName} has been added to your friends list!`);
+
+        // Update the friends list UI after adding the friend
+        populateFriendsList();
+      } else {
+        showToast("Friend profile not found. Try again later.", "error");
+      }
+    } else {
+      showToast("No users found with that friend code.", "error");
+    }
+  } catch (error) {
+    console.error("❌ Error adding friend:", error);
+    showToast(`Error adding friend: ${error.message}`, "error");
+  }
+}
+
+
+// Function to populate the friends list on the UI
+// Function to populate the friends list on the UI with remove option
+async function populateFriendsList() {
+  const friendsListUl = document.getElementById('friendsList');
+  if (!friendsListUl) return; // Exit if the <ul> element doesn't exist
+
+  // Clear the current list
+  friendsListUl.innerHTML = '';
+
+  try {
+    // Fetch the user's friends list from Firebase
+    const friendsListRef = ref(database, `users/${currentUser.uid}/friendsList`);
+    const friendsListSnapshot = await get(friendsListRef);
+
+    if (friendsListSnapshot.exists()) {
+      friendsListSnapshot.forEach((childSnapshot) => {
+        const friendData = childSnapshot.val();
+        const friendId = childSnapshot.key;
+
+        // Create a new <li> element for each friend
+        const friendItem = document.createElement('li');
+        friendItem.textContent = `${friendData.firstName} ${friendData.lastName} `;
+
+        // Create a remove button (✖️)
+        const removeButton = document.createElement('button');
+        removeButton.textContent = '✖️';
+        removeButton.style.marginLeft = '10px';
+        removeButton.style.cursor = 'pointer';
+        removeButton.onclick = async () => {
+          if (confirm(`Are you sure you want to remove ${friendData.firstName} ${friendData.lastName} from your friends list?`)) {
+            await remove(ref(database, `users/${currentUser.uid}/friendsList/${friendId}`));
+            showToast(`${friendData.firstName} has been removed from your friends list.`, "info");
+            populateFriendsList(); // Refresh list after removal
+          }
+        };
+        const friendAddButton = document.createElement('button');
+        friendAddButton.classList.add('add-friend-to-list');
+        friendAddButton.textContent = '➕';
+        friendAddButton.style.marginLeft = '10px';
+        friendAddButton.style.cursor = 'pointer';
+        friendAddButton.style.backgroundColor = ' #3c94e7';
+        friendAddButton.onclick = () => {
+          addPerson(`${friendData.firstName} ${friendData.lastName}`, 0); // Add friend to person list
+          showToast(`${friendData.firstName} has been added to your person list.`, "success");
+          windowClosed();
+          
+        };
+        // Append the remove button to the friend item
+        friendItem.appendChild(friendAddButton);
+        friendItem.appendChild(removeButton);
+        friendsListUl.appendChild(friendItem);
+      });
+    } else {
+      friendsListUl.innerHTML = '<li>No friends found.</li>';
+    }
+  } catch (error) {
+    console.error("❌ Error fetching friends list:", error);
+    friendsListUl.innerHTML = '<li>Error loading friends list.</li>';
+  }
+}
+
+// Call this function to populate the list when the page loads
+window.onload = () => {
+  populateFriendsList();
+};
+
+
+
+
+
+
+// Function to check if the list is empty and show "No Friends Added"
+function checkEmptyList() {
+  const friendsList = document.getElementById('friendsList');
+  if (friendsList.children.length === 0) {
+      const noFriendsMessage = document.createElement('li');
+      noFriendsMessage.id = 'noFriendsMessage';
+      noFriendsMessage.textContent = "No Friends Added";
+      friendsList.appendChild(noFriendsMessage);
+  }
+}
+
+// Run checkEmptyList on page load to show the message initially
+document.addEventListener("DOMContentLoaded", checkEmptyList);
+
+
+// Attach the addFriend function to the "Add Friend" link
+document.getElementById('addFriendBtn').addEventListener('click', function(event) {
+  event.preventDefault(); // Prevent the default behavior of the <a> tag
+  addFriend();
+  
+});
+
+
+const closeWindow = document.getElementsByClassName("close-btn");
+closeWindow[0].onclick = function () {
+  console.log("closed");
+
+  // Hide Login and Signup pages
+  const loginPage = document.getElementById("Loginpage");
+  const signupPage = document.getElementById("signupPage");
+  const friendBox = document.getElementById("friendModal");
+
+  if (loginPage) loginPage.style.display = "none";
+  if (signupPage) signupPage.style.display = "none";
+  if (addPersonBtn) addPersonBtn.style.display = "flex";
+  if (clearListBtn) clearListBtn.style.display = "flex";
+  if (friendBox) friendBox.style.display = "none";
+  // Load the add window
+  loadAddWindow();
+}
+
+function loadAddWindow() {
+  // Show Person List and Subscript
+  const personlist = document.getElementById("personlist");
+  const subscript = document.getElementById("Subscript");
+  const peopleList = document.getElementById("people-list");
+
+  if (personlist) personlist.style.display = "flex";
+  if (subscript) subscript.style.display = "flex";
+  if (peopleList) peopleList.style.display = "block";
+};
