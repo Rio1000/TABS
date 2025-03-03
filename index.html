@@ -10,7 +10,6 @@
     <script type="module" src="firebase-setup.js"></script>
     <link rel="stylesheet" href="toastify.css">
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-    <script src="script.js"></script>
 
 </head>
 
@@ -19,30 +18,13 @@
         <h1 id="TITLE">TABS</h1>
 
         <div id="mySidenav" class="sidenav">
-            <a class="sideNavA" href="javascript:void(0)" class="closebtn" id="closeButton" onclick="closeNav()">&times;</a>
-            <a class="sideNavA" href="javascript:void(0)" id="Login" onclick="openLogin()">Login or Signup</a>
-            <a class="sideNavA" id="logout-btn">Logout</a>
-            <a class="sideNavA" id="Profile">Profile</a>
-            <a class="sideNavA" href="javascript:void(0)" id="FriendsTab" onclick="openFriends()">Friends <span id="friendsArrow">&#9662;</span></a>
-            </a>
-
-            <div id="friendBox" class="dropdown-container">
-                <a  id="AddFriend">Add Friend</a>
-                <a  href="#">test</a>
-                <a  href="#">test</a>
-                <a  href="#">test</a>
-                <a  href="#">test</a>
-                <a  href="#">test</a>
-                <a  href="#">test</a>
-                <a  href="#">test</a>
-                <a  href="#">test</a>
-                <a  href="#">test</a>
-                <a  href="#">test</a>
-                <a  href="#">test</a>
-                <a  href="#">test</a>
-            </div>
-        
-            <h4 id="Subscript">Designed and Created by:<br> Parker Heikes<br>Co-Founded by:<br> Finley Cryan</h4>
+            <a href="javascript:void(0)" class="closebtn" id="closeButton" onclick="closeNav()">&times;</a>
+            <a href="javascript:void(0)" id="Login" onclick="openLogin()">Login or Signup</a>
+            <a id="logout-btn" style="display: none;">Logout</a>
+            <a id="AddFriend">Add Friend</a>
+            <a id="FriendsTab" onclick="window.location.href='friends.html'">Friends</a>
+            <a id="Profile">Profile</a>
+            <h4 id="Subscript" style="display: flex;">Designed and Created by:<br> Parker Heikes<br>Co-Founded by:<br> Finley Cryan</h4>
         </div>
         <!-- Dropdown Menu -->
         <span class="open-btn" id="openButton" onclick="openNav()">&#9776;</span>
@@ -57,7 +39,16 @@
             <button id="add-person-btn">Add Person</button>
             <button id="clear-list-btn" >Clear List</button>
         </div>
-       <!-- Login/Signup Modal -->
+
+        <!-- Add Friend Modal -->
+        <div id="friendInputBox">
+            <input id="Big-ol-input" type="number" placeholder="Friend Code">
+            <button id="Add-Friend">Add Friend</button>
+            <button id="closefriend">Close</button>
+            <h1 id="Special2">TABS</h1>
+        </div>
+
+        <!-- Login/Signup Modal -->
         <div id="Loginpage" style="display: none;">
             <div class="login-content">
                 <h2>Login</h2>
@@ -95,6 +86,7 @@
     </div>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js"></script>
+    <script src="script.js"></script>
 </body>
 
 </html>

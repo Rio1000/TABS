@@ -73,7 +73,7 @@ function openNav() {
   document.getElementById("add-person-btn").style.opacity = "0";
   document.getElementById("clear-list-btn").style.opacity = "0";
   document.getElementById("people-list").style.opacity = "0";
-  document.getElementById("Subscript").style.opacity = "1";
+  document.getElementById("Subscript").style.opacity = "0";
   document.getElementById("customModal").style.opacity = "0";
 }
 
@@ -84,7 +84,7 @@ function closeNav() {
   document.getElementById("add-person-btn").style.opacity = "1";
   document.getElementById("clear-list-btn").style.opacity = "1";
   document.getElementById("people-list").style.opacity = "1";
-  document.getElementById("Subscript").style.opacity = "0";
+  document.getElementById("Subscript").style.opacity = "1";
   document.getElementById("customModal").style.opacity = "1";
 
 }
@@ -139,16 +139,4 @@ function loadAddWindow() {
   if (peopleList) peopleList.style.display = "block";
 };
 
-function openFriends() {
-  let friendBox = document.getElementById("friendBox");
-  let arrow = document.getElementById("friendsArrow");
-  let links = friendBox.getElementsByTagName("a");
-  
-  if (friendBox.style.height !== "0px" && friendBox.style.height !== "") {
-      friendBox.style.height = "0px";
-      arrow.innerHTML = "&#9662;"; // Downward arrow
-  } else {
-      friendBox.style.height = `${links.length * 55}px`; // Dynamically scale height
-      arrow.innerHTML = "&#9652;"; // Upward arrow
-  }
-}
+
