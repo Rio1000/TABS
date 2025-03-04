@@ -106,7 +106,9 @@ function openFriends() {
   closeNav();
 }
 
-
+function closeFriends() {
+  document.getElementById("friendModal").style.display = "none";
+}
 
 window.onload = () => {
   loadAddWindow();
