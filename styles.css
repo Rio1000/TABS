@@ -88,7 +88,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    /* Align children to the left */
+    width: 35vh;
     padding: 10px;
     background-color: transparent;
 }
