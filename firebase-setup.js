@@ -718,6 +718,20 @@ closeWindow[0].onclick = function () {
   // Load the add window
   loadAddWindow();
 }
+function windowClosed() {
+  console.log("closed");
+
+  // Hide Login and Signup pages
+  const loginPage = document.getElementById("Loginpage");
+  const signupPage = document.getElementById("signupPage");
+  const friendBox = document.getElementById("friendModal");
+
+  if (loginPage) loginPage.style.display = "none";
+  if (signupPage) signupPage.style.display = "none";
+  if (addPersonBtn) addPersonBtn.style.display = "flex";
+  if (clearListBtn) clearListBtn.style.display = "flex";
+  if (friendBox) friendBox.style.display = "none";
+}
 
 function loadAddWindow() {
   // Show Person List and Subscript
