@@ -7,6 +7,7 @@ import {
   push,
   get,
   remove,
+  update,
 } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-database.js";
 import {
   getAuth,
@@ -15,6 +16,7 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
+  
 } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-auth.js";
 
 
@@ -77,36 +79,57 @@ const addExtraInfoBtn = document.getElementById("add-extra-info-btn");
 const closePrompt = document.getElementById("close-prompt");
 const removeMoneyBtn = document.getElementById("remove-money-btn");
 
+
 // Function to show the modal
 
 // Auth State Listener
 let currentUser = null;
 let currentListItem = null;
+
+
 onAuthStateChanged(auth, (user) => {
-  if (user) {
-    currentUser = user;
-    console.log(`User logged in: ${user.email}`);
-    logoutButton.style.display = "block";
-    loginSignup.style.display = "none";
-    loadListFromFirebase();
-    populateFriendsList(); // Call the function only after auth is ready
     const loginPage = document.getElementById("Loginpage");
     const signupPage = document.getElementById("signupPage");
     const friendBox = document.getElementById("friendModal");
-  
-    if (loginPage) loginPage.style.display = "none";
-    if (signupPage) signupPage.style.display = "none";
-    if (addPersonBtn) addPersonBtn.style.display = "flex";
-    if (clearListBtn) clearListBtn.style.display = "flex";
-    if (friendBox) friendBox.style.display = "none";    loadAddWindow();
-  } else {
-    currentUser = null;
-    console.log("No user logged in");
-    logoutButton.style.display = "none";
-    loginSignup.style.display = "block";
-    peopleList.innerHTML = ""; // Clear UI when logged out
-  }
+    const addPersonBtn = document.getElementById("addPersonBtn");
+    const clearListBtn = document.getElementById("clearListBtn");
+
+    if (user) {
+        currentUser = user;
+        console.log(`User logged in: ${user.email}`);
+
+        logoutButton.style.display = "block";
+        loginSignup.style.display = "none";
+
+        // Load data only after authentication
+        loadListFromFirebase();
+        populateFriendsList();
+        loadAddWindow();
+
+        // Hide login/signup pages
+        if (loginPage) loginPage.style.display = "none";
+        if (signupPage) signupPage.style.display = "none";
+        if (friendBox) friendBox.style.display = "none";
+
+        // Show buttons if they exist
+        if (addPersonBtn) addPersonBtn.style.display = "flex";
+        if (clearListBtn) clearListBtn.style.display = "flex";
+    } else {
+        currentUser = null;
+        console.log("No user logged in");
+
+        logoutButton.style.display = "none";
+        loginSignup.style.display = "block";
+
+        // Clear UI when logged out
+        peopleList.innerHTML = "";
+
+        // Reset UI elements if necessary
+        if (addPersonBtn) addPersonBtn.style.display = "none";
+        if (clearListBtn) clearListBtn.style.display = "none";
+    }
 });
+
 
 // Login Event
 loginButton.addEventListener("click", async () => {
@@ -141,6 +164,11 @@ signupButton.addEventListener("click", async () => {
   const nameLast = signupNameLast.value;
   const number = signupNumber.value;
 
+
+  if (!email || !password || !nameFirst || !nameLast || !number) {
+    showToast("Please fill in all fields before signing up.", "error");
+    return;
+  }
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
@@ -219,56 +247,75 @@ async function saveListToFirebase() {
   listItems.forEach((item) => {
     const name = item.querySelector(".name-span").textContent;
     const amount = parseFloat(item.querySelector(".amount-input").value) || 0;
-
-    // Extract extra information
+    const status = item.getAttribute("data-status") || "neutral"; // Get status
+    const interest = JSON.parse(item.dataset.interest);
     let extraInfoElements = item.querySelectorAll(".extra-info-item");
     let extraInfoArray = [];
 
     extraInfoElements.forEach((infoElement) => {
-      // Get the text content of the span inside the extra-info-item
       const textSpan = infoElement.querySelector("span");
       const text = textSpan ? textSpan.textContent.trim() : "";
-
       if (text) {
-        // Ensure text is defined and not empty
         extraInfoArray.push({ text, hasRemoveBtn: true });
       }
     });
 
-    peopleData.push({ name, amount, extraInfo: extraInfoArray });
-  });
+    peopleData.push({ name, amount, extraInfo: extraInfoArray, status, interest });
+});
+
+  // Get interest data
 
   try {
-    await set(ref(database, `users/${currentUser.uid}/peopleList`), peopleData);
-    console.log("✅ Data saved to Firebase:", peopleData);
+    await set(ref(database, `users/${currentUser.uid}/peopleList`), {
+      peopleData,
+    });
+    console.log("✅ Data saved to Firebase:", { peopleData });
   } catch (error) {
     console.error("❌ Error saving data:", error);
   }
 }
-// Load list from Firebase instead of localStorage
+
+// Load list and interest data from Firebase
 async function loadListFromFirebase() {
   if (!currentUser) return;
 
   try {
-    const snapshot = await get(
-      ref(database, `users/${currentUser.uid}/peopleList`)
-    );
+    const snapshot = await get(ref(database, `users/${currentUser.uid}/peopleList`));
     if (snapshot.exists()) {
-      const peopleData = snapshot.val();
-      peopleList.innerHTML = ""; // Clear the list before loading
+      const data = snapshot.val();
 
-      Object.values(peopleData).forEach((person) => {
-        const extraInfoArray = person.extraInfo ? person.extraInfo : [];
-        addPerson(person.name, person.amount, extraInfoArray); // Pass extra info
+      // Load people list
+      const peopleData = data.peopleData || [];
+      if (peopleList) peopleList.innerHTML = "";
+
+      peopleData.forEach((person) => {
+        const extraInfoArray = person.extraInfo ?? [];
+        const listItem = addPerson(person.name, person.amount, extraInfoArray, person.interest);
+    
+
+        if (listItem) {
+          if (person.status === "owesMe") {
+            listItem.setAttribute("data-status", "owesMe");
+            listItem.querySelector(".amount-input").style.color = "rgb(73, 255, 97)"; // Green
+          } else if (person.status === "iOwe") {
+            listItem.setAttribute("data-status", "iOwe");
+            listItem.querySelector(".amount-input").style.color = "rgb(255, 73, 73)"; // Red
+          }
+          
+      
+        }
       });
+
+
     }
   } catch (error) {
     console.error("❌ Error loading data:", error);
   }
 }
 
+
 // Function to add a person to the list
-function addPerson(name, amount, extraInfoArray = []) {
+function addPerson(name, amount, extraInfoArray = [], interest = { enabled: false, rate: 0, period: 'monthly' }) {
   const listItem = document.createElement("div");
   listItem.classList.add("personlist-item");
 
@@ -293,23 +340,26 @@ function addPerson(name, amount, extraInfoArray = []) {
   const dollarSpan = document.createElement("span");
   dollarSpan.textContent = currencySymbols[selectedCurrency];
   dollarSpan.classList.add("dollar-sign");
-  document.body.appendChild(dollarSpan);
   
   currencySelect.addEventListener("change", () => {
       selectedCurrency = currencySelect.value;
       dollarSpan.textContent = currencySymbols[selectedCurrency];
+      addMoreMoneyBtn.innerHTML = `+ ${currencySymbols[selectedCurrency]}`;
+      removeMoneyBtn.innerHTML = `- ${currencySymbols[selectedCurrency]}`;
       console.log("Selected currency:", selectedCurrency);
   });
+
 
   const amountSpan = document.createElement("span");
   amountSpan.textContent = amount.toFixed(2);
   amountSpan.classList.add("amount-input");
   amountSpan.value = amount || 0;
-
   amountSpan.addEventListener("input", debounce(saveListToFirebase, 300));
-
   amountContainer.appendChild(dollarSpan);
   amountContainer.appendChild(amountSpan);
+
+
+
 
   const personItem = document.createElement('div');
   personItem.appendChild(nameSpan);
@@ -350,133 +400,425 @@ function addPerson(name, amount, extraInfoArray = []) {
   extraBox.appendChild(addInfoBtn);
   nameAmountContainer.appendChild(personItem);
   nameAmountContainer.appendChild(extraBox);
-  
+
+
   peopleList.appendChild(listItem);
+  listItem.dataset.interest = JSON.stringify(interest);
+  return listItem;
 }
 
+// Ensure these buttons are created only once
+const btnContainer = document.getElementById('btn-container');
+
+// Create buttons only if they don't exist
+if (!document.getElementById('IOBtn')) {
+  const IOBtn = document.createElement('button');
+  IOBtn.id = 'IOBtn';
+  IOBtn.textContent = 'I Owe';
+  btnContainer.appendChild(IOBtn);
+  IOBtn.addEventListener("click", IOwe);
+}
+
+if (!document.getElementById('UOBtn')) {
+  const UOBtn = document.createElement('button');
+  UOBtn.id = 'UOBtn';
+  UOBtn.textContent = 'Owed';  
+  btnContainer.appendChild(UOBtn);
+  UOBtn.addEventListener("click", UOwe);
+}
+
+const interestBox = document.getElementById('interestTitle');
+if (!interestBox) {
+  console.error("Element with ID 'interestTitle' not found.");
+}
+
+// Create and append toggle checkbox
+const interestToggle = document.createElement('input');
+interestToggle.type = 'checkbox';
+interestToggle.id = 'interestToggle';
+interestBox.appendChild(interestToggle);
+
+// Create interest indicator
 
 
-addMoreMoneyBtn.addEventListener("click", () => {
-  addMoreMoney();
+const interestContainer = document.getElementById('interest-container');
+const interestrangecontainer = document.getElementById('interest-range-container');
+
+interestToggle.addEventListener('change', () => {
+  interestContainer.style.height = interestToggle.checked ? '130px' : '34px';
+  interestrangecontainer.style.opacity = interestToggle.checked ? 1 : 0;
+  interestRangeContainer.style.display = interestToggle.checked ? 'flex' : 'none';
+  rateLabel.innerHTML = '<span class="rate">0</span>%';
+  interestRange.value = 0;
+
 });
-removeMoneyBtn.addEventListener("click", () => {
-  removeMoney();
-})
 
+// Create range slider
+const interestRange = document.createElement('input');
+interestRange.type = 'range';
+interestRange.id = 'interestRange';
+interestRange.name = 'interestRange';
+interestRange.min = '0';
+interestRange.max = '30';
+interestRange.value = '0';
+
+// Create rate label
+const rateLabel = document.createElement('p');
+rateLabel.innerHTML = 'Rate: <span class="rate">0</span>%';
+rateLabel.id = 'rate';
+
+// Append range slider to its container
+const interestRangeContainer = document.getElementById('interest-range-container');
+if (interestRangeContainer) {
+  interestRangeContainer.appendChild(interestRange);
+} else {
+  console.error("Element with ID 'interest-range-container' not found.");
+}
+
+// Append rate label to interestBox
+interestBox.appendChild(rateLabel);
+
+// Create dropdown for interest period
+const interestDropdown = document.createElement('select');
+interestDropdown.id = 'interestSelect';
+
+const periods = ['Weekly', 'Monthly', 'Quarterly', 'Yearly'];
+periods.forEach(period => {
+  const option = document.createElement('option');
+  option.value = period.toLowerCase();
+  option.textContent = period;
+  interestDropdown.appendChild(option);
+});
+
+// Append dropdown to interestBox
+interestRangeContainer.appendChild(interestDropdown);
 
 function openModal(listItem) {
-    currentListItem = listItem; // Set the current list item
-    document.getElementById("customModal").style.display = "flex";
-  }
+  currentListItem = listItem;
+  const interest = JSON.parse(listItem.dataset.interest);
+
+  // Update interest controls
+  document.getElementById('interestToggle').checked = interest.enabled;
+  document.getElementById('interestRange').value = interest.rate;
+  document.getElementById('interestSelect').value = interest.period;
+
+  // Update UI
+  const interestContainer = document.getElementById('interest-container');
+  const interestRangeContainer = document.getElementById('interest-range-container');
+  interestContainer.style.height = interest.enabled ? '130px' : '34px';
+  interestRangeContainer.style.opacity = interest.enabled ? 1 : 0;
+  interestRangeContainer.style.display = interest.enabled ? 'flex' : 'none';
+  document.getElementById('rate').innerHTML = `<span class="rate">${interest.rate}</span>%`;
+
+  document.getElementById("customModal").style.display = "flex";
+}
+
+document.getElementById('interestToggle').addEventListener('change', updateInterest);
+document.getElementById('interestRange').addEventListener('input', updateInterest);
+document.getElementById('interestSelect').addEventListener('change', updateInterest);
+
+let debounceTimer;
+
+function debounce(fn, delay) {
+  return function() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(fn, delay);
+  };
+}
+
+function updateInterest() {
+  if (!currentListItem) return;
+  const interest = {
+    enabled: document.getElementById('interestToggle').checked,
+    rate: parseFloat(document.getElementById('interestRange').value),
+    period: document.getElementById('interestSelect').value
+  };
+  currentListItem.dataset.interest = JSON.stringify(interest);
+  saveListToFirebase(); // Call the function properly here, assuming saveListToFirebase is defined elsewhere
+}
+document.getElementById('interestRange').addEventListener('input', debounce(updateInterest, 500)); // Adjust the delay as needed
 
 
 
-  function addMoreMoney() {
-    if (!currentListItem) return; // Ensure there's a selected list item
+function applyInterest() {
+  if (!currentListItem) return;
+
+  const amountSpan = currentListItem.querySelector(".amount-input");
+  const currentAmount = parseFloat(amountSpan.value) || 0;
   
-    const addMoneyInput = prompt("Enter amount to add:");
-    if (!addMoneyInput || isNaN(parseFloat(addMoneyInput))) {
-      showToast("Please enter a valid amount.", "error");
+  const interestToggle = document.getElementById('interestToggle').checked;
+  const interestRate = parseFloat(document.getElementById('interestRange').value) / 100;
+  const interestPeriod = document.getElementById('interestSelect').value;
+  
+  if (!interestToggle || isNaN(interestRate) || interestRate <= 0) {
       return;
-    }
-  
-    const amountToAdd = parseFloat(addMoneyInput);
-    const amountSpan = currentListItem.querySelector(".amount-input");
-    const currentAmount = parseFloat(amountSpan.value) || 0;
-  
-    const newAmount = currentAmount + amountToAdd;
-    amountSpan.value = newAmount.toFixed(2); // Update the amount in the UI
-    amountSpan.innerHTML = newAmount.toFixed(2);
-    saveListToFirebase(); // Save the updated amount to Firebase
-    showToast(`Added $${amountToAdd.toFixed(2)} to ${currentListItem.querySelector(".name-span").textContent}.`);
-  
-    document.getElementById("customModal").style.display = "none"; // Close the modal
   }
 
-  function removeMoney() {
-    if (!currentListItem) return; // Ensure there's a selected list item
-  
-    const removeMoneyAmount = prompt("Enter amount to add:");
-    if (!removeMoneyAmount || isNaN(parseFloat(removeMoneyAmount))) {
-      showToast("Please enter a valid amount.", "error");
-      return;
-    }
-  
-    const amountToAdd = parseFloat(removeMoneyAmount);
-    const amountSpan = currentListItem.querySelector(".amount-input");
-    const currentAmount = parseFloat(amountSpan.value) || 0;
-  
-    const newAmount = currentAmount - amountToAdd;
-    amountSpan.value = newAmount.toFixed(2); // Update the amount in the UI
-    amountSpan.innerHTML = newAmount.toFixed(2);
-    saveListToFirebase(); // Save the updated amount to Firebase
-    showToast(`Removed $${amountToAdd.toFixed(2)} to ${currentListItem.querySelector(".name-span").textContent}.`);
-  
-    document.getElementById("customModal").style.display = "none"; // Close the modal
+  let interestMultiplier = 1;
+  switch (interestPeriod) {
+      case 'weekly':
+          interestMultiplier = 1 / 52;
+          break;
+      case 'monthly':
+          interestMultiplier = 1 / 12;
+          break;
+      case 'quarterly':
+          interestMultiplier = 1 / 4;
+          break;
+      case 'yearly':
+          interestMultiplier = 1;
+          break;
   }
-// Event listener for the "Edit Name" button
-const editNameBtn = document.getElementById("edit-name-btn");
+  
+  const now = Date.now();
+  const userRef = ref(database, `users/${currentUser.uid}/peopleList/peopleData/${personIndex}/interest/lastInterestApplied`);  
+  get(userRef).then((snapshot) => {
+      if (snapshot.exists()) {
+          const data = snapshot.val();
+          const lastApplied = data.interest?.lastInterestApplied || now;
+          const timeElapsed = (now - lastApplied) / (1000 * 60 * 60 * 24 * 365); // Years elapsed
+          
+          if (timeElapsed > 0) {
+              const interestAmount = currentAmount * Math.pow((1 + (interestRate * interestMultiplier)), timeElapsed) - currentAmount;
+              const newAmount = currentAmount + interestAmount;
+              
+              amountSpan.value = newAmount.toFixed(2);
+              amountSpan.innerHTML = newAmount.toFixed(2);
+              
+              update(userRef, {
+                  'interest/lastInterestApplied': now,
+                  'amount': newAmount
+              });
+          }
+      } else {
+          set(userRef, {
+              'interest': {
+                  lastInterestApplied: now
+              },
+              'amount': currentAmount
+          });
+      }
+  });
+}
 
-editNameBtn.addEventListener("click", () => {
-  if (currentListItem) {
-    editName(currentListItem);
-  }
-  document.getElementById("customModal").style.display = "none"; // Close the modal
+function startInterestApplication() {
+  applyInterest(); // Run once on window load
+  setInterval(applyInterest, 86400000); // Applies interest every 24 hours (86,400,000 ms)
+}
+
+window.onload = startInterestApplication;
+
+document.getElementById('interestToggle').addEventListener('change', applyInterest);
+document.getElementById('interestRange').addEventListener('input', applyInterest);
+document.getElementById('interestSelect').addEventListener('change', applyInterest);
+
+  document.querySelectorAll("#closeEditMoney").forEach(button => {
+    button.addEventListener("click", function () {
+        document.getElementById("editMoneyModal").style.display = "none";
+    });
 });
 
-// Function to edit a person's name
-function editName(listItem) {
-  const currentName = listItem.querySelector(".name-span").textContent;
-  const newName = prompt("Edit name:", currentName);
+document.getElementById("add-more-money-btn").addEventListener("click", function () {
+  document.getElementById("editMoneyModal").style.display = "flex";
+  document.getElementById("editMoneyAdd").style.display = "flex";
+  document.getElementById("editMoneyRemove").style.display = "none";
+});
 
-  if (newName && newName.trim() !== "" && newName !== currentName) {
-    const nameSpan = listItem.querySelector(".name-span");
-    nameSpan.textContent = newName.trim(); // Update the name in the UI
-    saveListToFirebase(); // Save the updated name to Firebase
-    showToast("Name updated successfully.");
-  } else if (newName === null || newName.trim() === "") {
-    showToast("Name cannot be empty.", "error");
-  } else {
-    showToast("No changes were made.", "info");
+document.getElementById("remove-money-btn").addEventListener("click", function () {
+  document.getElementById("editMoneyModal").style.display = "flex";
+  document.getElementById("editMoneyAdd").style.display = "none";
+  document.getElementById("editMoneyRemove").style.display = "flex";
+});
+
+document.getElementById("editMoneyBtnAdd").addEventListener("click", function () {
+  if (!currentListItem) return;
+
+  const addMoneyInput = document.querySelector("#editMoneyAdd input");
+  const amountToAdd = parseFloat(addMoneyInput.value);
+
+  if (isNaN(amountToAdd) || amountToAdd <= 0) {
+      showToast("Please enter a valid amount.", "error");
+      return;
   }
+
+  const amountSpan = currentListItem.querySelector(".amount-input");
+  const currentAmount = parseFloat(amountSpan.value) || 0;
+  const newAmount = currentAmount + amountToAdd;
+
+  amountSpan.value = newAmount.toFixed(2);
+  amountSpan.innerHTML = newAmount.toFixed(2);
+  saveListToFirebase();
+  showToast(`Added $${amountToAdd.toFixed(2)} to ${currentListItem.querySelector(".name-span").textContent}.`);
+
+  closeEditMoneyModal();
+});
+
+document.getElementById("editMoneyBtnRemove").addEventListener("click", function () {
+  if (!currentListItem) return;
+
+  const removeMoneyInput = document.querySelector("#editMoneyRemove input");
+  const amountToRemove = parseFloat(removeMoneyInput.value);
+
+  if (isNaN(amountToRemove) || amountToRemove <= 0) {
+      showToast("Please enter a valid amount.", "error");
+      return;
+  }
+
+  const amountSpan = currentListItem.querySelector(".amount-input");
+  const currentAmount = parseFloat(amountSpan.value) || 0;
+  const newAmount = Math.max(0, currentAmount - amountToRemove);
+
+  amountSpan.value = newAmount.toFixed(2);
+  amountSpan.innerHTML = newAmount.toFixed(2);
+  saveListToFirebase();
+  showToast(`Removed $${amountToRemove.toFixed(2)} from ${currentListItem.querySelector(".name-span").textContent}.`);
+
+  closeEditMoneyModal();
+});
+
+document.getElementById("closeEditMoney").addEventListener("click", closeEditMoneyModal);
+
+function closeEditMoneyModal() {
+  document.getElementById("editMoneyModal").style.display = "none";
+  document.querySelector("#editMoneyAdd input").value = "";
+  document.querySelector("#editMoneyRemove input").value = "";
 }
+
+
+// Event listener for the "Edit Name" button
+document.getElementById("edit-name-btn").addEventListener("click", () => {
+  if (currentListItem) {
+      openEditNameModal(currentListItem);
+  }
+});
+
+function openEditNameModal(listItem) {
+
+  currentListItem = listItem;
+  const currentName = listItem.querySelector(".name-span").textContent;
+  editNameInput.value = currentName;
+  editNameModal.style.display = "flex";
+}
+
+// Function to edit a person's name
+editNameBtn.addEventListener("click", () => {
+  if (currentListItem) {
+      const newName = editNameInput.value.trim();
+      const nameSpan = currentListItem.querySelector(".name-span");
+
+      if (newName !== "" && newName !== nameSpan.textContent) {
+          nameSpan.textContent = newName; // Update the name in the UI
+          saveListToFirebase(); // Save the updated name to Firebase
+          showToast("Name updated successfully.");
+      } else if (newName === "") {
+          showToast("Name cannot be empty.", "error");
+      } else {
+          showToast("No changes were made.", "info");
+      }
+  }
+  editNameModal.style.display = "none";
+});
+
+// Close the modal when clicking the cancel button
+closeEditName.addEventListener("click", () => {
+  editNameModal.style.display = "none";
+});
 
 closePrompt.addEventListener("click", () => {
     handleResponse();
 })
-
-
-
-
-addExtraInfoBtn.addEventListener('click', () => {
-    if (currentListItem) {
-      promptForExtraInfo(currentListItem);
-    }
-    document.getElementById("customModal").style.display = "none";
-  });
-  function handleResponse() {
-    document.getElementById("customModal").style.display = "none";
-    currentListItem = null; // Clear the reference when closing
-  }
-
-function promptForExtraInfo(listItem) {
-  const extraInfo = prompt("Enter extra information:");
-
-  if (extraInfo) {
-    let extraInfoContainer = listItem.querySelector(".extra-info-container");
-    if (!extraInfoContainer) {
-      extraInfoContainer = document.createElement("div");
-      extraInfoContainer.classList.add("extra-info-container");
-      listItem.appendChild(extraInfoContainer);
-    }
-
-    createExtraInfoElement(extraInfoContainer, extraInfo);
-    saveListToFirebase();
-    showToast("Extra info added.");
-  } else {
-    showToast("Information cannot be empty", "error");
-  }
+function handleResponse() {
+  document.getElementById("customModal").style.display = "none";
+  currentListItem = null; // Clear the reference when closing
 }
+function UOwe() {
+  if (!currentListItem) return;
+  const status = currentListItem.getAttribute("data-status");
+  const amountInput = currentListItem.querySelector(".amount-input");
+  const Ibtn = currentListItem.querySelector("#UOBtn");
+  const Ubtn = currentListItem.querySelector("#IOBtn");
+  
+  if (status === "owesMe") {
+    currentListItem.removeAttribute("data-status");
+    amountInput.style.color = "";
+    if (Ibtn) Ibtn.classList.remove("active");
+  } else {
+    currentListItem.setAttribute("data-status", "owesMe");
+    amountInput.style.color = "rgb(73, 255, 97)";
+    if (Ibtn) Ibtn.classList.add("active");
+    if (Ubtn) Ubtn.classList.remove("active");
+  }
+  
+  saveListToFirebase();
+  document.getElementById("customModal").style.display = "none";
+}
+
+function IOwe() {
+  if (!currentListItem) return;
+  const status = currentListItem.getAttribute("data-status");
+  const amountInput = currentListItem.querySelector(".amount-input");
+  const Ubtn = currentListItem.querySelector("#IOBtn");
+  const Ibtn = currentListItem.querySelector("#UOBtn");
+  
+  if (status === "iOwe") {
+    currentListItem.removeAttribute("data-status");
+    amountInput.style.color = "";
+    if (Ubtn) Ubtn.classList.remove("active");
+  } else {
+    currentListItem.setAttribute("data-status", "iOwe");
+    amountInput.style.color = "rgb(255, 73, 73)";
+    if (Ubtn) Ubtn.classList.add("active");
+    if (Ibtn) Ibtn.classList.remove("active");
+  }
+  
+  saveListToFirebase();
+  document.getElementById("customModal").style.display = "none";
+}
+
+
+
+
+
+const extraInfoModal = document.getElementById("add-extra-info-modal");
+const extraInfoInput = document.getElementById("extra-info-input");
+const closeExtraInfoBtn = document.getElementById("close-extra-info");
+const addextrainfo = document.getElementById("add-extra-info");
+
+addExtraInfoBtn.addEventListener("click", () => {
+    if (currentListItem) {
+        extraInfoModal.style.display = "flex";
+    }
+});
+
+addextrainfo.addEventListener("click", () => {
+    if (currentListItem) {
+        const extraInfo = extraInfoInput.value.trim();
+        if (extraInfo) {
+            let extraInfoContainer = currentListItem.querySelector(".extra-info-container");
+            if (!extraInfoContainer) {
+                extraInfoContainer = document.createElement("div");
+                extraInfoContainer.classList.add("extra-info-container");
+                currentListItem.appendChild(extraInfoContainer);
+            }
+
+            createExtraInfoElement(extraInfoContainer, extraInfo);
+            saveListToFirebase();
+            showToast("Extra info added.");
+        } else {
+            showToast("Information cannot be empty", "error");
+        }
+        closeExtraInfoModal();
+    }
+});
+
+closeExtraInfoBtn.addEventListener("click", closeExtraInfoModal);
+
+function closeExtraInfoModal() {
+  extraInfoModal.style.display = "none";
+  extraInfoInput.value = ""; // Clear input field
+}
+
+
 
 function createExtraInfoElement(container, text) {
   const extraInfoElement = document.createElement("div");
@@ -506,23 +848,37 @@ function createExtraInfoElement(container, text) {
   container.appendChild(extraInfoElement);
 }
 
-// Event listener to add a person
 addPersonBtn.addEventListener("click", () => {
-  const name = prompt("Enter Person's Name:");
-  if (!name || name.trim() === "") {
-    showToast(`Name cannot be empty`, "error");
-    return;
-  }
+  document.getElementById("add-person-box-modal").style.display = "flex";
+})
+document.getElementById("add").addEventListener("click", () => {
+  const nameInput = document.getElementById("name-input");
+  const amountInput = document.getElementById("amount-input");
+  
+  const name = nameInput.value.trim();
+  const amount = parseFloat(amountInput.value);
 
-  const amountInput = prompt("Enter Amount:");
-  let amount = parseFloat(amountInput.replace(/[^0-9.]/g, ""));
+  if (!name) {
+      showToast("Name cannot be empty", "error");
+      return;
+  }
 
   if (isNaN(amount)) {
-    alert("Please enter a valid amount");
-    return;
+      showToast("Please enter a valid amount", "error");
+      return;
   }
+  
   addPerson(name, amount);
   saveListToFirebase();
+  
+  // Clear inputs and hide modal after adding
+  nameInput.value = "";
+  amountInput.value = "";
+  document.getElementById("add-person-box-modal").style.display = "none";
+});
+
+document.getElementById("cancel").addEventListener("click", () => {
+  document.getElementById("add-person-box-modal").style.display = "none";
 });
 
 // Load list when page loads
@@ -540,72 +896,85 @@ clearListBtn.addEventListener("click", () => {
 });
 
 async function addFriend() {
+  const friendCodeInput = document.getElementById("friend-code");
+  const friendCode = friendCodeInput.value.trim();
+
   if (!currentUser) {
     showToast("You need to be logged in to add friends.", "error");
     return;
   }
 
-  const friendCode = prompt("Enter your friend's code:");
-  if (!friendCode || friendCode.trim() === "") {
+  if (!friendCode) {
     showToast("Friend code cannot be empty.", "error");
     return;
   }
 
   try {
-    // Search for the user by friend code in the friendCodes node in Firebase
     const friendCodeRef = ref(database, `friendCodes`);
     const snapshot = await get(friendCodeRef);
 
-    if (snapshot.exists()) {
-      let friendUserId = null;
-      snapshot.forEach((childSnapshot) => {
-        const userFriendCode = childSnapshot.val();
-        if (userFriendCode === friendCode) {
-          friendUserId = childSnapshot.key;
+    if (!snapshot.exists()) {
+      showToast("No users found with that friend code.", "error");
+      return;
+    }
+
+    let friendUserId = null;
+    snapshot.forEach((childSnapshot) => {
+      if (childSnapshot.val() === friendCode) {
+        friendUserId = childSnapshot.key;
+      }
+    });
+
+    if (!friendUserId) {
+      showToast("Friend not found. Check the friend code and try again.", "error");
+      return;
+    }
+
+    const userFriendsRef = ref(database, `users/${currentUser.uid}/friendsList`);
+    const userFriendsSnapshot = await get(userFriendsRef);
+    
+    if (userFriendsSnapshot.exists()) {
+      let alreadyAdded = false;
+      userFriendsSnapshot.forEach((childSnapshot) => {
+        if (childSnapshot.val().userId === friendUserId) {
+          alreadyAdded = true;
         }
       });
-
-      if (!friendUserId) {
-        showToast("Friend not found. Check the friend code and try again.", "error");
+      if (alreadyAdded) {
+        showToast("This friend is already in your friends list.", "error");
         return;
       }
-
-      // Now fetch the friend’s profile data
-      const friendProfileRef = ref(database, `users/${friendUserId}/profile`);
-      const friendProfileSnapshot = await get(friendProfileRef);
-
-      if (friendProfileSnapshot.exists()) {
-        const friendData = friendProfileSnapshot.val();
-
-        // Check if friendCode exists before trying to write it
-        const friendCodeToAdd = friendData.friendCode || null; // Assign null if friendCode doesn't exist
-
-        // Save the friend to the current user's friends list in Firebase
-        const userFriendsRef = ref(database, `users/${currentUser.uid}/friendsList`);
-        const newFriendRef = push(userFriendsRef);  // Automatically generate a unique ID for this friend
-        await set(newFriendRef, {
-          userId: friendUserId,
-          firstName: friendData.firstName,
-          lastName: friendData.lastName,
-          friendCode: friendCodeToAdd,
-        });
-
-        showToast(`${friendData.firstName} ${friendData.lastName} has been added to your friends list!`);
-
-        // Update the friends list UI after adding the friend
-        populateFriendsList();
-      } else {
-        showToast("Friend profile not found. Try again later.", "error");
-      }
-    } else {
-      showToast("No users found with that friend code.", "error");
     }
+
+    const friendProfileRef = ref(database, `users/${friendUserId}/profile`);
+    const friendProfileSnapshot = await get(friendProfileRef);
+
+    if (!friendProfileSnapshot.exists()) {
+      showToast("Friend profile not found. Try again later.", "error");
+      return;
+    }
+
+    const friendData = friendProfileSnapshot.val();
+    const friendCodeToAdd = friendData.friendCode || null;
+
+    const newFriendRef = push(userFriendsRef);
+    
+    await set(newFriendRef, {
+      userId: friendUserId,
+      firstName: friendData.firstName,
+      lastName: friendData.lastName,
+      friendCode: friendCodeToAdd,
+    });
+
+    showToast(`${friendData.firstName} ${friendData.lastName} has been added to your friends list!`);
+
+    friendCodeInput.value = "";
+    populateFriendsList();
   } catch (error) {
     console.error("❌ Error adding friend:", error);
     showToast(`Error adding friend: ${error.message}`, "error");
   }
 }
-
 
 // Function to populate the friends list on the UI
 // Function to populate the friends list on the UI with remove option
@@ -629,6 +998,7 @@ async function populateFriendsList() {
         // Create a new <li> element for each friend
         const friendItem = document.createElement('li');
         friendItem.textContent = `${friendData.firstName} ${friendData.lastName} `;
+        const RFModal = document.getElementById('RemovefriendModal');
 
         // Create a remove button (✖️)
         const removeButton = document.createElement('button');
@@ -636,14 +1006,21 @@ async function populateFriendsList() {
         removeButton.style.marginLeft = '10px';
         removeButton.style.cursor = 'pointer';
         removeButton.onclick = async () => {
-          if (confirm(`Are you sure you want to remove ${friendData.firstName} ${friendData.lastName} from your friends list?`)) {
-            await remove(ref(database, `users/${currentUser.uid}/friendsList/${friendId}`));
-            showToast(`${friendData.firstName} has been removed from your friends list.`, "info");
-            populateFriendsList(); // Refresh list after removal
-          }
+          RFModal.style.display = 'flex';
         };
+        const removeConfirmButton = document.getElementById('removeFriendBtn');
+        removeConfirmButton.onclick = async () => {
+          await remove(ref(database, `users/${currentUser.uid}/friendsList/${friendId}`));
+          showToast(`${friendData.firstName} has been removed from your friends list.`, "info");
+          populateFriendsList(); // Refresh list after removal
+          RFModal.style.display = 'none';
+        }
+
+
+
+
         const friendAddButton = document.createElement('button');
-        friendAddButton.classList.add('add-friend-to-list');
+        friendAddButton.classList.add('add-friend-to-list');  
         friendAddButton.textContent = '➕';
         friendAddButton.style.marginLeft = '10px';
         friendAddButton.style.cursor = 'pointer';
@@ -652,7 +1029,7 @@ async function populateFriendsList() {
           addPerson(`${friendData.firstName} ${friendData.lastName}`, 0); // Add friend to person list
           showToast(`${friendData.firstName} has been added to your person list.`, "success");
           windowClosed();
-          
+          saveListToFirebase();
         };
         // Append the remove button to the friend item
         friendItem.appendChild(friendAddButton);
@@ -660,7 +1037,7 @@ async function populateFriendsList() {
         friendsListUl.appendChild(friendItem);
       });
     } else {
-      friendsListUl.innerHTML = '<li>No friends found.</li>';
+      friendsListUl.innerHTML = '<li>You have no friends.</li>';
     }
   } catch (error) {
     console.error("❌ Error fetching friends list:", error);
@@ -743,3 +1120,11 @@ function loadAddWindow() {
   if (subscript) subscript.style.display = "flex";
   if (peopleList) peopleList.style.display = "block";
 };
+
+var slider = document.getElementById("interestRange");
+var output = document.getElementById("rate");
+output.innerHTML = slider.value + "%";
+
+slider.oninput = function() {
+  output.innerHTML = this.value + "%";
+}

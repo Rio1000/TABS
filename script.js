@@ -2,40 +2,10 @@ const peopleList = document.getElementById("people-list");
 const addPersonBtn = document.getElementById("add-person-btn");
 const clearListBtn = document.getElementById("clear-list-btn");
 
-const currencySelect = document.createElement("select");
-currencySelect.id = "currencySelect";
-Object.keys(currencySymbols).forEach((currency) => {
-  const option = document.createElement("option");
-  option.value = currency;
-  option.textContent = currency;
-  currencySelect.appendChild(option);
-});
-
-// Default currency is USD
-let selectedCurrency = "USD";
-currencySelect.value = selectedCurrency;
-
-// Append the currency selector to the page (or a specific div)
-document.body.appendChild(currencySelect);
-
 
 
 
 // Listen for currency change
-currencySelect.addEventListener("change", (e) => {
-  selectedCurrency = e.target.value;
-  reloadListWithSelectedCurrency();
-});
-
-// Function to reload the list with the updated currency
-function reloadListWithSelectedCurrency() {
-  const peopleData = JSON.parse(localStorage.getItem("peopleList")) || [];
-  peopleList.innerHTML = ""; // Clear the existing list
-
-  peopleData.forEach((person) => {
-    addPerson(person.name, person.amount);
-  });
-}
 
 
 
@@ -100,7 +70,13 @@ function openSignUp() {
   document.getElementById("Loginpage").style.display = "none";
 }
 
+// document.getElementById('interestToggle').addEventListener('change', function() {
+//   document.getElementById('interest-range-container').style.height = this.checked ? '50px' : '0';
+//   document.getElementById('interest-range-container').style.opacity = this.checked ? '1' : '0';
+//   document.getElementById('interest-container-main').style.height = this.checked ? '160px' : '34px';
 
+
+// });
 function openFriends() {
   document.getElementById("friendModal").style.display = "flex";
   closeNav();
@@ -109,7 +85,12 @@ function openFriends() {
 function closeFriends() {
   document.getElementById("friendModal").style.display = "none";
 }
-
+function closeModal() {
+  document.getElementById("customModal").style.display = "none";
+}
 window.onload = () => {
   loadAddWindow();
 };
+document.getElementById("closeRemovefriend").addEventListener("click", () => {
+  document.getElementById("RemovefriendModal").style.display = "none";
+});
