@@ -65,10 +65,13 @@ body {
   border-radius: 10px;
   text-align: center;
   transition: 0.3s;
+  backdrop-filter: blur(3px); 
+  z-index: 1000; 
+
 }
 
 .login-input {
-  margin-bottom: 10px;
+  margin-bottom: 15px;
 }
 
 /* List Styles */
@@ -222,7 +225,17 @@ button,
   margin-right: auto;
   transition: 1s;
 }
-
+#Back-btn,
+#Back-btn2 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin-left: 10px;
+  padding: 0px;
+  border: none;
+  cursor: pointer;
+  font-size: 44px;
+}
 button:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
@@ -624,7 +637,11 @@ input {
 #add-person-box-modal,
 #editNameModal,
 #add-extra-info-modal,
-#RemovefriendModal {
+#RemovefriendModal,
+#ProfileModal,
+#editItemModal,
+#loader,
+#loginorsignupmodal {
     display: none; /* Ensure it uses flexbox */
     position: fixed;
     top: 0;
@@ -679,15 +696,14 @@ input {
   border: none;
   border-radius: 5px;
   cursor: pointer;
+  background-color: #4c7faf;
 }
 .button-container {
   display: flex;
   gap: 10px; /* Adds space between buttons */
 }
 .active {
-  border-color: #8fadbd;
-  background-color: #cc0000 !important; /* Ensure it overrides other styles */
-  color: white; /* Better contrast when active */
+  display: flex;
 }
 
 #IOBtn,
@@ -737,7 +753,9 @@ input {
 #close-extra-info,
 #RemovefriendBtn,
 #closeRemovefriend,
-#removeFriendBtn {
+#removeFriendBtn,
+#closeProfile,
+#closeEditItem {
   background-color: rgba(211, 80, 80, 0.8);
   border: 2px solid transparent;
   color: rgb(194, 233, 232);
@@ -757,7 +775,10 @@ input {
 #editMoneyBtnAdd,
 #editMoneyBtnRemove,
 #editNameBtn,
-#add-extra-info {
+#add-extra-info,
+#edit-item-btn,
+#editItemBtn {
+  margin-top: 10px;
   background-color: rgba(80, 202, 211, 0.8);
   border: 2px solid transparent;
   color: rgb(194, 233, 232);
@@ -767,7 +788,57 @@ input {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
 }
-
+#loginbutton,
+#signupbutton,
+#ContinueasGuest {
+  margin-top: 10px;
+  background-color: rgba(80, 202, 211, 0.8);
+  border: 2px solid transparent;
+  color: rgb(194, 233, 232);
+  font-size: 20px;
+  width: 70%;
+  font-weight: bold;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+#profile-name,
+#profile-email,
+#profile-phone {
+  color: rgb(194, 233, 232);
+  font-size: 20px;
+  width: 90%;
+  font-weight: bold;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  text-align: left;
+  padding: 10px;
+}
+#profileInfo,
+#profileStats,
+#profileAccount {
+  color: rgb(194, 233, 232);
+  padding: 5px;
+  background-color: rgba(50, 108, 112, 0.8);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  width: 100%;
+  font-size: 20px;
+  cursor: pointer;
+  height: 25px;
+  border-radius: 10px;
+  margin: 2px;
+  font-weight: bold;
+}
+#closeProfile{
+  color: rgb(194, 233, 232);
+  padding: 5px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  width: 100%;
+  font-size: 20px;
+  cursor: pointer;
+  height: 25px;
+  border-radius: 10px;
+  margin: 2px;
+}
 #IOBtn:hover,
 #UOBtn:hover {
   background-color: rgba(80, 202, 211, 1);
@@ -797,7 +868,8 @@ input {
 #amount-input,
 #editMoneyInput,
 #editNameInput,
-#extra-info-input {
+#extra-info-input,
+#editItemInput {
   padding: 10px;
   margin: 10px;
   background-color: rgba(25, 64, 66, 0.8);
@@ -878,7 +950,8 @@ input {
   font-weight: bold;
 }
 
-.friend-content {
+.friend-content,
+#ProfileBox {
   display: flex;
   flex-direction: column;
   background: rgba(50, 59, 59, 0.8);
@@ -890,6 +963,20 @@ input {
   margin-top: 60px;
   height: 70%;
   position: relative; /* Needed for absolute positioning inside */
+  align-items: center;
+  justify-content: center;
+}
+#profile-Accounts{
+  display: none;
+  flex-direction: column;
+}
+#profile-stats{
+  display: none;
+  flex-direction: column;
+}
+#Profile-info{
+  display: none;
+  flex-direction: column;
 }
 #friendCodeBox{
   display: flex;
@@ -950,7 +1037,17 @@ input {
   margin-left: 50%;
   opacity: 1;
 }
-/* Responsive Design */
+.topnav {
+  position: absolute;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;  
+  justify-content: space-between;
+  align-items: center;
+} 
 @media (max-width: 768px) {
   .remove-info-btn {
     margin-left: 10px;
@@ -995,5 +1092,27 @@ input {
 
   .sidenav a {
     font-size: 18px;
+  }
+}
+#loader {
+  position: fixed;
+  z-index: 9999;
+}
+
+/* Optional: Add a spinner */
+#loader::after {
+  content: "";
+  width: 40px;
+  height: 40px;
+  border: 5px solid lightgray;
+  border-top: 5px solid #333;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-left: 10px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }

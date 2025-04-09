@@ -114,6 +114,9 @@ onAuthStateChanged(auth, (user) => {
         // Show buttons if they exist
         if (addPersonBtn) addPersonBtn.style.display = "flex";
         if (clearListBtn) clearListBtn.style.display = "flex";
+        document.getElementById("loginorsignupmodal").style.display = "none";
+        document.getElementById("topnav").style.display = "flex";
+        document.getElementById("NotLoggedIn").style.display = "none";
     } else {
         currentUser = null;
         console.log("No user logged in");
@@ -127,15 +130,22 @@ onAuthStateChanged(auth, (user) => {
         // Reset UI elements if necessary
         if (addPersonBtn) addPersonBtn.style.display = "none";
         if (clearListBtn) clearListBtn.style.display = "none";
+        document.getElementById("loginorsignupmodal").style.display = "flex";
+        document.getElementById("topnav").style.display = "none";
+
+
     }
 });
 
+document.getElementById("loginbutton").addEventListener("click", () => {
+  document.getElementById("loginorsignupmodal").style.display = "none";
+});
 
 // Login Event
 loginButton.addEventListener("click", async () => {
   const email = loginEmail.value;
   const password = loginPassword.value;
-
+  
 
 
   try {
@@ -278,7 +288,7 @@ async function saveListToFirebase() {
 // Load list and interest data from Firebase
 async function loadListFromFirebase() {
   if (!currentUser) return;
-
+  document.getElementById("loader").style.display = "flex";
   try {
     const snapshot = await get(ref(database, `users/${currentUser.uid}/peopleList`));
     if (snapshot.exists()) {
@@ -310,6 +320,9 @@ async function loadListFromFirebase() {
     }
   } catch (error) {
     console.error("❌ Error loading data:", error);
+  } finally {
+    // Always hide the loader
+    document.getElementById("loader").style.display = "none";
   }
 }
 
@@ -351,11 +364,15 @@ function addPerson(name, amount, extraInfoArray = [], interest = { enabled: fals
 
 
   const amountSpan = document.createElement("span");
-  amountSpan.textContent = amount.toFixed(2);
+  if (!isNaN(amount)) {
+    amountSpan.textContent = parseFloat(amount).toFixed(2);
+    amountContainer.appendChild(dollarSpan);
+  } else {
+    amountSpan.textContent = amount;
+  }
   amountSpan.classList.add("amount-input");
   amountSpan.value = amount || 0;
   amountSpan.addEventListener("input", debounce(saveListToFirebase, 300));
-  amountContainer.appendChild(dollarSpan);
   amountContainer.appendChild(amountSpan);
 
 
@@ -404,11 +421,44 @@ function addPerson(name, amount, extraInfoArray = [], interest = { enabled: fals
 
   peopleList.appendChild(listItem);
   listItem.dataset.interest = JSON.stringify(interest);
+  listItem._dollarSpan = dollarSpan;
+  listItem._amountContainer = amountContainer;
+
   return listItem;
+  
 }
+
+
+function checkAmountOrItem() {
+  const amountSpan = currentListItem.querySelector(".amount-input");
+  const text = amountSpan.textContent.trim();
+
+  const dollarSpan = currentListItem._dollarSpan;
+  const amountContainer = currentListItem._amountContainer;
+
+  if (!isNaN(text) && text !== "") {
+    console.log("This is a number:", parseFloat(text));
+    document.getElementById("add-more-money-btn").style.display = "block";
+    document.getElementById("remove-money-btn").style.display = "block";
+    document.getElementById("edit-item-btn").style.display = "none";
+
+    if (!amountContainer.contains(dollarSpan)) {
+      amountContainer.insertBefore(dollarSpan, amountSpan);
+    }
+  } else {
+    console.log("This is an item/description:", text);
+    document.getElementById("add-more-money-btn").style.display = "none";
+    document.getElementById("remove-money-btn").style.display = "none";
+    document.getElementById("edit-item-btn").style.display = "block";  
+  }
+}
+
+
 
 // Ensure these buttons are created only once
 const btnContainer = document.getElementById('btn-container');
+
+
 
 // Create buttons only if they don't exist
 if (!document.getElementById('IOBtn')) {
@@ -450,6 +500,7 @@ interestToggle.addEventListener('change', () => {
   interestRangeContainer.style.display = interestToggle.checked ? 'flex' : 'none';
   rateLabel.innerHTML = '<span class="rate">0</span>%';
   interestRange.value = 0;
+  enableInterestForPerson();
 
 });
 
@@ -511,6 +562,7 @@ function openModal(listItem) {
   document.getElementById('rate').innerHTML = `<span class="rate">${interest.rate}</span>%`;
 
   document.getElementById("customModal").style.display = "flex";
+  checkAmountOrItem();
 }
 
 document.getElementById('interestToggle').addEventListener('change', updateInterest);
@@ -528,89 +580,111 @@ function debounce(fn, delay) {
 
 function updateInterest() {
   if (!currentListItem) return;
+
+  const now = Date.now();
   const interest = {
     enabled: document.getElementById('interestToggle').checked,
     rate: parseFloat(document.getElementById('interestRange').value),
-    period: document.getElementById('interestSelect').value
+    period: document.getElementById('interestSelect').value,
+    lastInterestApplied: now  // ✅ Ensure lastInterestApplied is stored
   };
+
   currentListItem.dataset.interest = JSON.stringify(interest);
-  saveListToFirebase(); // Call the function properly here, assuming saveListToFirebase is defined elsewhere
+  saveListToFirebase();  // ✅ Ensure data is saved properly in Firebase
 }
-document.getElementById('interestRange').addEventListener('input', debounce(updateInterest, 500)); // Adjust the delay as needed
 
 
+// Function to apply interest to all people in the list
+// Function to apply interest to all people in the list
+// Function to apply interest to all people in the list
+// Function to apply interest to all people in the list
+// Function to apply interest to all people in the list
+async function applyInterestToAll() {
+  if (!currentUser) return;
 
-function applyInterest() {
-  if (!currentListItem) return;
+  try {
+    const snapshot = await get(ref(database, `users/${currentUser.uid}/peopleList/peopleData`));
+    if (snapshot.exists()) {
+      const peopleData = snapshot.val();
 
-  const amountSpan = currentListItem.querySelector(".amount-input");
-  const currentAmount = parseFloat(amountSpan.value) || 0;
-  
-  const interestToggle = document.getElementById('interestToggle').checked;
-  const interestRate = parseFloat(document.getElementById('interestRange').value) / 100;
-  const interestPeriod = document.getElementById('interestSelect').value;
-  
-  if (!interestToggle || isNaN(interestRate) || interestRate <= 0) {
-      return;
-  }
+      Object.entries(peopleData).forEach(([key, person]) => {
+        const interest = person.interest || { enabled: false, rate: 0, period: 'monthly', lastInterestApplied: Date.now() };
 
-  let interestMultiplier = 1;
-  switch (interestPeriod) {
-      case 'weekly':
-          interestMultiplier = 1 / 52;
-          break;
-      case 'monthly':
-          interestMultiplier = 1 / 12;
-          break;
-      case 'quarterly':
-          interestMultiplier = 1 / 4;
-          break;
-      case 'yearly':
-          interestMultiplier = 1;
-          break;
-  }
-  
-  const now = Date.now();
-  const userRef = ref(database, `users/${currentUser.uid}/peopleList/peopleData/${personIndex}/interest/lastInterestApplied`);  
-  get(userRef).then((snapshot) => {
-      if (snapshot.exists()) {
-          const data = snapshot.val();
-          const lastApplied = data.interest?.lastInterestApplied || now;
-          const timeElapsed = (now - lastApplied) / (1000 * 60 * 60 * 24 * 365); // Years elapsed
-          
-          if (timeElapsed > 0) {
-              const interestAmount = currentAmount * Math.pow((1 + (interestRate * interestMultiplier)), timeElapsed) - currentAmount;
-              const newAmount = currentAmount + interestAmount;
-              
-              amountSpan.value = newAmount.toFixed(2);
-              amountSpan.innerHTML = newAmount.toFixed(2);
-              
-              update(userRef, {
-                  'interest/lastInterestApplied': now,
-                  'amount': newAmount
-              });
+        if (interest.enabled) {
+          const currentAmount = person.amount || 0;
+          const interestRate = interest.rate / 100;
+          let compoundingFrequency = 1;
+
+          switch (interest.period) {
+            case 'weekly':
+              compoundingFrequency = 52;
+              break;
+            case 'monthly':
+              compoundingFrequency = 12;
+              break;
+            case 'quarterly':
+              compoundingFrequency = 4;
+              break;
+            case 'yearly':
+              compoundingFrequency = 1;
+              break;
           }
-      } else {
-          set(userRef, {
-              'interest': {
-                  lastInterestApplied: now
-              },
-              'amount': currentAmount
-          });
-      }
+
+          const now = Date.now();
+          const lastApplied = interest.lastInterestApplied || now;
+          const timeElapsed = (now - lastApplied) / (1000 * 60 * 60 * 24 * 365); // Convert ms to years
+
+          if (timeElapsed > 0) {
+            // Compound Interest Formula: A = P * (1 + r/n)^(n*t)
+            const newAmount = currentAmount * Math.pow((1 + (interestRate / compoundingFrequency)), compoundingFrequency * timeElapsed);
+            const interestAmount = newAmount - currentAmount; // Interest gained
+
+            // ✅ Update person with new amount and last interest applied timestamp
+            update(ref(database, `users/${currentUser.uid}/peopleList/peopleData/${key}`), {
+              amount: newAmount,
+              interest: {
+                ...interest,
+                lastInterestApplied: now // ✅ Update timestamp to prevent double application
+              }
+            }).then(() => {
+              console.log(`✅ Interest applied for person at index ${key}: +${interestAmount.toFixed(2)}`);
+            }).catch((error) => {
+              console.error(`❌ Error updating person at index ${key}:`, error);
+            });
+          }
+        }
+      });
+    }
+  } catch (error) {
+    console.error("❌ Error applying interest:", error);
+  }
+}
+
+
+
+function enableInterestForPerson(index, rate = 5, period = 'monthly') {
+  const now = Date.now();
+  
+  const interestRef = ref(database, `users/${currentUser.uid}/peopleList/peopleData/${index}/interest`);
+  update(interestRef, {
+    enabled: true,
+    rate: rate,
+    period: period,
+    lastInterestApplied: now  // ✅ Ensure this is always saved
+  }).then(() => {
+    console.log(`✅ Interest enabled for person at index ${index}`);
+  }).catch((error) => {
+    console.error("❌ Error enabling interest:", error);
   });
 }
 
-function startInterestApplication() {
-  applyInterest(); // Run once on window load
-  setInterval(applyInterest, 86400000); // Applies interest every 24 hours (86,400,000 ms)
-}
 
-window.onload = startInterestApplication;
 
-document.getElementById('interestToggle').addEventListener('change', applyInterest);
-document.getElementById('interestRange').addEventListener('input', applyInterest);
-document.getElementById('interestSelect').addEventListener('change', applyInterest);
+// Call this function when the page loads
+document.addEventListener("DOMContentLoaded", applyInterestToAll);
+document.getElementById('interestToggle').addEventListener('change',applyInterestToAll);
+document.getElementById('interestRange').addEventListener('input', applyInterestToAll);
+document.getElementById('interestSelect').addEventListener('change', applyInterestToAll);
 
   document.querySelectorAll("#closeEditMoney").forEach(button => {
     button.addEventListener("click", function () {
@@ -629,6 +703,7 @@ document.getElementById("remove-money-btn").addEventListener("click", function (
   document.getElementById("editMoneyAdd").style.display = "none";
   document.getElementById("editMoneyRemove").style.display = "flex";
 });
+
 
 document.getElementById("editMoneyBtnAdd").addEventListener("click", function () {
   if (!currentListItem) return;
@@ -677,6 +752,7 @@ document.getElementById("editMoneyBtnRemove").addEventListener("click", function
 });
 
 document.getElementById("closeEditMoney").addEventListener("click", closeEditMoneyModal);
+const addInfoBtn = document.getElementById("add-info-btn");
 
 function closeEditMoneyModal() {
   document.getElementById("editMoneyModal").style.display = "none";
@@ -692,14 +768,17 @@ document.getElementById("edit-name-btn").addEventListener("click", () => {
   }
 });
 
-function openEditNameModal(listItem) {
 
-  currentListItem = listItem;
-  const currentName = listItem.querySelector(".name-span").textContent;
-  editNameInput.value = currentName;
-  editNameModal.style.display = "flex";
-}
+document.getElementById("edit-item-btn").addEventListener("click", () => {
+  document.getElementById("editItemModal").style.display = "flex";
+});
 
+const closeEditItem = document.getElementById("closeEditItem");
+
+closeEditItem.addEventListener("click", () => {
+  console.log("closeEditItem clicked");
+  document.getElementById("editItemModal").style.display = "none";
+})
 // Function to edit a person's name
 editNameBtn.addEventListener("click", () => {
   if (currentListItem) {
@@ -724,12 +803,52 @@ closeEditName.addEventListener("click", () => {
   editNameModal.style.display = "none";
 });
 
+
+
+document.getElementById("editItemBtn").addEventListener("click", function () {
+  if (!currentListItem) return;
+
+  const editInput = document.getElementById("editItemInput");
+  const newItemName = editInput.value.trim();
+
+  if (newItemName === "") {
+    showToast("Please enter a valid item name.", "error");
+    return;
+  }
+
+  const amountSpan = currentListItem.querySelector(".amount-input");
+  const text = amountSpan.textContent.trim(); // ✅ Now it's safe to access
+
+
+  amountSpan.value = newItemName; // If it's an <input>
+  amountSpan.innerHTML = newItemName; // If it's a <span> or <div>
+
+
+
+
+  saveListToFirebase();
+  showToast(`Updated item to "${newItemName}".`);
+
+  document.getElementById("editItemModal").style.display = "none";
+});
+
 closePrompt.addEventListener("click", () => {
     handleResponse();
 })
 function handleResponse() {
+  const amountSpan = currentListItem.querySelector(".amount-input");
+  const text = amountSpan.textContent.trim();
   document.getElementById("customModal").style.display = "none";
-  currentListItem = null; // Clear the reference when closing
+  const dollarSpan = currentListItem._dollarSpan;
+  const amountContainer = currentListItem._amountContainer;
+  if (!isNaN(text) && text !== "") {
+    console.log("This is a number:", parseFloat(text));
+    if (!amountContainer.contains(dollarSpan)) {
+      amountContainer.insertBefore(dollarSpan, amountSpan);
+    }
+  }
+  currentListItem = null;
+
 }
 function UOwe() {
   if (!currentListItem) return;
@@ -856,18 +975,21 @@ document.getElementById("add").addEventListener("click", () => {
   const amountInput = document.getElementById("amount-input");
   
   const name = nameInput.value.trim();
-  const amount = parseFloat(amountInput.value);
+  const amountRaw = amountInput.value.trim();
 
   if (!name) {
       showToast("Name cannot be empty", "error");
       return;
   }
 
-  if (isNaN(amount)) {
-      showToast("Please enter a valid amount", "error");
+  if (!amountRaw) {
+      showToast("Amount cannot be empty", "error");
       return;
   }
-  
+
+  // Use the raw input as-is, whether it's a number or string
+  const amount = isNaN(amountRaw) ? amountRaw : parseFloat(amountRaw);
+
   addPerson(name, amount);
   saveListToFirebase();
   
@@ -876,6 +998,7 @@ document.getElementById("add").addEventListener("click", () => {
   amountInput.value = "";
   document.getElementById("add-person-box-modal").style.display = "none";
 });
+
 
 document.getElementById("cancel").addEventListener("click", () => {
   document.getElementById("add-person-box-modal").style.display = "none";

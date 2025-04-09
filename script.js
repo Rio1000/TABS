@@ -10,7 +10,6 @@ const clearListBtn = document.getElementById("clear-list-btn");
 
 
 
-
 function debounce(func, wait) {
   let timeout;
   return function (...args) {
@@ -46,7 +45,10 @@ function closeNav() {
 
 }
 // Load list from local storage on page load
-
+document.getElementById("Login").addEventListener("click", function() { 
+  document.getElementById("ProfileBox").style.display = "none";
+  document.getElementById("ProfileModal").style.display = "none";
+}); 
 function openLogin() {
   document.getElementById("Loginpage").style.display = "flex";
   document.getElementById("signupPage").style.display = "none";
@@ -55,8 +57,6 @@ function openLogin() {
   const peopleList = document.getElementById("people-list");
   const addPersonBtn = document.getElementById("add-person-btn");
   const clearListBtn = document.getElementById("clear-list-btn");
-  const modal = document.getElementsByClassName("modal-content");
-
   if (personlist) personlist.style.display = "none";
   if (subscript) subscript.style.display = "none";
   if (peopleList) peopleList.style.display = "none";
@@ -70,27 +70,96 @@ function openSignUp() {
   document.getElementById("Loginpage").style.display = "none";
 }
 
-// document.getElementById('interestToggle').addEventListener('change', function() {
-//   document.getElementById('interest-range-container').style.height = this.checked ? '50px' : '0';
-//   document.getElementById('interest-range-container').style.opacity = this.checked ? '1' : '0';
-//   document.getElementById('interest-container-main').style.height = this.checked ? '160px' : '34px';
 
-
-// });
 function openFriends() {
   document.getElementById("friendModal").style.display = "flex";
+  document.getElementById("ProfileModal").style.display = "none";
   closeNav();
 }
-
+document.getElementById("Profile").addEventListener("click", () => {
+  console.log("Profile clicked");
+  document.getElementById("ProfileModal").style.display = "flex";
+  closeNav();
+});
+document.getElementById("closeProfile").addEventListener("click", () => {
+  document.getElementById("ProfileModal").style.display = "none";
+})
 function closeFriends() {
   document.getElementById("friendModal").style.display = "none";
 }
 function closeModal() {
   document.getElementById("customModal").style.display = "none";
 }
-window.onload = () => {
-  loadAddWindow();
-};
+document.getElementById("close-prompt").addEventListener("click", () => {
+  document.getElementById("customModal").style.display = "none";
+});
 document.getElementById("closeRemovefriend").addEventListener("click", () => {
   document.getElementById("RemovefriendModal").style.display = "none";
 });
+function moreinfo() {
+  document.getElementById("myDropdown").classList.toggle("show");
+}
+
+// Close the dropdown menu if the user clicks outside of it
+window.onclick = function(event) {
+  if (!event.target.matches('.dropbtn')) {
+    var dropdowns = document.getElementsByClassName("dropdown-content");
+    var i;
+    for (i = 0; i < dropdowns.length; i++) {
+      var openDropdown = dropdowns[i];
+      if (openDropdown.classList.contains('show')) {
+        openDropdown.classList.remove('show');
+      }
+    }
+  }
+} 
+function openSignup() {
+  document.getElementById("signupPage").style.display = "flex";
+  document.getElementById("Loginpage").style.display = "none";
+  document.getElementById("loginorsignupmodal").style.display = "none";
+}
+document.getElementById("Back-btn").addEventListener("click", () => {
+  document.getElementById("signupPage").style.display = "none";
+  document.getElementById("loginorsignupmodal").style.display = "flex";
+  document.getElementById("Loginpage").style.display = "none";
+  const personlist = document.getElementById("personlist");
+  const peopleList = document.getElementById("people-list");
+  const addPersonBtn = document.getElementById("add-person-btn");
+  const clearListBtn = document.getElementById("clear-list-btn");
+  if (personlist) personlist.style.display = "none";
+  if (peopleList) peopleList.style.display = "none";
+  if (addPersonBtn) addPersonBtn.style.display = "none";
+  if (clearListBtn) clearListBtn.style.display = "none";
+});
+document.getElementById("Back-btn2").addEventListener("click", () => {
+  document.getElementById("signupPage").style.display = "none";
+  document.getElementById("Loginpage").style.display = "none";
+  document.getElementById("loginorsignupmodal").style.display = "flex";
+  const personlist = document.getElementById("personlist");
+  const peopleList = document.getElementById("people-list");
+  const addPersonBtn = document.getElementById("add-person-btn");
+  const clearListBtn = document.getElementById("clear-list-btn");
+  if (personlist) personlist.style.display = "none";
+  if (peopleList) peopleList.style.display = "none";
+  if (addPersonBtn) addPersonBtn.style.display = "none";
+  if (clearListBtn) clearListBtn.style.display = "none";
+});
+document.getElementById("ContinueasGuest").addEventListener("click", () => {
+  document.getElementById("signupPage").style.display = "none";
+  document.getElementById("Loginpage").style.display = "none";
+  document.getElementById("loginorsignupmodal").style.display = "none";
+  const personlist = document.getElementById("personlist");
+  const peopleList = document.getElementById("people-list");
+  const addPersonBtn = document.getElementById("add-person-btn");
+  const clearListBtn = document.getElementById("clear-list-btn");
+  if (personlist) personlist.style.display = "flex";
+  if (peopleList) peopleList.style.display = "flex";
+  if (addPersonBtn) addPersonBtn.style.display = "flex";
+  if (clearListBtn) clearListBtn.style.display = "flex";
+})
+document.getElementById("profileInfo").addEventListener("click", () => {
+  
+});
+
+
+
