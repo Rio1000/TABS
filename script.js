@@ -198,8 +198,10 @@ function scrollToTop() {
     behavior: 'smooth'
   });
 }
+document.getElementById('closeAdsBox').addEventListener('click', () =>   {
+   document.getElementById("adsModal").style.display = "none"; 
+  });
 
-peopleList.addEventListener('scroll', updateScrollButtons);
 
 window.addEventListener('load', updateScrollButtons);
 window.addEventListener('resize', updateScrollButtons);
