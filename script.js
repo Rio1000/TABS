@@ -79,6 +79,7 @@ function openFriends() {
 document.getElementById("Profile").addEventListener("click", () => {
   console.log("Profile clicked");
   document.getElementById("ProfileModal").style.display = "flex";
+  document.getElementById("ProfileBox").style.display = "flex";
   closeNav();
 });
 document.getElementById("closeProfile").addEventListener("click", () => {
@@ -96,9 +97,16 @@ document.getElementById("close-prompt").addEventListener("click", () => {
 document.getElementById("closeRemovefriend").addEventListener("click", () => {
   document.getElementById("RemovefriendModal").style.display = "none";
 });
+document.getElementById("Ads").addEventListener("click", () => {
+  document.getElementById("adsModal").style.display = "flex";
+  closeNav();
+});
 function moreinfo() {
   document.getElementById("myDropdown").classList.toggle("show");
 }
+// After adding a new personlist-item
+peopleList.scrollTop = peopleList.scrollHeight;
+
 
 // Close the dropdown menu if the user clicks outside of it
 window.onclick = function(event) {
@@ -160,6 +168,43 @@ document.getElementById("ContinueasGuest").addEventListener("click", () => {
 document.getElementById("profileInfo").addEventListener("click", () => {
   
 });
+const scrollToBottomBtn = document.getElementById('scroll-to-bottom');
+const scrollToTopBtn = document.getElementById('scroll-to-top');
 
+function updateScrollButtons() {
+  const canScroll = peopleList.scrollHeight > peopleList.clientHeight;
+  const atTop = peopleList.scrollTop === 0;
+  const atBottom = peopleList.scrollTop + peopleList.clientHeight >= peopleList.scrollHeight - 1;
 
+  if (!canScroll) {
+    scrollToBottomBtn.style.display = 'none';
+    scrollToTopBtn.style.display = 'none';
+  } else {
+    scrollToBottomBtn.style.display = atTop ? 'block' : 'none';
+    scrollToTopBtn.style.display = atBottom ? 'block' : 'none';
+  }
+}
+
+function scrollToBottom() {
+  peopleList.scrollTo({
+    top: peopleList.scrollHeight,
+    behavior: 'smooth'
+  });
+}
+
+function scrollToTop() {
+  peopleList.scrollTo({
+    top: 0,
+    behavior: 'smooth'
+  });
+}
+
+peopleList.addEventListener('scroll', updateScrollButtons);
+
+window.addEventListener('load', updateScrollButtons);
+window.addEventListener('resize', updateScrollButtons);
+
+// Optional: recheck after dynamically adding items
+const observer = new MutationObserver(updateScrollButtons);
+observer.observe(peopleList, { childList: true, subtree: true });
 

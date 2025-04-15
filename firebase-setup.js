@@ -495,14 +495,28 @@ const interestContainer = document.getElementById('interest-container');
 const interestrangecontainer = document.getElementById('interest-range-container');
 
 interestToggle.addEventListener('change', () => {
-  interestContainer.style.height = interestToggle.checked ? '130px' : '34px';
-  interestrangecontainer.style.opacity = interestToggle.checked ? 1 : 0;
-  interestRangeContainer.style.display = interestToggle.checked ? 'flex' : 'none';
+  const isChecked = interestToggle.checked;
+  const minHeight = 40;
+  let maxHeight = 175;  // use `let` so we can reassign
+  const isSmallScreen = window.innerWidth <= 600;
+
+  if (isSmallScreen) {
+    maxHeight = 140;
+    console.log("Updating height for small screen" + maxHeight);
+    interestContainer.style.height = isChecked ? `${maxHeight}px` : `${minHeight}px`;
+  }
+
+  interestrangecontainer.style.opacity = isChecked ? 1 : 0;
+
+  if (!isSmallScreen) {
+    interestContainer.style.height = isChecked ? `${maxHeight}px` : `${minHeight}px`;
+  }
+
   rateLabel.innerHTML = '<span class="rate">0</span>%';
   interestRange.value = 0;
   enableInterestForPerson();
-
 });
+
 
 // Create range slider
 const interestRange = document.createElement('input');
@@ -850,6 +864,13 @@ function handleResponse() {
   currentListItem = null;
 
 }
+
+
+
+function closeEditExtraInfoModal() {
+  document.getElementById("editExtraInfoModal").style.display = "none";
+}
+
 function UOwe() {
   if (!currentListItem) return;
   const status = currentListItem.getAttribute("data-status");
@@ -938,6 +959,7 @@ function closeExtraInfoModal() {
 }
 
 
+let extraInfoElement = null; // 🔧 Declare it here
 
 function createExtraInfoElement(container, text) {
   const extraInfoElement = document.createElement("div");
@@ -946,26 +968,54 @@ function createExtraInfoElement(container, text) {
   // Create a span for the text
   const textSpan = document.createElement("span");
   textSpan.classList.add("extra-info-text");
-  textSpan.textContent = text; // Store only the text in the span
+  textSpan.textContent = text;
   extraInfoElement.appendChild(textSpan);
 
-  // Create the remove button
+  const editExtraInfoBtn = document.createElement("button");
+  editExtraInfoBtn.innerHTML = '<span class="material-icons">edit</span>';
+  editExtraInfoBtn.classList.add("remove-info-btn");
+
+  editExtraInfoBtn.addEventListener("click", () => {
+    openEditExtraInfoModal(textSpan); // Pass only the textSpan!
+  });
+
   const removeExtraBtn = document.createElement("button");
   removeExtraBtn.textContent = "x";
   removeExtraBtn.classList.add("remove-info-btn");
 
-  // Add event listener to remove the extra info item
   removeExtraBtn.addEventListener("click", () => {
     extraInfoElement.remove();
-    saveListToFirebase(); // Save updated list
+    saveListToFirebase();
   });
 
-  // Append the remove button to the extraInfoElement
+  extraInfoElement.appendChild(editExtraInfoBtn);  
   extraInfoElement.appendChild(removeExtraBtn);
-
-  // Append the extraInfoElement to the container
   container.appendChild(extraInfoElement);
 }
+
+function openEditExtraInfoModal(element) {
+  extraInfoElement = element; // Save the specific element being edited
+  editinffoInput.value = element.textContent.trim(); // Pre-fill the textarea
+  document.getElementById("editExtraInfoModal").style.display = "flex";
+}
+editinffoBtn.addEventListener("click", () => {
+  if (extraInfoElement) {
+      const newText = editinffoInput.value.trim();
+      if (newText) {
+          extraInfoElement.textContent = newText; // Only change this one
+          saveListToFirebase();
+          showToast("Extra info updated.");
+          closeEditExtraInfoModal();
+      } else {
+          showToast("Information cannot be empty", "error");
+      }
+  }
+});
+
+document.getElementById("closeEditinffo").addEventListener("click", () => {
+  document.getElementById("editExtraInfoModal").style.display = "none";
+  extraInfoElement = null; // clear reference after editing});
+});
 
 addPersonBtn.addEventListener("click", () => {
   document.getElementById("add-person-box-modal").style.display = "flex";
@@ -1241,7 +1291,7 @@ function loadAddWindow() {
 
   if (personlist) personlist.style.display = "flex";
   if (subscript) subscript.style.display = "flex";
-  if (peopleList) peopleList.style.display = "block";
+  if (peopleList) peopleList.style.display = "flex";
 };
 
 var slider = document.getElementById("interestRange");
