@@ -27,7 +27,6 @@ function openNav() {
   document.getElementById("add-person-btn").style.opacity = "0";
   document.getElementById("clear-list-btn").style.opacity = "0";
   document.getElementById("people-list").style.opacity = "0";
-  document.getElementById("Subscript").style.opacity = "1";
   document.getElementById("customModal").style.opacity = "0";
   document.getElementById("friendModal").style.opacity = "0"; 
 }
@@ -39,7 +38,6 @@ function closeNav() {
   document.getElementById("add-person-btn").style.opacity = "1";
   document.getElementById("clear-list-btn").style.opacity = "1";
   document.getElementById("people-list").style.opacity = "1";
-  document.getElementById("Subscript").style.opacity = "0";
   document.getElementById("customModal").style.opacity = "1";
   document.getElementById("friendModal").style.opacity = "1";
 
@@ -173,7 +171,7 @@ const scrollToTopBtn = document.getElementById('scroll-to-top');
 
 function updateScrollButtons() {
   const canScroll = peopleList.scrollHeight > peopleList.clientHeight;
-  const atTop = peopleList.scrollTop === 0;
+  const atTop = peopleList.scrollTop <= 10;
   const atBottom = peopleList.scrollTop + peopleList.clientHeight >= peopleList.scrollHeight - 1;
 
   if (!canScroll) {
@@ -203,10 +201,35 @@ document.getElementById('closeAdsBox').addEventListener('click', () =>   {
   });
 
 
+
 window.addEventListener('load', updateScrollButtons);
 window.addEventListener('resize', updateScrollButtons);
+peopleList.addEventListener('scroll', updateScrollButtons);
+
 
 // Optional: recheck after dynamically adding items
 const observer = new MutationObserver(updateScrollButtons);
 observer.observe(peopleList, { childList: true, subtree: true });
+
+const profileInfoButton = document.getElementById('profileInfo');
+const profileStatsButton = document.getElementById('profileStats');
+const profileAccountButton = document.getElementById('profileAccount');
+
+const profileInfo = document.getElementById("Profile-info");
+const profileStats = document.getElementById('profile-stats');
+const profileAccounts = document.getElementById('profile-Accounts');
+
+[profileInfoButton, profileStatsButton, profileAccountButton].forEach((button, index) => {
+  button.addEventListener('click', () => {
+    [profileInfo, profileStats, profileAccounts].forEach((section, i) => {
+      section.style.display = i === index ? "flex" : "none";
+    });
+  });
+});
+document.getElementById("view-account-history").addEventListener("click", () => {
+  document.getElementById("AccountHistoryModal").style.display = "flex";
+});
+document.getElementById("closeAccountHistory").addEventListener("click", () => {
+  document.getElementById("AccountHistoryModal").style.display = "none";
+});
 
