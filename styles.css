@@ -65,7 +65,7 @@ body {
   border-radius: 10px;
   text-align: center;
   transition: 0.3s;
-  backdrop-filter: blur(3px); 
+  backdrop-filter: blur(30px); 
   z-index: 1000; 
 
 }
@@ -270,6 +270,8 @@ button:hover {
   border-top-left-radius: 10px;
   border-bottom-left-radius: 10px;
   max-height: 90%;
+  backdrop-filter: blur(30px); 
+
 }
 
 .sidenav p {
@@ -322,7 +324,7 @@ button:hover {
   border-radius: 18px;
   opacity: 0.8;
   padding: 20px;
-  top: 20px;
+  top:8px;
   right: 20px;
   font-size: 40px;
   cursor: pointer;
@@ -359,8 +361,8 @@ button:hover {
 
 #friendsList li {
   display: flex;
-  color: rgb(66, 14, 5);
-  background-color: rgb(98, 128, 118);
+  color: rgb(241, 241, 241);
+  background-color: rgb(89, 125, 134);
   justify-content: space-between;
   align-items: center;
   text-align: left;
@@ -369,6 +371,7 @@ button:hover {
   padding: 8px;
   overflow-x: hidden;
   text-wrap: wrap;
+  width: 100%;
 }
 
 #friendsList li button {
@@ -415,6 +418,10 @@ button:hover {
 #FriendsTab {
   background-color: #a8a39d;
   color: #2b2b2b;
+}
+#feedback{
+  background-color: #5d9450;
+  color: #172022;
 }
 
 #closeButton {
@@ -623,7 +630,9 @@ input {
   cursor: pointer;
   font-size: 18px;
 }
-
+#ProfileModal{
+  flex-direction: column;
+}
 .modal,
 #editMoneyModal,
 #friendModal,
@@ -653,17 +662,21 @@ input {
     text-align: center;
     overflow-y: auto; /* Change from 'scroll' to 'auto' */
     z-index: 11;
-    backdrop-filter: blur(3px);  
+    backdrop-filter: blur(30px);  
 }
 #donate{
   display: flex;
+  flex-direction: row;
   bottom: 0;
   position: absolute;
   left: 0;
-  background-color: #2b2b2b;
-  width: 100%;
+  width: 94%;
   gap: 10px;
   padding: 10px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow-x: hidden;
 }
 #AccountHistoryBox{
   display: flex;
@@ -753,6 +766,10 @@ input {
 .active {
   display: flex;
 }
+.profileActive{
+  background-color: rgba(64, 139, 145, 0.8);
+  
+}
 
 #IOBtn,
 #UOBtn {
@@ -797,6 +814,9 @@ input {
     Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
 }
 
+#closeAdsBox{
+  width: 50% !important;
+}
 
 
 #closeEditMoney,
@@ -844,7 +864,8 @@ input {
 #addFriendBtn,
 #addFriendBtn2,
 #pendingRequestsBtn,
-#close-delete-account
+#close-delete-account,
+#PayMyTuition
 {
   margin-top: 10px;
   background-color: rgba(80, 202, 211, 0.8);
@@ -856,6 +877,8 @@ input {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
 }
+
+
 #loginbutton,
 #signupbutton,
 #ContinueasGuest {
@@ -906,6 +929,7 @@ input {
   height: 25px;
   border-radius: 10px;
   margin: 2px;
+  width: 50%;
 }
 #manage-notifications{
   background-color: #573b3b !important;
@@ -924,10 +948,7 @@ input {
   font-size: 20px;
   
 }
-#donate-button{
-  font-size: 20px;
-  width: 100%;
-}
+
 #interest-container {
   justify-content: top;
   padding: 8px;
@@ -964,12 +985,15 @@ input {
 
 #friendCodeBox{
   position: absolute;
-  top: 80px;
+  top: 0px;
   display: flex;
   flex-direction: row;
   width: 100%;
   justify-content: space-between;
   align-items: center;
+  z-index: 100;
+  backdrop-filter: blur(3px);
+  ;
 }
 #extra-info-input{
     color: rgb(194, 233, 232);
@@ -1047,11 +1071,9 @@ input {
 #ProfileBox {
   display: flex;
   flex-direction: column;
-  background: rgba(50, 59, 59, 0.8);
   padding: 20px;
   border-radius: 10px;
   text-align: center;
-  box-shadow: 0px 0px 10px 0px #000000;
   width: 70%;
   margin-top: 60px;
   height: 70%;
@@ -1067,14 +1089,12 @@ input {
   overflow-y: scroll;
 }
 #profile-Accounts > button {
-  background-color: rgba(59, 125, 129, 0.8);
+  background-color: rgba(71, 149, 153, 0.8);
   color: rgb(194, 233, 232);
-  border-radius: 8px;
-  border-style: solid;
-  border-color: rgb(194, 233, 232);
   padding: 5px;
   width: 100%;
   font-size: 20px;
+  border-style: none;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   transition: 0.2s;
@@ -1103,12 +1123,11 @@ input {
 #closeFriendModal {
   background-color: rgba(175, 53, 44, 0.8);
   position: absolute;
-  top: 10px;
-  right: -15px;
-  transform: translateX(-50%); /* Centers it horizontally */
+  bottom: 0px;
   font-size: 20px;
-  border-radius: 15px;
-  width: 45px;
+  border-radius: 8px;
+  width: 50%;
+  backdrop-filter: blur(3px);
 }
 #editMoneyModal {
   z-index: 50;

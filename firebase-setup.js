@@ -139,7 +139,7 @@ onAuthStateChanged(auth, (user) => {
     console.log("No user logged in");
 
     logoutButton.style.display = "none";
-    loginSignup.style.display = "block";
+    loginSignup.style.display = "flex";
 
     // Clear UI when logged out
     peopleList.innerHTML = "";
@@ -282,7 +282,8 @@ async function saveListToFirebase() {
 
   listItems.forEach((item) => {
     const name = item.querySelector(".name-span").textContent;
-    const amount = parseFloat(item.querySelector(".amount-input").value) || 0;
+    const rawAmount = item.querySelector(".amount-input").textContent.trim();
+    const amount = isNaN(rawAmount) || rawAmount === "" ? rawAmount : parseFloat(rawAmount);
     const status = item.getAttribute("data-status") || "neutral"; // Get status
     const interest = JSON.parse(item.dataset.interest);
     let extraInfoElements = item.querySelectorAll(".extra-info-item");
@@ -524,6 +525,7 @@ function addPerson(
   });
 
   const amountSpan = document.createElement("span");
+  amountSpan.classList.add("amount-input");
   if (!isNaN(amount)) {
     amountSpan.textContent = parseFloat(amount).toFixed(2);
     amountContainer.appendChild(dollarSpan);
@@ -1339,11 +1341,17 @@ async function addFriend() {
     showToast(`${friendData.firstName} ${friendData.lastName} has been added to your friends list!`);
     friendCodeInput.value = "";
     populateFriendsList();
+    closeAddFriend();
     await logUserAction(`Added friend: ${friendData.firstName} ${friendData.lastName}`);
+    document.getElementById("addFriendModal").style.display = "none";
+
   } catch (error) {
     console.error("❌ Error adding friend:", error);
     showToast(`Error adding friend: ${error.message}`, "error");
   }
+}
+function closeAddFriend(){
+  document.getElementById("addFriendModal").style.display = "none";
 }
 
 
@@ -1421,6 +1429,7 @@ async function populateFriendsList() {
           );
           windowClosed();
           saveListToFirebase();
+          document.getElementById("addFriendModal").style.display = "none";
         };
         // Append the remove button to the friend item
         friendItem.appendChild(friendAddButton);
@@ -1428,14 +1437,17 @@ async function populateFriendsList() {
         friendsListUl.appendChild(friendItem);
       });
     } else {
-      friendsListUl.innerHTML = "<li>You have no friends.</li>";
+      friendsListUl.innerHTML = "<li>You have no friends added.</li>";
     }
   } catch (error) {
     console.error("❌ Error fetching friends list:", error);
     friendsListUl.innerHTML = "<li>Error loading friends list.</li>";
   }
 }
-
+document.getElementById('closeRemovefriend').addEventListener('click', () => {
+  const RFModal = document.getElementById('RFModal');
+  RFModal.style.display = "none";
+});
 
   // document.getElementById("RemovefriendModal").style.display = "flex";
 
@@ -1614,9 +1626,7 @@ document
 document.getElementById("addFriendBtn2").addEventListener("click", () => {
   addFriend();
 });
-document.getElementById("closeAddFriend").addEventListener("click", () => {
-  document.getElementById("addFriendModal").style.display = "none";
-});
+closeAddFriend();
 
 const closeWindow = document.getElementsByClassName("close-btn");
 closeWindow[0].onclick = function () {

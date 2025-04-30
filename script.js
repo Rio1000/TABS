@@ -28,8 +28,10 @@ function openNav() {
   document.getElementById("clear-list-btn").style.opacity = "0";
   document.getElementById("people-list").style.opacity = "0";
   document.getElementById("customModal").style.opacity = "0";
-  document.getElementById("friendModal").style.opacity = "0"; 
-}
+  document.getElementById("friendModal").style.opacity = "0";
+  document.getElementById("ProfileModal").style.opacity = "0";
+  document.getElementById("adsModal").style.opacity = "0";
+  }
 
 function closeNav() {
   document.getElementById("mySidenav").style.width = "0";
@@ -40,6 +42,8 @@ function closeNav() {
   document.getElementById("people-list").style.opacity = "1";
   document.getElementById("customModal").style.opacity = "1";
   document.getElementById("friendModal").style.opacity = "1";
+  document.getElementById("ProfileModal").style.opacity = "1";
+  document.getElementById("adsModal").style.opacity = "1";
 
 }
 // Load list from local storage on page load
@@ -78,6 +82,7 @@ document.getElementById("Profile").addEventListener("click", () => {
   console.log("Profile clicked");
   document.getElementById("ProfileModal").style.display = "flex";
   document.getElementById("ProfileBox").style.display = "flex";
+  document.getElementById("ProfileModal").style.opacity = "1";
   closeNav();
 });
 document.getElementById("closeProfile").addEventListener("click", () => {
@@ -92,9 +97,7 @@ function closeModal() {
 document.getElementById("close-prompt").addEventListener("click", () => {
   document.getElementById("customModal").style.display = "none";
 });
-document.getElementById("closeRemovefriend").addEventListener("click", () => {
-  document.getElementById("RemovefriendModal").style.display = "none";
-});
+
 document.getElementById("Ads").addEventListener("click", () => {
   document.getElementById("adsModal").style.display = "flex";
   closeNav();
@@ -219,13 +222,22 @@ const profileInfo = document.getElementById("Profile-info");
 const profileStats = document.getElementById('profile-stats');
 const profileAccounts = document.getElementById('profile-Accounts');
 
-[profileInfoButton, profileStatsButton, profileAccountButton].forEach((button, index) => {
+const buttons = [profileInfoButton, profileStatsButton, profileAccountButton];
+const sections = [profileInfo, profileStats, profileAccounts];
+
+buttons.forEach((button, index) => {
   button.addEventListener('click', () => {
-    [profileInfo, profileStats, profileAccounts].forEach((section, i) => {
+    sections.forEach((section, i) => {
       section.style.display = i === index ? "flex" : "none";
+    });
+    buttons.forEach((btn, i) => {
+      btn.style.backgroundColor = i === index
+        ? "rgba(89, 192, 199, 0.8)"
+        : "rgba(50, 108, 112, 0.8)";
     });
   });
 });
+
 document.getElementById("view-account-history").addEventListener("click", () => {
   document.getElementById("AccountHistoryModal").style.display = "flex";
 });
