@@ -9,6 +9,7 @@ import {
   get,
   remove,
   update,
+  child
 } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-database.js";
 
 import {
@@ -20,9 +21,6 @@ import {
   sendPasswordResetEmail,
 } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-auth.js";
 
-import { 
-
-} from "https://www.gstatic.com/firebasejs/10.6.0/firebase-database.js";
 // Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyA93Cfu5ehpOeZMCBKtiTvw1kJZZU_EvkE",
@@ -128,12 +126,65 @@ onAuthStateChanged(auth, (user) => {
     document.getElementById("NotLoggedIn").style.display = "none";
 
     const profileRef = ref(database, `users/${user.uid}/profile`);
-     get(profileRef).then((snapshot) => {
+    get(profileRef).then((snapshot) => {
       const profileData = snapshot.val();
       document.getElementById('profile-name').innerText = `Name: ${profileData.firstName} ${profileData.lastName}`;
       document.getElementById('profile-email').innerText = `Email: ${profileData.email}`;
       document.getElementById('profile-phone').innerText = `Phone Number: ${profileData.phoneNumber}`;
     });
+
+    
+  // Hook up static profile fields
+  const totalEl = document.getElementById("total");
+  const totalFriendsEl = document.getElementById("total-friends");
+  const lastLoginEl = document.getElementById("last-login");
+  const createdEl = document.getElementById("account-created");
+
+const spendingRef = ref(database, `users/${user.uid}/spending`);
+
+// Check if spending data exists; if not, initialize it
+get(spendingRef).then((snapshot) => {
+  if (!snapshot.exists()) {
+    const initialSpending = Array(12).fill(0);
+    set(spendingRef, initialSpending)
+      .then(() => {
+        console.log("Initialized empty spending data for existing user.");
+      })
+      .catch((err) => {
+        console.error("Error creating spending data:", err);
+      });
+  }
+});  
+  spendingRef.once('value').then((snapshot) => {
+    const data = snapshot.val();
+    if (Array.isArray(data)) {
+      const totalSpending = data.reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+      if (totalEl) totalEl.innerText = `Total Amount: $${totalSpending.toFixed(2)}`;
+    } else {
+      if (totalEl) totalEl.innerText = `Total Amount: $0.00`;
+    }
+  });
+
+  // 2. Total Friends (assumes `users/uid/friends` is an object)
+  const friendsRef = ref(database, `users/${user.uid}/friends`);
+  friendsRef.once('value').then((snapshot) => {
+    const friends = snapshot.val();
+    const totalFriends = friends ? Object.keys(friends).length : 0;
+    if (totalFriendsEl) totalFriendsEl.innerText = `Total Friends: ${totalFriends}`;
+  });
+
+  // 3. Last Login & 4. Account Created — from Auth metadata
+  user.reload().then(() => {
+    const creationTime = new Date(user.metadata.creationTime).toLocaleString();
+    const lastSignInTime = new Date(user.metadata.lastSignInTime).toLocaleString();
+
+    if (lastLoginEl) lastLoginEl.innerText = `Last Login: ${lastSignInTime}`;
+    if (createdEl) createdEl.innerText = `Account Created: ${creationTime}`;
+  });
+
+
+
+
   } else {
     currentUser = null;
     console.log("No user logged in");
@@ -149,7 +200,8 @@ onAuthStateChanged(auth, (user) => {
     if (clearListBtn) clearListBtn.style.display = "none";
     document.getElementById("loginorsignupmodal").style.display = "flex";
     document.getElementById("topnav").style.display = "none";
-    
+    document.getElementById("ProfileModal").style.display = "none";
+
   }
 });
 
@@ -158,22 +210,29 @@ document.getElementById("loginbutton").addEventListener("click", () => {
 });
 
 // Login Event
+// Login Event
 loginButton.addEventListener("click", async () => {
   const email = loginEmail.value;
   const password = loginPassword.value;
 
   try {
-    const userCredential = await signInWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-    showToast(`Welcome back, ${userCredential.user.email}!`);
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // Get firstName from Firebase Realtime Database
+    const profileRef = ref(database, `users/${user.uid}/profile`);
+    const snapshot = await get(profileRef);
+    const profileData = snapshot.val();
+
+    const firstName = profileData?.firstName || "User";
+    showToast(`Welcome back, ${firstName}!`);
+
     await logUserAction("Logged in");
   } catch (error) {
     showToast(`Login failed: ${error.message}`, "error");
   }
 });
+
 
 
 // Helper function to generate a unique friend code
@@ -222,10 +281,12 @@ signupButton.addEventListener("click", async () => {
       firstName: nameFirst,
       lastName: nameLast,
     });
-    
+
 
     // Make friend code accessible outside the signup function
     window.userFriendCode = friendCode; // Store in a global variable for external use
+
+    
 
     showToast(`Account created for ${user.email}! `);
     await logUserAction("Signed up with email");
@@ -450,7 +511,7 @@ async function logUserAction(action) {
 
 
 viewAccountHistory.addEventListener("click", () => {
-  
+
   viewUserAccountHistory();
 });
 async function viewUserAccountHistory() {
@@ -482,6 +543,62 @@ async function viewUserAccountHistory() {
     document.getElementById("AccountHistoryModal").style.display = "flex";
   } catch (error) {
     showToast("Error retrieving history: " + error.message, "error");
+  }
+}
+document.getElementById("clearAccountHistory").addEventListener("click", () => {
+  document.getElementById("clearAccountHistoryModal").style.display = "flex";
+});
+
+// Clear Account History
+const clearButton = document.getElementById("confirmClearHistory");
+
+clearButton.addEventListener("click", async () => {
+  if (!currentUser) return;
+
+  const clearTimestampRef = ref(database, `users/${currentUser.uid}/lastCleared`);
+  const historyRef = ref(database, `users/${currentUser.uid}/history`);
+
+  try {
+    const snapshot = await get(clearTimestampRef);
+    const now = Date.now();
+    let canClear = true;
+
+    if (snapshot.exists()) {
+      const lastCleared = snapshot.val();
+      const daysSince = (now - lastCleared) / (1000 * 60 * 60 * 24);
+      if (daysSince < 30) {
+        showToast(`You can clear your history again in ${Math.ceil(30 - daysSince)} day(s).`, "error");
+        canClear = false;
+      }
+    }
+
+    if (canClear) {
+      await set(historyRef, null); // Clears history
+      await set(clearTimestampRef, now); // Sets current timestamp
+
+      // Refresh list
+      const list = document.getElementById("account-history-list");
+      list.innerHTML = "<li>Account history cleared.</li>";
+      showToast("Account history cleared successfully.", "success");
+    }
+
+  } catch (error) {
+    showToast("Error clearing history: " + error.message, "error");
+  }
+});
+
+async function updatePendingCount() {
+  if (!currentUser) return;
+
+  const pendingRef = ref(database, `users/${currentUser.uid}/pendingRequests`);
+  try {
+    const snapshot = await get(pendingRef);
+    const count = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
+    const badge = document.getElementById("pendingCount");
+    badge.textContent = count;
+    badge.style.display = count > 0 ? "inline-block" : "none";
+  } catch (error) {
+    console.error("❌ Error updating pending count:", error);
   }
 }
 
@@ -562,6 +679,8 @@ function addPerson(
   removeBtn.addEventListener("click", () => {
     peopleList.removeChild(listItem);
     saveListToFirebase();
+    logUserAction(`Removed ${nameSpan.textContent}'s tab`);
+
   });
 
   // More Button (Expand/Collapse)
@@ -584,6 +703,7 @@ function addPerson(
   listItem._amountContainer = amountContainer;
 
   return listItem;
+
 }
 
 function checkAmountOrItem() {
@@ -740,6 +860,8 @@ function openModal(listItem) {
 
   document.getElementById("customModal").style.display = "flex";
   checkAmountOrItem();
+
+
 }
 
 document
@@ -869,9 +991,10 @@ async function applyInterestToAll() {
   }
 }
 
-function enableInterestForPerson(index, rate = 5, period = "monthly") {
-  const now = Date.now();
 
+function enableInterestForPerson(index, personName, rate = 5, period = "monthly") {
+  const now = Date.now();
+  personName = currentListItem.querySelector(".name-span").textContent;
   const interestRef = ref(
     database,
     `users/${currentUser.uid}/peopleList/peopleData/${index}/interest`
@@ -884,6 +1007,8 @@ function enableInterestForPerson(index, rate = 5, period = "monthly") {
   })
     .then(() => {
       console.log(`✅ Interest enabled for person at index ${index}`);
+      logUserAction(`Enabled interest for ${personName} at (${rate}% ${period})`);
+
     })
     .catch((error) => {
       console.error("❌ Error enabling interest:", error);
@@ -945,10 +1070,10 @@ document
     amountSpan.innerHTML = newAmount.toFixed(2);
     saveListToFirebase();
     showToast(
-      `Added $${amountToAdd.toFixed(2)} to ${
-        currentListItem.querySelector(".name-span").textContent
+      `Added $${amountToAdd.toFixed(2)} to ${currentListItem.querySelector(".name-span").textContent
       }.`
     );
+    logUserAction(`Added $${amountToAdd.toFixed(2)} to ${currentListItem.querySelector(".name-span").textContent}`);
 
     closeEditMoneyModal();
   });
@@ -974,10 +1099,10 @@ document
     amountSpan.innerHTML = newAmount.toFixed(2);
     saveListToFirebase();
     showToast(
-      `Removed $${amountToRemove.toFixed(2)} from ${
-        currentListItem.querySelector(".name-span").textContent
+      `Removed $${amountToRemove.toFixed(2)} from ${currentListItem.querySelector(".name-span").textContent
       }.`
     );
+    logUserAction(`Removed $${amountToRemove.toFixed(2)} from ${currentListItem.querySelector(".name-span").textContent}`);
 
     closeEditMoneyModal();
   });
@@ -996,7 +1121,9 @@ function closeEditMoneyModal() {
 // Event listener for the "Edit Name" button
 document.getElementById("edit-name-btn").addEventListener("click", () => {
   if (currentListItem) {
-    openEditNameModal(currentListItem);
+    const nameSpan = currentListItem.querySelector(".name-span");
+    editNameInput.value = nameSpan.textContent;
+    editNameModal.style.display = "flex";
   }
 });
 
@@ -1015,10 +1142,12 @@ editNameBtn.addEventListener("click", () => {
   if (currentListItem) {
     const newName = editNameInput.value.trim();
     const nameSpan = currentListItem.querySelector(".name-span");
+    const oldName = nameSpan.textContent; // Store the old name for logging
 
-    if (newName !== "" && newName !== nameSpan.textContent) {
+    if (newName !== "" && newName !== oldName) {
       nameSpan.textContent = newName; // Update the name in the UI
       saveListToFirebase(); // Save the updated name to Firebase
+      logUserAction(`Renamed ${oldName} to: ${newName}`);
       showToast("Name updated successfully.");
     } else if (newName === "") {
       showToast("Name cannot be empty.", "error");
@@ -1028,6 +1157,7 @@ editNameBtn.addEventListener("click", () => {
   }
   editNameModal.style.display = "none";
 });
+
 
 // Close the modal when clicking the cancel button
 closeEditName.addEventListener("click", () => {
@@ -1153,6 +1283,8 @@ addextrainfo.addEventListener("click", () => {
     } else {
       showToast("Information cannot be empty", "error");
     }
+    logUserAction(`Added extra info to ${currentListItem.querySelector(".name-span").textContent}`);
+
     closeExtraInfoModal();
   }
 });
@@ -1203,6 +1335,7 @@ function openEditExtraInfoModal(element) {
   extraInfoElement = element; // Save the specific element being edited
   editinffoInput.value = element.textContent.trim(); // Pre-fill the textarea
   document.getElementById("editExtraInfoModal").style.display = "flex";
+
 }
 
 editinffoBtn.addEventListener("click", () => {
@@ -1253,6 +1386,8 @@ document.getElementById("add").addEventListener("click", () => {
   // Clear inputs and hide modal after adding
   nameInput.value = "";
   amountInput.value = "";
+  logUserAction(`Added a tab for: ${name}`);
+
   document.getElementById("add-person-box-modal").style.display = "none";
 });
 
@@ -1263,14 +1398,29 @@ document.getElementById("cancel").addEventListener("click", () => {
 // Load list when page loads
 document.addEventListener("DOMContentLoaded", loadListFromFirebase);
 
-const clearListBtn = document.getElementById("clear-list-btn");
-// Event listener to clear the list
-clearListBtn.addEventListener("click", () => {
-  if (confirm("Do you want to proceed?")) {
+document.getElementById("clear-list-btn").addEventListener("click", () => {
+  document.getElementById("clear-list-modal").style.display = "flex";
+});
+
+
+document.getElementById("clear-list-cancel").addEventListener("click", () => {
+  document.getElementById("clear-list-modal").style.display = "none";
+})
+
+
+const clearListBtn = document.getElementById("clearListBtn");
+clearListBtn.addEventListener("click", async () => {
+    if (peopleList.innerHTML === "") {
+        showToast("The list is already empty.", "info");
+        return;
+    }else{
     peopleList.innerHTML = ""; // Clear the list
-    saveListToFirebase(); // Save updated list  } else {
-    console.log("User clicked No");
-  }
+    saveListToFirebase();
+    await logUserAction("Cleared people list");
+    showToast("People list cleared successfully.", "success");
+    document.getElementById("clear-list-modal").style.display = "none";
+
+    }
 });
 
 async function addFriend() {
@@ -1287,9 +1437,6 @@ async function addFriend() {
     return;
   }
 
-  let friendUserId = null;
-  let friendData = null;
-
   try {
     const friendRef = ref(database, `friendCodes/${friendCode}`);
     const snapshot = await get(friendRef);
@@ -1299,58 +1446,58 @@ async function addFriend() {
       return;
     }
 
-    friendData = snapshot.val();
-    friendUserId = friendData.userId;
-
-    if (!friendUserId || !friendData) {
-      showToast("Friend not found. Check the friend code and try again.", "error");
-      return;
-    }
+    const friendData = snapshot.val();
+    const friendUserId = friendData.userId;
 
     if (friendUserId === currentUser.uid) {
       showToast("You can't add yourself as a friend.", "error");
       return;
     }
 
+    // Check if already friends
     const userFriendsRef = ref(database, `users/${currentUser.uid}/friendsList`);
     const userFriendsSnapshot = await get(userFriendsRef);
-
     if (userFriendsSnapshot.exists()) {
-      let alreadyAdded = false;
+      let alreadyFriend = false;
       userFriendsSnapshot.forEach((childSnapshot) => {
         if (childSnapshot.val().userId === friendUserId) {
-          alreadyAdded = true;
+          alreadyFriend = true;
         }
       });
-      if (alreadyAdded) {
-        showToast("This friend is already in your friends list.", "error");
+      if (alreadyFriend) {
+        showToast("This user is already in your friends list.", "error");
         return;
       }
     }
 
-    const friendCodeToAdd = friendData.friendCode || null;
-    const newFriendRef = push(userFriendsRef);
+    // Check if request was already sent
+    const sentRequestRef = ref(database, `users/${currentUser.uid}/sentRequests/${friendUserId}`);
+    const sentRequestSnap = await get(sentRequestRef);
+    if (sentRequestSnap.exists()) {
+      showToast("Friend request already sent.", "info");
+      return;
+    }
 
-    await set(newFriendRef, {
-      userId: friendUserId,
-      firstName: friendData.firstName,
-      lastName: friendData.lastName,
-      friendCode: friendCodeToAdd,
-    });
+    // Check if there's an incoming request from them already
+    const pendingRequestRef = ref(database, `users/${currentUser.uid}/pendingRequests/${friendUserId}`);
+    const pendingRequestSnap = await get(pendingRequestRef);
+    if (pendingRequestSnap.exists()) {
+      showToast("This user has already sent you a request. Check Pending.", "info");
+      return;
+    }
 
-    showToast(`${friendData.firstName} ${friendData.lastName} has been added to your friends list!`);
+    await sendFriendRequest(friendUserId, friendData);
+
     friendCodeInput.value = "";
-    populateFriendsList();
-    closeAddFriend();
-    await logUserAction(`Added friend: ${friendData.firstName} ${friendData.lastName}`);
     document.getElementById("addFriendModal").style.display = "none";
 
   } catch (error) {
-    console.error("❌ Error adding friend:", error);
-    showToast(`Error adding friend: ${error.message}`, "error");
+    console.error("❌ Error sending friend request:", error);
+    showToast(`Error: ${error.message}`, "error");
   }
 }
-function closeAddFriend(){
+
+function closeAddFriend() {
   document.getElementById("addFriendModal").style.display = "none";
 }
 
@@ -1389,7 +1536,7 @@ async function populateFriendsList() {
 
         removeButton.onclick = () => {
           console.log("Remove button clicked for", friendData.firstName);
-        
+
           const RFModal2 = document.getElementById("RFModal");
           if (RFModal2) {
             RFModal2.style.display = "flex";
@@ -1398,7 +1545,7 @@ async function populateFriendsList() {
             console.error("RFModal2 not found in DOM!");
           }
         };
-        
+
 
         const removeConfirmButton = document.getElementById("removeFriendBtn");
         removeConfirmButton.onclick = async () => {
@@ -1449,7 +1596,7 @@ document.getElementById('closeRemovefriend').addEventListener('click', () => {
   RFModal.style.display = "none";
 });
 
-  // document.getElementById("RemovefriendModal").style.display = "flex";
+// document.getElementById("RemovefriendModal").style.display = "flex";
 
 // Call this function to populate the list when the page loads
 window.onload = () => {
@@ -1466,29 +1613,61 @@ document
     document.getElementById("pendingRequestsModal").style.display = "none";
   });
 
-  async function sendFriendRequest(friendUserId, friendData) {
-    const userProfileSnap = await get(ref(database, `users/${currentUser.uid}/profile`));
-    const userProfile = userProfileSnap.val();
-  
-    // Write to recipient's pending requests
-    await set(ref(database, `users/${friendUserId}/pendingRequests/${currentUser.uid}`), {
-      fromUserId: currentUser.uid,
-      firstName: userProfile.firstName,
-      lastName: userProfile.lastName,
-      friendCode: userProfile.friendCode,
-    });
-  
-    // Write to sender's sent requests
-    await set(ref(database, `users/${currentUser.uid}/sentRequests/${friendUserId}`), {
-      toUserId: friendUserId,
-      firstName: friendData.firstName,
-      lastName: friendData.lastName,
-      friendCode: friendData.friendCode,
-    });
-  
-    showToast("Friend request sent!");
+async function getFriendCodeByUserId(userId) {
+  const friendCodesRef = ref(database, "friendCodes");
+  const snapshot = await get(friendCodesRef);
+
+  if (snapshot.exists()) {
+    const codes = snapshot.val();
+    for (const [code, data] of Object.entries(codes)) {
+      if (data.userId === userId) {
+        return code;
+      }
+    }
   }
-  
+  return null;
+}
+
+
+
+
+export async function sendFriendRequest(currentUserId, friendCode) {
+  const friendCodeInput = document.getElementById("friend-code").value.trim();
+
+  const db = getDatabase();
+
+  if (!friendCode) {
+    throw new Error("Friend code is required.");
+  }
+
+  // Step 1: Look up friend code to get their userId
+  const codeRef = ref(db, `friendCodes/${friendCode}`);
+  const codeSnap = await get(codeRef);
+
+  if (!codeSnap.exists()) {
+    throw new Error(`Friend code not found for user: ${friendCode}`);
+  }
+
+  const friendData = codeSnap.val();
+  const friendId = friendData.userId;
+
+  if (!friendId) {
+    throw new Error(`User ID not found for friend code: ${friendCode}`);
+  }
+
+  // Step 2: Create friend request (optional: avoid duplicates here)
+  const requestRef = push(ref(db, "friendRequests"));
+  await set(requestRef, {
+    from: currentUserId,
+    to: friendId,
+    timestamp: Date.now(),
+    status: "pending",
+  });
+
+  console.log(`Friend request sent from ${currentUserId} to ${friendId}`);
+}
+
+
 async function loadFriendRequests() {
   const list = document.getElementById("pendingRequestsList");
   list.innerHTML = "";
@@ -1679,3 +1858,6 @@ slider.oninput = function () {
   output.innerHTML = this.value + "%";
 };
 // Get a reference to the user's profile data
+
+
+

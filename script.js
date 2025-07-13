@@ -20,37 +20,39 @@ function debounce(func, wait) {
 // Modal Event Listeners
 
 function openNav() {
-  document.getElementById("mySidenav").style.width = "250px";
+  const sidenav = document.getElementById("mySidenav");
+  const modal = document.getElementById("sideNavModal");
+
+  modal.style.visibility = "visible";
+  modal.style.zIndex = "10000";
+  modal.classList.add("active");
+  sidenav.classList.add("open");
+
   document.getElementById("openButton").style.display = "none";
   document.getElementById("closeButton").style.display = "flex";
-  document.getElementById("TITLE").style.opacity = "0";
-  document.getElementById("add-person-btn").style.opacity = "0";
-  document.getElementById("clear-list-btn").style.opacity = "0";
-  document.getElementById("people-list").style.opacity = "0";
-  document.getElementById("customModal").style.opacity = "0";
-  document.getElementById("friendModal").style.opacity = "0";
-  document.getElementById("ProfileModal").style.opacity = "0";
-  document.getElementById("adsModal").style.opacity = "0";
-  }
+}
+
 
 function closeNav() {
-  document.getElementById("mySidenav").style.width = "0";
-  document.getElementById("openButton").style.display = "flex";
-  document.getElementById("TITLE").style.opacity = "1";
-  document.getElementById("add-person-btn").style.opacity = "1";
-  document.getElementById("clear-list-btn").style.opacity = "1";
-  document.getElementById("people-list").style.opacity = "1";
-  document.getElementById("customModal").style.opacity = "1";
-  document.getElementById("friendModal").style.opacity = "1";
-  document.getElementById("ProfileModal").style.opacity = "1";
-  document.getElementById("adsModal").style.opacity = "1";
+  const sidenav = document.getElementById("mySidenav");
+  const modal = document.getElementById("sideNavModal");
 
+  sidenav.classList.remove("open");
+  modal.classList.remove("active"); // triggers fade-out
+
+  // Wait for transition (match CSS time)
+  setTimeout(() => {
+    modal.style.zIndex = "0";
+    modal.style.visibility = "hidden";
+  }, 400); // same as your CSS transition duration
+
+  document.getElementById("openButton").style.display = "flex";
+  document.getElementById("closeButton").style.display = "none";
 }
-// Load list from local storage on page load
-document.getElementById("Login").addEventListener("click", function() { 
-  document.getElementById("ProfileBox").style.display = "none";
-  document.getElementById("ProfileModal").style.display = "none";
-}); 
+
+
+
+
 function openLogin() {
   document.getElementById("Loginpage").style.display = "flex";
   document.getElementById("signupPage").style.display = "none";
@@ -88,6 +90,39 @@ document.getElementById("Profile").addEventListener("click", () => {
 document.getElementById("closeProfile").addEventListener("click", () => {
   document.getElementById("ProfileModal").style.display = "none";
 })
+
+// List of all modals tied to the sideNav links
+const modalMap = {
+  Login: "Loginpage",
+  Profile: "ProfileModal",
+  FriendsTab: "friendModal",
+  Ads: "adsModal",
+  confirmation: "customModal"
+};
+
+function hideAllModals() {
+  Object.values(modalMap).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "none";
+  });
+}
+
+// Attach click listeners to each link
+Object.keys(modalMap).forEach(linkId => {
+  const link = document.getElementById(linkId);
+  const modalId = modalMap[linkId];
+  link?.addEventListener("click", () => {
+    hideAllModals();
+    const modal = document.getElementById(modalId);
+    if (modal) modal.style.display = "flex";
+    closeNav(); // Optional: close sidebar if desired
+  });
+});
+document.getElementById("cancelClearHistory").addEventListener("click", () => {
+  document.getElementById("clearAccountHistoryModal").style.display = "none";
+});
+
+
 function closeFriends() {
   document.getElementById("friendModal").style.display = "none";
 }
@@ -157,6 +192,8 @@ document.getElementById("ContinueasGuest").addEventListener("click", () => {
   document.getElementById("signupPage").style.display = "none";
   document.getElementById("Loginpage").style.display = "none";
   document.getElementById("loginorsignupmodal").style.display = "none";
+  document.getElementById("loader").style.display = "none";
+  document.getElementById("clearListBtn").style.display = "flex";
   const personlist = document.getElementById("personlist");
   const peopleList = document.getElementById("people-list");
   const addPersonBtn = document.getElementById("add-person-btn");
@@ -165,6 +202,7 @@ document.getElementById("ContinueasGuest").addEventListener("click", () => {
   if (peopleList) peopleList.style.display = "flex";
   if (addPersonBtn) addPersonBtn.style.display = "flex";
   if (clearListBtn) clearListBtn.style.display = "flex";
+
 })
 document.getElementById("profileInfo").addEventListener("click", () => {
   
@@ -235,6 +273,9 @@ buttons.forEach((button, index) => {
         ? "rgba(89, 192, 199, 0.8)"
         : "rgba(50, 108, 112, 0.8)";
     });
+    if (button.id === 'profileStats') {
+      document.dispatchEvent(new Event('renderSpendingChart'));
+    }
   });
 });
 
@@ -245,3 +286,27 @@ document.getElementById("closeAccountHistory").addEventListener("click", () => {
   document.getElementById("AccountHistoryModal").style.display = "none";
 });
 
+document.getElementById('closeAddFriend').addEventListener('click', () => {
+  document.getElementById("addFriendModal").style.display = "none";
+});
+
+
+/* When the user clicks on the button, 
+toggle between hiding and showing the dropdown content */
+function myFunction() {
+  document.getElementById("myDropdown").classList.toggle("show");
+}
+
+// Close the dropdown if the user clicks outside of it
+window.onclick = function(event) {
+  if (!event.target.matches('.dropbtn')) {
+    var dropdowns = document.getElementsByClassName("dropdown-content");
+    var i;
+    for (i = 0; i < dropdowns.length; i++) {
+      var openDropdown = dropdowns[i];
+      if (openDropdown.classList.contains('show')) {
+        openDropdown.classList.remove('show');
+      }
+    }
+  }
+}
