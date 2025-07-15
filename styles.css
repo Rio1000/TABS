@@ -34,7 +34,7 @@ body {
 #TITLE {
   visibility: visible;
   font-size: 50px;
-  z-index: 2001;
+  z-index: 901;
   transition: 0.3s;
 }
 
