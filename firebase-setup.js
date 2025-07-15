@@ -131,6 +131,7 @@ onAuthStateChanged(auth, (user) => {
       document.getElementById('profile-name').innerText = `Name: ${profileData.firstName} ${profileData.lastName}`;
       document.getElementById('profile-email').innerText = `Email: ${profileData.email}`;
       document.getElementById('profile-phone').innerText = `Phone Number: ${profileData.phoneNumber}`;
+      document.getElementById('profile-friend-code').innerText = `Friend Code: ${profileData.friendCode || 'N/A'}`;
     });
 
     
@@ -273,6 +274,7 @@ signupButton.addEventListener("click", async () => {
       lastName: nameLast,
       phoneNumber: number,
       email: email,
+      friendCode: friendCode,
     });
 
     // Save friend code in the friendCodes node
@@ -657,6 +659,7 @@ function addPerson(
   const personItem = document.createElement("div");
   personItem.appendChild(nameSpan);
   personItem.appendChild(amountContainer);
+  personItem.classList.add("person-stuff");
 
   listItem.appendChild(nameAmountContainer);
 
@@ -674,7 +677,7 @@ function addPerson(
 
   // Remove Button
   const removeBtn = document.createElement("a");
-  removeBtn.textContent = "X";
+  removeBtn.innerHTML = "<img src='check_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg' alt='Remove'/>";
   removeBtn.classList.add("remove-btn");
   removeBtn.addEventListener("click", () => {
     peopleList.removeChild(listItem);

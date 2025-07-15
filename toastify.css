@@ -36,7 +36,7 @@
 }
 
 .toastify-success::before {
-  background-image: url("check_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg"); /* Replace with actual icon */
+  background-image: url("check_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg");
 }
 
 .toastify-error::before {

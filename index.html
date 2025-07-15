@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TABS</title>
-    <link rel="icon" type="image/x-icon" href="logo.ico">
+    <link rel="icon" type="image/x-icon" href="loawdgo.ico">
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=more_horiz" />
@@ -35,7 +35,7 @@
         <div id="sideNavModal">
             <div id="mySidenav" class="sidenav">
                 <a class="sideNavA" href="javascript:void(0)" class="closebtn" id="closeButton"
-                    onclick="closeNav()">🗁</a>
+                    onclick="closeNav()"><img src="folder_open_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg" alt="close"></a>
                 <a class="sideNavA" href="javascript:void(0)" id="Login" onclick="openLogin()">Login or Signup</a>
                 <a class="sideNavA" id="Profile">Profile</a>
                 <a class="sideNavA" href="javascript:void(0)" id="FriendsTab" onclick="openFriends()">Friends</a>
@@ -54,7 +54,7 @@
         </div>
 
         <!-- Dropdown Menu -->
-        <span class="open-btn " id="openButton" onclick="openNav()">🗀</span>
+        <span class="open-btn " id="openButton" onclick="openNav()"><img src="folder_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg" alt="menu"></span>
 
 
         <div class="personlist">
@@ -63,7 +63,7 @@
                 <!-- Dynamic .personlist-item elements will be appended here -->
             </div>
 
-            <div class="modal" id="add-person-box-modal">
+            <div id="add-person-box-modal">
                 <div id="add-person-box">
                     <input id="name-input" type="text" placeholder="Name" required />
                     <input id="amount-input" type="text" placeholder="Amount/Item" required />
@@ -276,6 +276,7 @@
                     <p id="profile-name">Name: </p>
                     <p id="profile-email">Email: </p>
                     <p id="profile-phone">Phone Number: </p>
+                    <p id="profile-friend-code">Friend Code: </p>
                 </div>
 
                 <div id="profile-stats">
