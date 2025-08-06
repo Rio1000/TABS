@@ -19,6 +19,9 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
+  GoogleAuthProvider,
+  signInWithPopup
+
 } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-auth.js";
 
 // Firebase configuration
@@ -134,54 +137,54 @@ onAuthStateChanged(auth, (user) => {
       document.getElementById('profile-friend-code').innerText = `Friend Code: ${profileData.friendCode || 'N/A'}`;
     });
 
-    
-  // Hook up static profile fields
-  const totalEl = document.getElementById("total");
-  const totalFriendsEl = document.getElementById("total-friends");
-  const lastLoginEl = document.getElementById("last-login");
-  const createdEl = document.getElementById("account-created");
 
-const spendingRef = ref(database, `users/${user.uid}/spending`);
+    // Hook up static profile fields
+    const totalEl = document.getElementById("total");
+    const totalFriendsEl = document.getElementById("total-friends");
+    const lastLoginEl = document.getElementById("last-login");
+    const createdEl = document.getElementById("account-created");
 
-// Check if spending data exists; if not, initialize it
-get(spendingRef).then((snapshot) => {
-  if (!snapshot.exists()) {
-    const initialSpending = Array(12).fill(0);
-    set(spendingRef, initialSpending)
-      .then(() => {
-        console.log("Initialized empty spending data for existing user.");
-      })
-      .catch((err) => {
-        console.error("Error creating spending data:", err);
-      });
-  }
-});  
-  spendingRef.once('value').then((snapshot) => {
-    const data = snapshot.val();
-    if (Array.isArray(data)) {
-      const totalSpending = data.reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-      if (totalEl) totalEl.innerText = `Total Amount: $${totalSpending.toFixed(2)}`;
-    } else {
-      if (totalEl) totalEl.innerText = `Total Amount: $0.00`;
-    }
-  });
+    const spendingRef = ref(database, `users/${user.uid}/spending`);
 
-  // 2. Total Friends (assumes `users/uid/friends` is an object)
-  const friendsRef = ref(database, `users/${user.uid}/friends`);
-  friendsRef.once('value').then((snapshot) => {
-    const friends = snapshot.val();
-    const totalFriends = friends ? Object.keys(friends).length : 0;
-    if (totalFriendsEl) totalFriendsEl.innerText = `Total Friends: ${totalFriends}`;
-  });
+    // Check if spending data exists; if not, initialize it
+    get(spendingRef).then((snapshot) => {
+      if (!snapshot.exists()) {
+        const initialSpending = Array(12).fill(0);
+        set(spendingRef, initialSpending)
+          .then(() => {
+            console.log("Initialized empty spending data for existing user.");
+          })
+          .catch((err) => {
+            console.error("Error creating spending data:", err);
+          });
+      }
+    });
+    spendingRef.once('value').then((snapshot) => {
+      const data = snapshot.val();
+      if (Array.isArray(data)) {
+        const totalSpending = data.reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+        if (totalEl) totalEl.innerText = `Total Amount: $${totalSpending.toFixed(2)}`;
+      } else {
+        if (totalEl) totalEl.innerText = `Total Amount: $0.00`;
+      }
+    });
 
-  // 3. Last Login & 4. Account Created — from Auth metadata
-  user.reload().then(() => {
-    const creationTime = new Date(user.metadata.creationTime).toLocaleString();
-    const lastSignInTime = new Date(user.metadata.lastSignInTime).toLocaleString();
+    // 2. Total Friends (assumes `users/uid/friends` is an object)
+    const friendsRef = ref(database, `users/${user.uid}/friends`);
+    friendsRef.once('value').then((snapshot) => {
+      const friends = snapshot.val();
+      const totalFriends = friends ? Object.keys(friends).length : 0;
+      if (totalFriendsEl) totalFriendsEl.innerText = `Total Friends: ${totalFriends}`;
+    });
 
-    if (lastLoginEl) lastLoginEl.innerText = `Last Login: ${lastSignInTime}`;
-    if (createdEl) createdEl.innerText = `Account Created: ${creationTime}`;
-  });
+    // 3. Last Login & 4. Account Created — from Auth metadata
+    user.reload().then(() => {
+      const creationTime = new Date(user.metadata.creationTime).toLocaleString();
+      const lastSignInTime = new Date(user.metadata.lastSignInTime).toLocaleString();
+
+      if (lastLoginEl) lastLoginEl.innerText = `Last Login: ${lastSignInTime}`;
+      if (createdEl) createdEl.innerText = `Account Created: ${creationTime}`;
+    });
 
 
 
@@ -205,11 +208,62 @@ get(spendingRef).then((snapshot) => {
 
   }
 });
+// Google Sign-In Button Listener
+const googleBtn = document.getElementById("googleSignInBtn");
+
+if (googleBtn) {
+  googleBtn.addEventListener("click", async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Check if user profile exists
+      const profileRef = ref(database, `users/${user.uid}/profile`);
+      const snapshot = await get(profileRef);
+
+      if (!snapshot.exists()) {
+        const displayName = user.displayName || "User";
+        const [firstName, ...rest] = displayName.split(" ");
+        const lastName = rest.join(" ") || "";
+
+        const friendCode = generateFriendCode();
+
+        await set(profileRef, {
+          firstName: firstName,
+          lastName: lastName,
+          phoneNumber: user.phoneNumber || "",
+          email: user.email,
+          friendCode: friendCode,
+        });
+
+        await set(ref(database, `friendCodes/${friendCode}`), {
+          userId: user.uid,
+          firstName: firstName,
+          lastName: lastName,
+        });
+      }
+
+      showToast(`Signed in with Google as ${user.displayName}`, "success");
+      await logUserAction("Signed in with Google");
+
+    } catch (error) {
+      console.error("Google Sign-In Error:", error);
+      showToast("Google sign-in failed: " + error.message, "error");
+    }
+  });
+}
 
 document.getElementById("loginbutton").addEventListener("click", () => {
   document.getElementById("loginorsignupmodal").style.display = "none";
 });
-
+const firebaseErrorMap = {
+  "auth/invalid-email": "Invalid email or password",
+  "auth/wrong-password": "Invalid email or password",
+  "auth/user-not-found": "Invalid email or password",
+  "auth/too-many-requests": "Too many failed attempts. Try again later.",
+  // Add more as needed
+};
 // Login Event
 // Login Event
 loginButton.addEventListener("click", async () => {
@@ -230,7 +284,8 @@ loginButton.addEventListener("click", async () => {
 
     await logUserAction("Logged in");
   } catch (error) {
-    showToast(`Login failed: ${error.message}`, "error");
+    const cleanMessage = firebaseErrorMap[error.code] || "Something went wrong. Please try again.";
+    showToast(cleanMessage, "error");
   }
 });
 
@@ -288,7 +343,7 @@ signupButton.addEventListener("click", async () => {
     // Make friend code accessible outside the signup function
     window.userFriendCode = friendCode; // Store in a global variable for external use
 
-    
+
 
     showToast(`Account created for ${user.email}! `);
     await logUserAction("Signed up with email");
@@ -772,26 +827,10 @@ const interestrangecontainer = document.getElementById(
 );
 
 interestToggle.addEventListener("change", () => {
-  const isChecked = interestToggle.checked;
-  const minHeight = 40;
-  let maxHeight = 175; // use `let` so we can reassign
-  const isSmallScreen = window.innerWidth <= 600;
+  console.log("Interest toggle changed:", interestToggle.checked);
 
-  if (isSmallScreen) {
-    maxHeight = 140;
-    console.log("Updating height for small screen" + maxHeight);
-    interestContainer.style.height = isChecked
-      ? `${maxHeight}px`
-      : `${minHeight}px`;
-  }
 
-  interestrangecontainer.style.opacity = isChecked ? 1 : 0;
 
-  if (!isSmallScreen) {
-    interestContainer.style.height = isChecked
-      ? `${maxHeight}px`
-      : `${minHeight}px`;
-  }
 
   rateLabel.innerHTML = '<span class="rate">0</span>%';
   interestRange.value = 0;
@@ -1413,17 +1452,17 @@ document.getElementById("clear-list-cancel").addEventListener("click", () => {
 
 const clearListBtn = document.getElementById("clearListBtn");
 clearListBtn.addEventListener("click", async () => {
-    if (peopleList.innerHTML === "") {
-        showToast("The list is already empty.", "info");
-        return;
-    }else{
+  if (peopleList.innerHTML === "") {
+    showToast("The list is already empty.", "info");
+    return;
+  } else {
     peopleList.innerHTML = ""; // Clear the list
     saveListToFirebase();
     await logUserAction("Cleared people list");
     showToast("People list cleared successfully.", "success");
     document.getElementById("clear-list-modal").style.display = "none";
 
-    }
+  }
 });
 
 async function addFriend() {

@@ -66,7 +66,7 @@ body {
   transition: 0.3s;
   -webkit-backdrop-filter: blur(30px);
   backdrop-filter: blur(30px);
-  z-index: 1000;
+  z-index: 2001;
 
 }
 
@@ -686,10 +686,11 @@ input {
 #addFriendModal,
 #pendingRequestsModal,
 #delete-account-modal,
-#AccountHistoryModal {
+#AccountHistoryModal,
+#interestModal {
   display: none;
-  /* Ensure it uses flexbox */
-  position: fixed;
+flex-direction: column;  
+position: fixed;
   top: 0;
   left: 0;
   width: 100%;
@@ -700,7 +701,7 @@ input {
   text-align: center;
   overflow-y: auto;
   /* Change from 'scroll' to 'auto' */
-  z-index: 1000;
+  z-index: 2000;
   transition: backdrop-filter 0.3s ease, background-color 0.3s ease;
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
@@ -778,6 +779,7 @@ input {
   margin: 0;
   padding: 0;
   list-style: none;
+  width: 100%;
 }
 
 #account-history-buttons,
@@ -935,7 +937,7 @@ input {
 
 #interestSelect {
   margin-top: 10px;
-  background-color: rgba(80, 202, 211, 0.8);
+  background-color: rgba(51, 78, 80, 0.415);
   border: 2px solid transparent;
   border-radius: 5px;
   color: rgb(194, 233, 232);
@@ -972,12 +974,13 @@ input {
 #confirmClearHistory,
 #cancelDeleteAccount,
 #cancelClearHistory,
-#clear-list-cancel {
+#clear-list-cancel,
+#close-interest {
   background-color: rgba(211, 80, 80, 0.8);
   border: 2px solid transparent;
   color: rgb(194, 233, 232);
   font-size: 20px;
-  width: 100%;
+  width: 93%;
   font-weight: bold;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
@@ -1005,29 +1008,69 @@ input {
 #close-delete-account,
 #PayMyTuition,
 #menu-button,
-#clearListBtn {
+#clearListBtn,
+#interest-btn {
   text-align: center;
   justify-content: center;
   margin-top: 10px;
   background-color: rgba(80, 202, 211, 0.686);
-
-  border: 2px solid transparent;
   color: rgb(194, 233, 232);
   font-size: 20px;
-  width: 100%;
+  width: 93%;
   font-weight: bold;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   cursor: pointer;
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
+  
+}
+#googleSignInBtn {
+  display: flex;
+  align-items: center;      /* vertically center content */
+  justify-content: center;  /* horizontally center content */
+  gap: 8px;                 /* space between text and image */
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
 }
 
+
+#google-icon{
+  width: 20px;
+  height: 20px;
+  margin-left: 10px;
+  background-color: rgb(10, 32, 49);
+  padding: 5px;
+  border-radius: 50%;
+  box-shadow: 0px 0px 10px 0px #000000
+}
 #clearAccountHistoryBox {
   width: 70%;
 }
+.login-buttons{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 
-
+}
+.login-buttons button {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin: 10px;
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  background-color: #4c98afde;
+  width: 100%;
+  font-size: 15px;
+  color: white;
+  font-weight: bold;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
 
 #loginbutton,
 #signupbutton,
@@ -1106,17 +1149,15 @@ input {
 
 }
 
-#interest-container {
-  justify-content: top;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background-color: rgba(80, 202, 211, 0.8);
+
+#extra-info-input,
+#editinffoInput{
   width: 93%;
-  border-radius: 6px;
-  transition: 0.5s;
-  margin-top: 5px;
+  font-size: 18px;
+  color: rgb(194, 233, 232);
+  background-color: rgba(25, 64, 66, 0.8);
+  border-radius: 8px;
+  border-style: solid;
 }
 
 #name-input,
@@ -1128,7 +1169,7 @@ input {
 #editinffoInput,
 #friend-code {
   padding: 10px;
-  margin: 10px;
+  margin-bottom: 10px;
   background-color: rgba(25, 64, 66, 0.8);
   border-radius: 8px;
   border-style: solid;
@@ -1136,6 +1177,10 @@ input {
   overflow-wrap: break-word;
   text-overflow: ellipsis;
   color: rgb(194, 233, 232);
+  border-color: sienna;
+  border-width: 5px;
+
+
 }
 
 
@@ -1241,24 +1286,25 @@ input {
   margin-top: 60px;
   height: 70%;
   position: relative;
-  /* Needed for absolute positioning inside */
   align-items: center;
   justify-content: center;
 }
 
 #profile-Accounts {
-  margin-top: 40px;
+  margin-top: 50px;
   display: none;
   flex-direction: column;
   width: 100%;
-  overflow-y: scroll;
+  overflow-y:auto;
+  overflow-x: hidden;
+
 }
 
 #profile-Accounts>button {
   background-color: rgba(71, 149, 153, 0.8);
   color: rgb(194, 233, 232);
   padding: 5px;
-  width: 100%;
+  width: 93%;
   font-size: 20px;
   border-style: none;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
@@ -1306,11 +1352,25 @@ input {
 }
 
 #editMoneyAdd,
-#editMoneyRemove {
-  display: none;
+#editMoneyRemove,
+#add-extra-info-box,
+#editNameBox,
+#interest-container {
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 85%;
+  background-color: rgba(80, 202, 211, 0.164);
+  border-radius: 10px;
+  box-shadow: 0px 0px 10px 0px #011d1d;
+  padding: 10px;
 }
-
+.AddOrCancleButtons{
+  width: auto;
+  background-color: rgba(45, 125, 160, 0.221);
+  padding: 10px 70px 10px 70px;
+  border-radius: 7px;;
+}
 
 #interestRange {
   -webkit-appearance: none;

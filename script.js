@@ -308,3 +308,23 @@ window.onclick = function(event) {
     }
   }
 }
+document.getElementById("add-more-money-btn").addEventListener("click", () => {
+  document.getElementById("customModal").style.display = "none";
+});
+document.getElementById("remove-money-btn").addEventListener("click", () => {
+  document.getElementById("customModal").style.display = "none";
+});
+
+
+document.getElementById("loginbutton").addEventListener("click", () => {
+  document.getElementById("loader").style.display = "none";
+});
+document.getElementById("signupbutton").addEventListener("click", () => {
+  document.getElementById("loader").style.display = "none";
+});
+document.getElementById("interest-btn").addEventListener("click", () => {
+  document.getElementById("interestModal").style.display = "flex";
+});
+document.getElementById("close-interest").addEventListener("click", () => {
+  document.getElementById("interestModal").style.display = "none";
+});

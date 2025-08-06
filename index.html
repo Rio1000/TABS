@@ -35,7 +35,8 @@
         <div id="sideNavModal">
             <div id="mySidenav" class="sidenav">
                 <a class="sideNavA" href="javascript:void(0)" class="closebtn" id="closeButton"
-                    onclick="closeNav()"><img src="folder_open_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg" alt="close"></a>
+                    onclick="closeNav()"><img src="folder_open_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg"
+                        alt="close"></a>
                 <a class="sideNavA" href="javascript:void(0)" id="Login" onclick="openLogin()">Login or Signup</a>
                 <a class="sideNavA" id="Profile">Profile</a>
                 <a class="sideNavA" href="javascript:void(0)" id="FriendsTab" onclick="openFriends()">Friends</a>
@@ -54,7 +55,8 @@
         </div>
 
         <!-- Dropdown Menu -->
-        <span class="open-btn " id="openButton" onclick="openNav()"><img src="folder_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg" alt="menu"></span>
+        <span class="open-btn " id="openButton" onclick="openNav()"><img
+                src="folder_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg" alt="menu"></span>
 
 
         <div class="personlist">
@@ -86,36 +88,47 @@
         </div>
 
 
-
+        <div id="login-modal">
+            <div id="Loginpage" style="display: none">
+                <div class="login-content">
+                    <h2>Login</h2>
+                    <input class="login-input" id="login-email" type="email" placeholder="Email" required /><br />
+                    <input class="login-input" id="login-password" type="password" placeholder="Password"
+                        required /><br />
+                    <div class="login-buttons">
+                        <button id="login-btn">Login</button>
+                        <button id="googleSignInBtn">Sign In with Google <img id="google-icon"
+                                src="google-icon-logo-svgrepo-com.svg" alt="google"></button>
+                        <button onclick="openSignUp()">Sign Up</button>
+                        <button id="reset-password">Reset Password</button>
+                    </div>
+                    <button id="Back-btn">⬅️</button>
+                    </button>
+                </div>
+            </div>
+        </div>
         <!-- Login/Signup Modal -->
-        <div id="Loginpage" style="display: none">
-            <div class="login-content">
-                <h2>Login</h2>
-                <input class="login-input" id="login-email" type="email" placeholder="Email" required /><br />
-                <input class="login-input" id="login-password" type="password" placeholder="Password" required /><br />
-                <button id="login-btn">Login</button>
-                <button onclick="openSignUp()">Sign Up</button>
-                <button id="reset-password">Reset Password</button>
-                <button id="Back-btn">⬅️</button>
-                </button>
+
+
+        <div id="signup-modal">
+            <div id="signupPage" style="display: none">
+                <div class="login-content">
+                    <h2>Signup</h2>
+                    <input class="login-input" id="first-name" type="text" placeholder="First Name" required /><br />
+                    <input class="login-input" id="last-name" type="text" placeholder="Last Name" required /><br />
+                    <input class="login-input" id="phonenumber" type="tel" placeholder="Phone Number"
+                        pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" required /><br />
+                    <input class="login-input" id="signup-email" type="email" placeholder="Email" required /><br />
+                    <input class="login-input" id="signup-password" type="password" placeholder="Password"
+                        required /><br />
+                    <button id="signup-btn">Sign Up</button>
+                    <button id="login-btn" onclick="openLogin()">Login</button>
+                    <button id="Back-btn2">⬅️</button>
+                </div>
             </div>
         </div>
 
 
-
-        <div id="signupPage" style="display: none">
-            <div class="login-content">
-                <h2>Signup</h2>
-                <input class="login-input" id="first-name" type="text" placeholder="First Name" required /><br />
-                <input class="login-input" id="last-name" type="text" placeholder="Last Name" required /><br />
-                <input class="login-input" id="phonenumber" type="number" placeholder="Phone Number" required /><br />
-                <input class="login-input" id="signup-email" type="email" placeholder="Email" required /><br />
-                <input class="login-input" id="signup-password" type="password" placeholder="Password" required /><br />
-                <button id="signup-btn">Sign Up</button>
-                <button id="login-btn" onclick="openLogin()">Login</button>
-                <button id="Back-btn2">⬅️</button>
-            </div>
-        </div>
 
 
 
@@ -127,17 +140,20 @@
                 <button type="button" class="no-btn" id="add-extra-info-btn">Add Info</button>
                 <button type="button" class="edt-name" id="edit-name-btn">Edit Name</button>
                 <div id="btn-container"></div>
+                <button type="button" class="danger-btn" id="interest-btn">Interest</button>
 
-                <div id="interest-container">
-                    <div id="interestTitle">
-                        <p id="interestTitleText">Interest</p>
-                    </div>
-                    <div id="interest-range-container"></div>
-                </div>
                 <button class="close-btn" id="close-prompt">Close</button>
             </div>
         </div>
-
+        <div id="interestModal">
+            <div id="interest-container">
+                <div id="interestTitle">
+                    <p id="interestTitleText">Interest</p>
+                </div>
+                <div id="interest-range-container"></div>
+            </div>
+            <button class="close-btn" id="close-interest">Close</button>
+        </div>
 
         <!-- Friend Modal -->
         <div class="modal" id="friendModal">
@@ -175,15 +191,17 @@
         <!-- Edit Money Modal -->
         <div class="modal" id="editMoneyModal">
             <div id="editMoneyAdd">
+                <h2>Add Money</h2>
                 <input id="editMoneyInput" type="number" placeholder="Amount" required />
-                <div>
+                <div class="AddOrCancleButtons">
                     <button id="editMoneyBtnAdd">Add</button>
                     <button id="closeEditMoney">cancel</button>
                 </div>
             </div>
             <div id="editMoneyRemove">
+                <h2>Remove Money</h2>
                 <input id="editMoneyInput" type="number" placeholder="Amount" required />
-                <div>
+                <div class="AddOrCancleButtons">
                     <button id="editMoneyBtnRemove">Remove</button>
                     <button id="closeEditMoney">cancel</button>
                 </div>
@@ -191,8 +209,9 @@
         </div>
         <div class="modal" id="editNameModal">
             <div id="editNameBox">
+                <h2>Edit Name</h2>
                 <input id="editNameInput" type="text" placeholder="Name" required />
-                <div>
+                <div class="AddOrCancleButtons">
                     <button id="editNameBtn">Done</button>
                     <button id="closeEditName">cancel</button>
                 </div>
@@ -200,8 +219,9 @@
         </div>
         <div class="modal" id="add-extra-info-modal">
             <div id="add-extra-info-box">
+                <h2>Add Extra Info</h2>
                 <textarea id="extra-info-input" placeholder="Extra Info" required></textarea>
-                <div>
+                <div class="AddOrCancleButtons">
                     <button id="add-extra-info">Add</button>
                     <button id="close-extra-info">Cancel</button>
                 </div>
@@ -209,7 +229,7 @@
         </div>
         <div class="modal" id="RFModal" class="modal">
             <div id="RemovefriendBox">
-                <div id="Removefriend">
+                <div id="Removefriend" class="AddOrCancleButtons">
                     <button id="removeFriendBtn">Remove</button>
                     <button id="closeRemovefriend">cancel</button>
                 </div>
@@ -217,8 +237,9 @@
         </div>
         <div class="modal" id="editItemModal">
             <div id="editItemBox">
+                <h2>Edit Item</h2>
                 <input id="editItemInput" type="text" placeholder="Item" required />
-                <div>
+                <div class="AddOrCancleButtons">
                     <button id="editItemBtn">Done</button>
                     <button id="closeEditItem">Cancel</button>
                 </div>
@@ -226,8 +247,9 @@
         </div>
         <div class="modal" id="editExtraInfoModal">
             <div id="editinffoBox">
+                <h2>Edit Extra Info</h2>
                 <textarea id="editinffoInput" placeholder="Extra Info" required></textarea>
-                <div>
+                <div class="AddOrCancleButtons">
                     <button id="editinffoBtn">Done</button>
                     <button id="closeEditinffo">Cancel</button>
                 </div>
@@ -327,7 +349,7 @@
                 </div>
             </div>
         </div>
-        <div class ="modal" id="clear-list-modal">
+        <div class="modal" id="clear-list-modal">
             <div id="clear-list-box">
                 <div>
                     <p id="clear-list-prompt">Are you sure you want to clear the list?</p>
