@@ -442,6 +442,9 @@ async function saveListToFirebase() {
   const peopleData = [];
 
   listItems.forEach((item) => {
+    if (item.classList.contains('ad-box')) {
+      return;
+    }
     const name = item.querySelector(".name-span").textContent;
     const rawAmount = item.querySelector(".amount-input").textContent.trim();
     const amount = isNaN(rawAmount) || rawAmount === "" ? rawAmount : parseFloat(rawAmount);
