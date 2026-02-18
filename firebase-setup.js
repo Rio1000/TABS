@@ -38,7 +38,7 @@ const firebaseConfig = {
 function showToast(message, type = "success") {
   Toastify({
     text: `${message}`, // Prepend icon to message
-    duration: 3000,
+    duration: 2000,
     close: true,
     gravity: "top",
     position: "right",
@@ -131,10 +131,10 @@ onAuthStateChanged(auth, (user) => {
     const profileRef = ref(database, `users/${user.uid}/profile`);
     get(profileRef).then((snapshot) => {
       const profileData = snapshot.val();
-      document.getElementById('profile-name').innerText = `Name: ${profileData.firstName} ${profileData.lastName}`;
-      document.getElementById('profile-email').innerText = `Email: ${profileData.email}`;
-      document.getElementById('profile-phone').innerText = `Phone Number: ${profileData.phoneNumber}`;
-      document.getElementById('profile-friend-code').innerText = `Friend Code: ${profileData.friendCode || 'N/A'}`;
+      document.getElementById('profile-name').innerHTML = `Name: <br> ${profileData.firstName} ${profileData.lastName}`;
+      document.getElementById('profile-email').innerHTML = `Email: <br> ${profileData.email}`;
+      document.getElementById('profile-phone').innerHTML = `Phone Number: <br> ${profileData.phoneNumber}`;
+      document.getElementById('profile-friend-code').innerHTML = `Friend Code: <br> ${profileData.friendCode || 'N/A'}`;
     });
 
 
@@ -250,6 +250,49 @@ if (googleBtn) {
     } catch (error) {
       console.error("Google Sign-In Error:", error);
       showToast("Google sign-in failed: " + error.message, "error");
+    }
+  });
+}
+const googleSignUpBtn = document.getElementById("googleSignUpBtn");
+if (googleSignUpBtn) {
+  googleSignUpBtn.addEventListener("click", async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Check if user profile exists
+      const profileRef = ref(database, `users/${user.uid}/profile`);
+      const snapshot = await get(profileRef);
+
+      if (!snapshot.exists()) {
+        const displayName = user.displayName || "User";
+        const [firstName, ...rest] = displayName.split(" ");
+        const lastName = rest.join(" ") || "";
+
+        const friendCode = generateFriendCode();
+
+        await set(profileRef, {
+          firstName: firstName,
+          lastName: lastName,
+          phoneNumber: user.phoneNumber || "",
+          email: user.email,
+          friendCode: friendCode,
+        });
+
+        await set(ref(database, `friendCodes/${friendCode}`), {
+          userId: user.uid,
+          firstName: firstName,
+          lastName: lastName,
+        });
+      }
+
+      showToast(`Signed up with Google as ${user.displayName}`, "success");
+      await logUserAction("Signed up with Google");
+
+    } catch (error) {
+      console.error("Google Sign-Up Error:", error);
+      showToast("Google sign-up failed: " + error.message, "error");
     }
   });
 }
@@ -476,7 +519,7 @@ async function loadListFromFirebase() {
   } catch (error) {
     console.error("❌ Error loading data:", error);
   } finally {
-    // Always hide the loader
+    addAdBox();
     document.getElementById("loader").style.display = "none";
   }
 }
@@ -763,7 +806,24 @@ function addPerson(
   return listItem;
 
 }
+function addAdBox() {
+  const adItem = document.createElement("div");
+  adItem.classList.add("personlist-item", "ad-box");
+  adItem.style.justifyContent = "center";
+  adItem.style.background = "rgba(255, 255, 255, 0.05)"; // Subtly different background
 
+  // Placeholder for your Ad Code
+  adItem.innerHTML = `
+    <div style="text-align: center; font-size: 12px; color: #888;">
+      <p style="margin: 0;">ADVERTISEMENT</p>
+      <div id="ad-container" style="display: flex; align-items: center; justify-content: center;">
+         <span style="opacity: 0.5;">Support Tabs <a href="https://buymeacoffee.com/TABSonFriends" style="color: #3c94e7;">here</a></span>
+      </div>
+    </div>
+  `;
+
+  peopleList.appendChild(adItem);
+}
 function checkAmountOrItem() {
   const amountSpan = currentListItem.querySelector(".amount-input");
   const text = amountSpan.textContent.trim();
@@ -1673,40 +1733,33 @@ async function getFriendCodeByUserId(userId) {
 
 
 
-export async function sendFriendRequest(currentUserId, friendCode) {
-  const friendCodeInput = document.getElementById("friend-code").value.trim();
-
+export async function sendFriendRequest(friendUserId, friendData) {
   const db = getDatabase();
 
-  if (!friendCode) {
-    throw new Error("Friend code is required.");
-  }
+  const currentUserId = currentUser.uid;
 
-  // Step 1: Look up friend code to get their userId
-  const codeRef = ref(db, `friendCodes/${friendCode}`);
-  const codeSnap = await get(codeRef);
+  // Add a request to the friend's pending requests
+  const theirPendingRef = ref(db, `users/${friendUserId}/pendingRequests/${currentUserId}`);
+  const myProfileSnap = await get(ref(db, `users/${currentUserId}/profile`));
+  const myProfile = myProfileSnap.val();
 
-  if (!codeSnap.exists()) {
-    throw new Error(`Friend code not found for user: ${friendCode}`);
-  }
-
-  const friendData = codeSnap.val();
-  const friendId = friendData.userId;
-
-  if (!friendId) {
-    throw new Error(`User ID not found for friend code: ${friendCode}`);
-  }
-
-  // Step 2: Create friend request (optional: avoid duplicates here)
-  const requestRef = push(ref(db, "friendRequests"));
-  await set(requestRef, {
-    from: currentUserId,
-    to: friendId,
-    timestamp: Date.now(),
-    status: "pending",
+  await set(theirPendingRef, {
+    fromUserId: currentUserId,
+    firstName: myProfile.firstName,
+    lastName: myProfile.lastName,
+    friendCode: myProfile.friendCode,
   });
 
-  console.log(`Friend request sent from ${currentUserId} to ${friendId}`);
+  // Add a request to the current user's sent requests
+  const mySentRef = ref(db, `users/${currentUserId}/sentRequests/${friendUserId}`);
+  await set(mySentRef, {
+    toUserId: friendUserId,
+    firstName: friendData.firstName,
+    lastName: friendData.lastName,
+  });
+
+  showToast("Friend request sent!", "success");
+  logUserAction(`Sent friend request to ${friendData.firstName} ${friendData.lastName}`);
 }
 
 
@@ -1805,6 +1858,11 @@ async function approveFriendRequest(requestId, request) {
       lastName: currentProfile.lastName,
       friendCode: currentProfile.friendCode,
     });
+
+    // Also remove from the sender's sent requests list
+    await remove(
+      ref(database, `users/${request.fromUserId}/sentRequests/${currentUser.uid}`)
+    );
 
     // Remove pending request
     await remove(

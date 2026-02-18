@@ -1025,7 +1025,8 @@ position: fixed;
   backdrop-filter: blur(3px);
   
 }
-#googleSignInBtn {
+#googleSignInBtn,
+#googleSignUpBtn {
   display: flex;
   align-items: center;      /* vertically center content */
   justify-content: center;  /* horizontally center content */
@@ -1033,6 +1034,7 @@ position: fixed;
   border: none;
   cursor: pointer;
   font-size: 16px;
+  border: 2px solid rgb(210, 210, 210);
 }
 
 
@@ -1444,9 +1446,72 @@ position: fixed;
 }
 
 .scroll-buttons button:hover {
-  background-color: #525252;
+  background-color: #525252; 
+}
+.ad-box {
+  border: 1px dashed #555; /* Differentiates it from real people */
+  min-height: 80px;
+  cursor: cursor;
+  color: #a8a39d;
 }
 
+.ad-box:hover {
+  transform: none; /* Disable the hover lift effect if you have one */
+}
+.switch {
+  display: inline-block;
+}
+
+.switch input {
+  display: none;
+}
+
+.switch label {
+  display: block;
+  width: 70px;
+  height: auto;
+  padding: 3px;
+  border-radius: 15px;
+  border: 2px solid #4c5946;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.switch label::after {
+  content: "";
+  display: inherit;
+  width: 20px;
+  height: 20px;
+  border-radius: 12px;
+  background: #8e8e8e;
+  transition: 0.3s;
+}
+
+.switch input:checked ~ label {
+  border-color: #237e29;
+  box-shadow: 0px 0px 5px 0px #237e29;
+}
+
+.switch input:checked ~ label::after {
+  translate: 30px 0;
+  background: #59ba39;
+}
+
+.switch input:disabled ~ label {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.signupbtns{
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+#friend-code-section{
+  display: flex;
+}
 @media screen and (max-width: 1000px) {
 
   #buttons {

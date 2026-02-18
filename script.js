@@ -1,3 +1,24 @@
+function showToast(message, type = "success") {
+  Toastify({
+    text: `${message}`, // Prepend icon to message
+    duration: 2000,
+    close: true,
+    gravity: "top",
+    position: "right",
+    className:
+      type === "error"
+        ? "toastify toastify-error"
+        : "toastify toastify-success", // Set class dynamically
+    style: {
+      background: type === "error" ? "#ef4444" : "#50c444",
+      display: "flex",
+      alignItems: "center",
+      gap: "8px", // Space between icon & text
+    },
+  }).showToast();
+}
+
+
 const peopleList = document.getElementById("people-list");
 const addPersonBtn = document.getElementById("add-person-btn");
 const clearListBtn = document.getElementById("clear-list-btn");
@@ -328,3 +349,45 @@ document.getElementById("interest-btn").addEventListener("click", () => {
 document.getElementById("close-interest").addEventListener("click", () => {
   document.getElementById("interestModal").style.display = "none";
 });
+
+
+const phoneInput = document.getElementById('phonenumber');
+phoneInput.addEventListener('input', () => {
+let digits = phoneInput.value.replace(/\D/g, '').substring(0, 10);
+let formatted = digits;
+if (digits.length > 6) {
+formatted = `(${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}`;
+} else if (digits.length > 3) {
+formatted = `(${digits.substring(0, 3)}) ${digits.substring(3)}`;
+} else if (digits.length > 0) {
+formatted = `(${digits}`;
+}
+phoneInput.value = formatted;
+});
+
+function copyText() {
+    const textArea = document.getElementById("profile-friend-code");
+    let text = textArea.innerText;
+    if (text.includes(':')) {
+        text = text.split(':').pop().trim();
+    }
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text)
+            .then(() => {
+                showToast(`Copied: ${text}`);
+            })
+            .catch(err => {
+                showToast("Failed to copy friend code.", "error");
+            });
+    } else {
+        textArea.select();
+        try {
+            const successful = document.execCommand('copy');
+            showToast(successful ? "Text copied to clipboard!" : "Failed to copy friend code.", "error");
+        } catch (err) {
+            console.error("Fallback copy failed: ", err);
+            showToast("Failed to copy friend code.", "error");
+        }
+    }
+}
