@@ -907,7 +907,13 @@ position: fixed;
   color: black;
   /* Default text color */
   width: 100%;
+  
 }
+/* #UObtn:disabled,
+#IOBtn:disabled {
+  background-color: #ccc !important;
+  cursor: not-allowed;
+} */
 
 #btn-container {
   display: flex;
@@ -923,8 +929,9 @@ position: fixed;
 #UOBtn.active {
   border-color: #ff4d4d;
   /* Distinct border color for active buttons */
-  background-color: #cc0000;
+  background-color: #cc0000 !important;
   color: white;
+
 }
 
 #interestTitleText {

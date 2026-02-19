@@ -9,7 +9,8 @@ import {
   get,
   remove,
   update,
-  child
+  child,
+  onValue
 } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-database.js";
 
 import {
@@ -138,49 +139,48 @@ onAuthStateChanged(auth, (user) => {
     });
 
 
-    // Hook up static profile fields
-    const totalEl = document.getElementById("total");
+    const totalSpendingEl = document.getElementById("total-spending");
+    const amountSpentEl = document.getElementById("amount-spent");
+    const amountEarnedEl = document.getElementById("amount-earned");
     const totalFriendsEl = document.getElementById("total-friends");
     const lastLoginEl = document.getElementById("last-login");
     const createdEl = document.getElementById("account-created");
 
-    const spendingRef = ref(database, `users/${user.uid}/spending`);
+    const peopleListRef = ref(database, `users/${user.uid}/peopleList`);
+    onValue(peopleListRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const peopleData = snapshot.val().peopleData || [];
+        let amountSpent = 0;
+        let amountEarned = 0;
 
-    // Check if spending data exists; if not, initialize it
-    get(spendingRef).then((snapshot) => {
-      if (!snapshot.exists()) {
-        const initialSpending = Array(12).fill(0);
-        set(spendingRef, initialSpending)
-          .then(() => {
-            console.log("Initialized empty spending data for existing user.");
-          })
-          .catch((err) => {
-            console.error("Error creating spending data:", err);
-          });
-      }
-    });
-    spendingRef.once('value').then((snapshot) => {
-      const data = snapshot.val();
-      if (Array.isArray(data)) {
-        const totalSpending = data.reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-        if (totalEl) totalEl.innerText = `Total Amount: $${totalSpending.toFixed(2)}`;
+        peopleData.forEach((person) => {
+          if (person.status === "iOwe" && typeof person.amount === 'number') {
+            amountSpent += person.amount;
+          } else if (person.status === "owesMe" && typeof person.amount === 'number') {
+            amountEarned += person.amount;
+          }
+        });
+
+        if (totalSpendingEl) totalSpendingEl.innerText = `Total Spent: $${(amountSpent + amountEarned).toFixed(2)}`;
+        if (amountSpentEl) amountSpentEl.innerText = `Amount Spent: $${amountSpent.toFixed(2)}`;
+        if (amountEarnedEl) amountEarnedEl.innerText = `Amount Earned: $${amountEarned.toFixed(2)}`;
       } else {
-        if (totalEl) totalEl.innerText = `Total Amount: $0.00`;
+        if (totalSpendingEl) totalSpendingEl.innerText = `Total Spent: $0.00`;
+        if (amountSpentEl) amountSpentEl.innerText = `Amount Spent: $0.00`;
+        if (amountEarnedEl) amountEarnedEl.innerText = `Amount Earned: $0.00`;
       }
     });
 
-    // 2. Total Friends (assumes `users/uid/friends` is an object)
-    const friendsRef = ref(database, `users/${user.uid}/friends`);
-    friendsRef.once('value').then((snapshot) => {
+    const friendsRef = ref(database, `users/${user.uid}/friendsList`);
+    onValue(friendsRef, (snapshot) => {
       const friends = snapshot.val();
       const totalFriends = friends ? Object.keys(friends).length : 0;
       if (totalFriendsEl) totalFriendsEl.innerText = `Total Friends: ${totalFriends}`;
     });
 
-    // 3. Last Login & 4. Account Created — from Auth metadata
     user.reload().then(() => {
-      const creationTime = new Date(user.metadata.creationTime).toLocaleString();
-      const lastSignInTime = new Date(user.metadata.lastSignInTime).toLocaleString();
+      const creationTime = new Date(user.metadata.creationTime).toLocaleDateString();
+      const lastSignInTime = new Date(user.metadata.lastSignInTime).toLocaleDateString();
 
       if (lastLoginEl) lastLoginEl.innerText = `Last Login: ${lastSignInTime}`;
       if (createdEl) createdEl.innerText = `Account Created: ${creationTime}`;
@@ -866,7 +866,7 @@ if (!document.getElementById("IOBtn")) {
 if (!document.getElementById("UOBtn")) {
   const UOBtn = document.createElement("button");
   UOBtn.id = "UOBtn";
-  UOBtn.textContent = "Owed";
+  UOBtn.textContent = "They Owe";
   btnContainer.appendChild(UOBtn);
   UOBtn.addEventListener("click", UOwe);
 }
@@ -945,6 +945,20 @@ interestRangeContainer.appendChild(interestDropdown);
 function openModal(listItem) {
   currentListItem = listItem;
   const interest = JSON.parse(listItem.dataset.interest);
+  const IOBtn = document.getElementById("IOBtn");
+  const UOBtn = document.getElementById("UOBtn");
+  const status = listItem.getAttribute("data-status");
+
+  if (status === "iOwe") {
+    IOBtn.disabled = true;
+    UOBtn.disabled = false;
+  } else if (status === "owesMe") {
+    IOBtn.disabled = false;
+    UOBtn.disabled = true;
+  } else {
+    IOBtn.disabled = false;
+    UOBtn.disabled = false;
+  }
 
   // Update interest controls
   document.getElementById("interestToggle").checked = interest.enabled;
@@ -1318,18 +1332,18 @@ function UOwe() {
   if (!currentListItem) return;
   const status = currentListItem.getAttribute("data-status");
   const amountInput = currentListItem.querySelector(".amount-input");
-  const Ibtn = currentListItem.querySelector("#UOBtn");
-  const Ubtn = currentListItem.querySelector("#IOBtn");
+  const IOBtn = document.getElementById("IOBtn");
+  const UOBtn = document.getElementById("UOBtn");
 
   if (status === "owesMe") {
     currentListItem.removeAttribute("data-status");
     amountInput.style.color = "";
-    if (Ibtn) Ibtn.classList.remove("active");
+    UOBtn.disabled = false;
   } else {
     currentListItem.setAttribute("data-status", "owesMe");
     amountInput.style.color = "rgb(73, 255, 97)";
-    if (Ibtn) Ibtn.classList.add("active");
-    if (Ubtn) Ubtn.classList.remove("active");
+    UOBtn.disabled = true;
+    IOBtn.disabled = false;
   }
 
   saveListToFirebase();
@@ -1340,18 +1354,18 @@ function IOwe() {
   if (!currentListItem) return;
   const status = currentListItem.getAttribute("data-status");
   const amountInput = currentListItem.querySelector(".amount-input");
-  const Ubtn = currentListItem.querySelector("#IOBtn");
-  const Ibtn = currentListItem.querySelector("#UOBtn");
+  const IOBtn = document.getElementById("IOBtn");
+  const UOBtn = document.getElementById("UOBtn");
 
   if (status === "iOwe") {
     currentListItem.removeAttribute("data-status");
     amountInput.style.color = "";
-    if (Ubtn) Ubtn.classList.remove("active");
+    IOBtn.disabled = false;
   } else {
     currentListItem.setAttribute("data-status", "iOwe");
     amountInput.style.color = "rgb(255, 73, 73)";
-    if (Ubtn) Ubtn.classList.add("active");
-    if (Ibtn) Ibtn.classList.remove("active");
+    IOBtn.disabled = true;
+    UOBtn.disabled = false;
   }
 
   saveListToFirebase();
