@@ -70,7 +70,16 @@ function closeNav() {
   document.getElementById("openButton").style.display = "flex";
   document.getElementById("closeButton").style.display = "none";
 }
-document.getElementById("sideNavModal").addEventListener("click", closeNav);
+// Only close when the click lands on the backdrop itself — not on anything
+// inside the sidenav (nav links, the currency <select>, etc.), since a
+// bubbled click from those was closing the nav out from under them (most
+// noticeably, the currency dropdown would open and immediately get yanked
+// shut).
+document.getElementById("sideNavModal").addEventListener("click", (event) => {
+  if (event.target === event.currentTarget) {
+    closeNav();
+  }
+});
 
 
 

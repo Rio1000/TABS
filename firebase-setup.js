@@ -92,13 +92,35 @@ const addExtraInfoBtn = document.getElementById("add-extra-info-btn");
 const closePrompt = document.getElementById("close-prompt");
 const removeMoneyBtn = document.getElementById("remove-money-btn");
 const RFModal2 = document.getElementById("RFModal");
+
+// Currency handling — a single delegated listener updates every rendered
+// row instead of each person-row registering its own "change" listener
+// (which used to leak a new listener per person on every add/reload).
+const currencySymbols = {
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  JPY: "¥",
+};
+const currencySelectEl = document.getElementById("currency-select");
+currencySelectEl.addEventListener("change", () => {
+  const symbol = currencySymbols[currencySelectEl.value];
+  document.querySelectorAll(".dollar-sign").forEach((el) => {
+    el.textContent = symbol;
+  });
+  addMoreMoneyBtn.innerHTML = `+ ${symbol}`;
+  removeMoneyBtn.innerHTML = `- ${symbol}`;
+});
 // Function to show the modal
 
 // Auth State Listener
 let currentUser = null;
 let currentListItem = null;
+let peopleListUnsub = null;
+let friendsListUnsub = null;
+let friendPendingRemoval = null;
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   const loginPage = document.getElementById("Loginpage");
   const signupPage = document.getElementById("signupPage");
   const friendBox = document.getElementById("friendModal");
@@ -111,6 +133,10 @@ onAuthStateChanged(auth, (user) => {
 
     logoutButton.style.display = "block";
     loginSignup.style.display = "none";
+
+    // Settle accrued interest before rendering the list, so the amounts
+    // shown on load already reflect it instead of needing a second refresh.
+    await applyInterestToAll();
 
     // Load data only after authentication
     loadListFromFirebase();
@@ -147,7 +173,8 @@ onAuthStateChanged(auth, (user) => {
     const createdEl = document.getElementById("account-created");
 
     const peopleListRef = ref(database, `users/${user.uid}/peopleList`);
-    onValue(peopleListRef, (snapshot) => {
+    if (peopleListUnsub) peopleListUnsub();
+    peopleListUnsub = onValue(peopleListRef, (snapshot) => {
       if (snapshot.exists()) {
         const peopleData = snapshot.val().peopleData || [];
         let amountSpent = 0;
@@ -172,11 +199,14 @@ onAuthStateChanged(auth, (user) => {
     });
 
     const friendsRef = ref(database, `users/${user.uid}/friendsList`);
-    onValue(friendsRef, (snapshot) => {
+    if (friendsListUnsub) friendsListUnsub();
+    friendsListUnsub = onValue(friendsRef, (snapshot) => {
       const friends = snapshot.val();
       const totalFriends = friends ? Object.keys(friends).length : 0;
       if (totalFriendsEl) totalFriendsEl.innerText = `Total Friends: ${totalFriends}`;
     });
+
+    updatePendingCount();
 
     user.reload().then(() => {
       const creationTime = new Date(user.metadata.creationTime).toLocaleDateString();
@@ -192,6 +222,15 @@ onAuthStateChanged(auth, (user) => {
   } else {
     currentUser = null;
     console.log("No user logged in");
+
+    if (peopleListUnsub) {
+      peopleListUnsub();
+      peopleListUnsub = null;
+    }
+    if (friendsListUnsub) {
+      friendsListUnsub();
+      friendsListUnsub = null;
+    }
 
     logoutButton.style.display = "none";
     loginSignup.style.display = "flex";
@@ -339,7 +378,9 @@ function generateFriendCode() {
   return Math.random().toString(36).substring(2, 10).toUpperCase(); // Example: 'A1B2C3D4'
 }
 document.getElementById("FriendsTab").addEventListener("click", async () => {
-  console.log("FriendsTab clicked");
+  if (!currentUser) return;
+  populateFriendsList();
+  updatePendingCount();
 });
 
 
@@ -450,6 +491,7 @@ async function saveListToFirebase() {
     const amount = isNaN(rawAmount) || rawAmount === "" ? rawAmount : parseFloat(rawAmount);
     const status = item.getAttribute("data-status") || "neutral"; // Get status
     const interest = JSON.parse(item.dataset.interest);
+    const isFriend = item.dataset.isFriend === "true";
     let extraInfoElements = item.querySelectorAll(".extra-info-item");
     let extraInfoArray = [];
 
@@ -467,6 +509,7 @@ async function saveListToFirebase() {
       extraInfo: extraInfoArray,
       status,
       interest,
+      isFriend,
     });
   });
 
@@ -503,7 +546,8 @@ async function loadListFromFirebase() {
           person.name,
           person.amount,
           extraInfoArray,
-          person.interest
+          person.interest,
+          person.isFriend
         );
 
         if (listItem) {
@@ -694,12 +738,22 @@ async function updatePendingCount() {
   if (!currentUser) return;
 
   const pendingRef = ref(database, `users/${currentUser.uid}/pendingRequests`);
+  const sentRef = ref(database, `users/${currentUser.uid}/sentRequests`);
   try {
-    const snapshot = await get(pendingRef);
-    const count = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
-    const badge = document.getElementById("pendingCount");
-    badge.textContent = count;
-    badge.style.display = count > 0 ? "inline-block" : "none";
+    const [pendingSnap, sentSnap] = await Promise.all([
+      get(pendingRef),
+      get(sentRef),
+    ]);
+    const receivedCount = pendingSnap.exists() ? Object.keys(pendingSnap.val()).length : 0;
+    const sentCount = sentSnap.exists() ? Object.keys(sentSnap.val()).length : 0;
+
+    const receivedBadge = document.getElementById("pendingCount");
+    receivedBadge.textContent = receivedCount;
+    receivedBadge.style.display = receivedCount > 0 ? "inline-flex" : "none";
+
+    const sentBadge = document.getElementById("sentCount");
+    sentBadge.textContent = sentCount;
+    sentBadge.style.display = sentCount > 0 ? "inline-flex" : "none";
   } catch (error) {
     console.error("❌ Error updating pending count:", error);
   }
@@ -709,10 +763,12 @@ function addPerson(
   name,
   amount,
   extraInfoArray = [],
-  interest = { enabled: false, rate: 0, period: "monthly" }
+  interest = { enabled: false, rate: 0, period: "monthly" },
+  isFriend = false
 ) {
   const listItem = document.createElement("div");
   listItem.classList.add("personlist-item");
+  listItem.dataset.isFriend = isFriend ? "true" : "false";
 
   const nameAmountContainer = document.createElement("div");
   nameAmountContainer.classList.add("name-amount-container");
@@ -724,25 +780,9 @@ function addPerson(
   const amountContainer = document.createElement("div");
   amountContainer.classList.add("amount-container");
 
-  const currencySelect = document.getElementById("currency-select");
-  let selectedCurrency = currencySelect.value;
-  const currencySymbols = {
-    USD: "$",
-    EUR: "€",
-    GBP: "£",
-    JPY: "¥",
-  };
   const dollarSpan = document.createElement("span");
-  dollarSpan.textContent = currencySymbols[selectedCurrency];
+  dollarSpan.textContent = currencySymbols[document.getElementById("currency-select").value];
   dollarSpan.classList.add("dollar-sign");
-
-  currencySelect.addEventListener("change", () => {
-    selectedCurrency = currencySelect.value;
-    dollarSpan.textContent = currencySymbols[selectedCurrency];
-    addMoreMoneyBtn.innerHTML = `+ ${currencySymbols[selectedCurrency]}`;
-    removeMoneyBtn.innerHTML = `- ${currencySymbols[selectedCurrency]}`;
-    console.log("Selected currency:", selectedCurrency);
-  });
 
   const amountSpan = document.createElement("span");
   amountSpan.classList.add("amount-input");
@@ -759,6 +799,16 @@ function addPerson(
 
   const personItem = document.createElement("div");
   personItem.appendChild(nameSpan);
+  if (isFriend) {
+    // Sibling of nameSpan, not a child of it — anything reading
+    // nameSpan.textContent as the person's name (save/edit/logging) would
+    // otherwise pick up this icon's ligature text too.
+    const friendIcon = document.createElement("span");
+    friendIcon.className = "material-icons friend-icon";
+    friendIcon.textContent = "how_to_reg";
+    friendIcon.title = "This person is one of your friends";
+    personItem.appendChild(friendIcon);
+  }
   personItem.appendChild(amountContainer);
   personItem.classList.add("person-stuff");
 
@@ -815,17 +865,28 @@ function addAdBox() {
   adItem.style.justifyContent = "center";
   adItem.style.background = "rgba(255, 255, 255, 0.05)"; // Subtly different background
 
-  // Placeholder for your Ad Code
   adItem.innerHTML = `
-    <div style="text-align: center; font-size: 12px; color: #888;">
+    <div style="text-align: center; font-size: 12px; color: #888; width: 100%;">
       <p style="margin: 0;">ADVERTISEMENT</p>
-      <div id="ad-container" style="display: flex; align-items: center; justify-content: center;">
-         <span style="opacity: 0.5;">Support Tabs <a href="https://buymeacoffee.com/TABSonFriends" style="color: #3c94e7;">here</a></span>
-      </div>
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="ca-pub-7825788728707782"
+           data-ad-slot="8944873686"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
     </div>
   `;
 
   peopleList.appendChild(adItem);
+
+  // The <ins> above is only in the DOM now, after the list has rendered —
+  // unlike the ins tags baked into index.html (pushed once at page load),
+  // this one needs its own push() once it's actually attached.
+  try {
+    (window.adsbygoogle = window.adsbygoogle || []).push({});
+  } catch (error) {
+    console.error("❌ AdSense push failed:", error);
+  }
 }
 function checkAmountOrItem() {
   const amountSpan = currentListItem.querySelector(".amount-input");
@@ -889,17 +950,6 @@ const interestrangecontainer = document.getElementById(
   "interest-range-container"
 );
 
-interestToggle.addEventListener("change", () => {
-  console.log("Interest toggle changed:", interestToggle.checked);
-
-
-
-
-  rateLabel.innerHTML = '<span class="rate">0</span>%';
-  interestRange.value = 0;
-  enableInterestForPerson();
-});
-
 // Create range slider
 const interestRange = document.createElement("input");
 interestRange.type = "range";
@@ -942,6 +992,22 @@ periods.forEach((period) => {
 // Append dropdown to interestBox
 interestRangeContainer.appendChild(interestDropdown);
 
+// Shared by openModal (initial render) and updateInterest (live toggle) so
+// the box's expand/collapse behavior only has one implementation. Previously
+// only openModal ever called this, so clicking the checkbox inside an
+// already-open modal changed the stored value but never touched the box's
+// height/opacity/display — it only "took effect" the next time you closed
+// and reopened the modal.
+function setInterestBoxExpanded(enabled) {
+  const interestContainer = document.getElementById("interest-container");
+  const interestRangeContainer = document.getElementById(
+    "interest-range-container"
+  );
+  interestContainer.style.height = enabled ? "130px" : "34px";
+  interestRangeContainer.style.opacity = enabled ? 1 : 0;
+  interestRangeContainer.style.display = enabled ? "flex" : "none";
+}
+
 function openModal(listItem) {
   currentListItem = listItem;
   const interest = JSON.parse(listItem.dataset.interest);
@@ -966,21 +1032,13 @@ function openModal(listItem) {
   document.getElementById("interestSelect").value = interest.period;
 
   // Update UI
-  const interestContainer = document.getElementById("interest-container");
-  const interestRangeContainer = document.getElementById(
-    "interest-range-container"
-  );
-  interestContainer.style.height = interest.enabled ? "130px" : "34px";
-  interestRangeContainer.style.opacity = interest.enabled ? 1 : 0;
-  interestRangeContainer.style.display = interest.enabled ? "flex" : "none";
+  setInterestBoxExpanded(interest.enabled);
   document.getElementById(
     "rate"
   ).innerHTML = `<span class="rate">${interest.rate}</span>%`;
 
   document.getElementById("customModal").style.display = "flex";
   checkAmountOrItem();
-
-
 }
 
 document
@@ -1002,26 +1060,72 @@ function debounce(fn, delay) {
   };
 }
 
+const COMPOUNDING_FREQUENCY_BY_PERIOD = {
+  weekly: 52,
+  monthly: 12,
+  quarterly: 4,
+  yearly: 1,
+};
+
+// Shared by updateInterest (single person, on settings change) and
+// applyInterestToAll (every person, on login) so both apply the exact same
+// compound-interest math and both correctly advance lastInterestApplied.
+function computeAccruedAmount(amount, interest) {
+  const now = Date.now();
+  if (!interest?.enabled || typeof amount !== "number") {
+    return { amount, lastInterestApplied: interest?.lastInterestApplied ?? now };
+  }
+
+  const lastApplied = interest.lastInterestApplied || now;
+  const yearsElapsed = (now - lastApplied) / (1000 * 60 * 60 * 24 * 365);
+  if (yearsElapsed <= 0) {
+    return { amount, lastInterestApplied: lastApplied };
+  }
+
+  const rate = interest.rate / 100;
+  const n = COMPOUNDING_FREQUENCY_BY_PERIOD[interest.period] || 12;
+  const newAmount = amount * Math.pow(1 + rate / n, n * yearsElapsed);
+  return { amount: newAmount, lastInterestApplied: now };
+}
+
 function updateInterest() {
   if (!currentListItem) return;
 
-  const now = Date.now();
+  // Settle whatever accrued under the OLD rate/period first — otherwise
+  // changing the rate/period (or just re-toggling) resets lastInterestApplied
+  // to now and silently discards interest already earned since the last
+  // checkpoint.
+  const amountSpan = currentListItem.querySelector(".amount-input");
+  const oldInterest = JSON.parse(currentListItem.dataset.interest || "{}");
+  const currentAmount = parseFloat(amountSpan.value);
+  if (!isNaN(currentAmount)) {
+    const settled = computeAccruedAmount(currentAmount, oldInterest);
+    if (settled.amount !== currentAmount) {
+      amountSpan.textContent = settled.amount.toFixed(2);
+      amountSpan.value = settled.amount.toFixed(2);
+    }
+  }
+
   const interest = {
     enabled: document.getElementById("interestToggle").checked,
     rate: parseFloat(document.getElementById("interestRange").value),
     period: document.getElementById("interestSelect").value,
-    lastInterestApplied: now, // ✅ Ensure lastInterestApplied is stored
+    lastInterestApplied: Date.now(), // ✅ Ensure lastInterestApplied is stored
   };
 
   currentListItem.dataset.interest = JSON.stringify(interest);
+  setInterestBoxExpanded(interest.enabled);
+  document.getElementById(
+    "rate"
+  ).innerHTML = `<span class="rate">${interest.rate}</span>%`;
   saveListToFirebase(); // ✅ Ensure data is saved properly in Firebase
 }
 
-// Function to apply interest to all people in the list
-// Function to apply interest to all people in the list
-// Function to apply interest to all people in the list
-// Function to apply interest to all people in the list
-// Function to apply interest to all people in the list
+// Applies accrued interest to everyone in the list. Called once at login
+// (see onAuthStateChanged) rather than on DOMContentLoaded — currentUser
+// isn't set yet at DOMContentLoaded time (Firebase auth state resolves
+// asynchronously afterwards), so gating on it there meant this almost never
+// actually ran on page load.
 async function applyInterestToAll() {
   if (!currentUser) return;
 
@@ -1032,119 +1136,49 @@ async function applyInterestToAll() {
     if (snapshot.exists()) {
       const peopleData = snapshot.val();
 
-      Object.entries(peopleData).forEach(([key, person]) => {
-        const interest = person.interest || {
-          enabled: false,
-          rate: 0,
-          period: "monthly",
-          lastInterestApplied: Date.now(),
-        };
+      // Collect and await every write — a bare forEach with .then()/.catch()
+      // doesn't block the async function's return, so callers awaiting
+      // applyInterestToAll() would otherwise proceed (e.g. render the list)
+      // before any of these updates actually landed in the database.
+      const updates = Object.entries(peopleData).map(async ([key, person]) => {
+        const interest = person.interest;
+        if (!interest?.enabled) return;
 
-        if (interest.enabled) {
-          const currentAmount = person.amount || 0;
-          const interestRate = interest.rate / 100;
-          let compoundingFrequency = 1;
+        const currentAmount = person.amount || 0;
+        const settled = computeAccruedAmount(currentAmount, interest);
+        if (settled.amount === currentAmount) return;
 
-          switch (interest.period) {
-            case "weekly":
-              compoundingFrequency = 52;
-              break;
-            case "monthly":
-              compoundingFrequency = 12;
-              break;
-            case "quarterly":
-              compoundingFrequency = 4;
-              break;
-            case "yearly":
-              compoundingFrequency = 1;
-              break;
-          }
-
-          const now = Date.now();
-          const lastApplied = interest.lastInterestApplied || now;
-          const timeElapsed = (now - lastApplied) / (1000 * 60 * 60 * 24 * 365); // Convert ms to years
-
-          if (timeElapsed > 0) {
-            // Compound Interest Formula: A = P * (1 + r/n)^(n*t)
-            const newAmount =
-              currentAmount *
-              Math.pow(
-                1 + interestRate / compoundingFrequency,
-                compoundingFrequency * timeElapsed
-              );
-            const interestAmount = newAmount - currentAmount; // Interest gained
-
-            // ✅ Update person with new amount and last interest applied timestamp
-            update(
-              ref(
-                database,
-                `users/${currentUser.uid}/peopleList/peopleData/${key}`
-              ),
-              {
-                amount: newAmount,
-                interest: {
-                  ...interest,
-                  lastInterestApplied: now, // ✅ Update timestamp to prevent double application
-                },
-              }
-            )
-              .then(() => {
-                console.log(
-                  `✅ Interest applied for person at index ${key}: +${interestAmount.toFixed(
-                    2
-                  )}`
-                );
-              })
-              .catch((error) => {
-                console.error(
-                  `❌ Error updating person at index ${key}:`,
-                  error
-                );
-              });
-          }
+        try {
+          await update(
+            ref(
+              database,
+              `users/${currentUser.uid}/peopleList/peopleData/${key}`
+            ),
+            {
+              amount: settled.amount,
+              interest: {
+                ...interest,
+                lastInterestApplied: settled.lastInterestApplied, // ✅ Update timestamp to prevent double application
+              },
+            }
+          );
+          console.log(
+            `✅ Interest applied for person at index ${key}: +${(
+              settled.amount - currentAmount
+            ).toFixed(2)}`
+          );
+        } catch (error) {
+          console.error(`❌ Error updating person at index ${key}:`, error);
         }
       });
+
+      await Promise.all(updates);
     }
   } catch (error) {
     console.error("❌ Error applying interest:", error);
   }
 }
 
-
-function enableInterestForPerson(index, personName, rate = 5, period = "monthly") {
-  const now = Date.now();
-  personName = currentListItem.querySelector(".name-span").textContent;
-  const interestRef = ref(
-    database,
-    `users/${currentUser.uid}/peopleList/peopleData/${index}/interest`
-  );
-  update(interestRef, {
-    enabled: true,
-    rate: rate,
-    period: period,
-    lastInterestApplied: now, // ✅ Ensure this is always saved
-  })
-    .then(() => {
-      console.log(`✅ Interest enabled for person at index ${index}`);
-      logUserAction(`Enabled interest for ${personName} at (${rate}% ${period})`);
-
-    })
-    .catch((error) => {
-      console.error("❌ Error enabling interest:", error);
-    });
-}
-
-// Call this function when the page loads
-document.addEventListener("DOMContentLoaded", applyInterestToAll);
-document
-  .getElementById("interestToggle")
-  .addEventListener("change", applyInterestToAll);
-document
-  .getElementById("interestRange")
-  .addEventListener("input", applyInterestToAll);
-document
-  .getElementById("interestSelect")
-  .addEventListener("change", applyInterestToAll);
 
 document.querySelectorAll("#closeEditMoney").forEach((button) => {
   button.addEventListener("click", function () {
@@ -1621,6 +1655,27 @@ function closeAddFriend() {
 }
 
 
+// Bound once (not per-friend-per-render) so it always acts on whichever
+// friend was last clicked via friendPendingRemoval, instead of getting
+// clobbered by the last friend rendered in populateFriendsList's loop.
+document.getElementById("removeFriendBtn").addEventListener("click", async () => {
+  if (!friendPendingRemoval) return;
+  const { friendId, friendData } = friendPendingRemoval;
+
+  await remove(
+    ref(database, `users/${currentUser.uid}/friendsList/${friendId}`)
+  );
+  showToast(
+    `${friendData.firstName} has been removed from your friends list.`,
+    "info"
+  );
+  await logUserAction(`Removed friend: ${friendData.firstName} ${friendData.lastName}`);
+
+  friendPendingRemoval = null;
+  populateFriendsList(); // Refresh list after removal
+  RFModal2.style.display = "none";
+});
+
 async function populateFriendsList() {
   const friendsListUl = document.getElementById("friendsList");
   if (!friendsListUl) return; // Exit if the <ul> element doesn't exist
@@ -1654,31 +1709,17 @@ async function populateFriendsList() {
         removeButton.id = "RemoveButton";
 
         removeButton.onclick = () => {
-          console.log("Remove button clicked for", friendData.firstName);
+          // Remember which friend this click was for, so the shared confirm
+          // button (bound once, below) removes the right one instead of
+          // whichever friend happened to render last.
+          friendPendingRemoval = { friendId, friendData };
 
           const RFModal2 = document.getElementById("RFModal");
           if (RFModal2) {
             RFModal2.style.display = "flex";
-            console.log("RFModal2 should now be visible.");
           } else {
             console.error("RFModal2 not found in DOM!");
           }
-        };
-
-
-        const removeConfirmButton = document.getElementById("removeFriendBtn");
-        removeConfirmButton.onclick = async () => {
-          await remove(
-            ref(database, `users/${currentUser.uid}/friendsList/${friendId}`)
-          );
-          showToast(
-            `${friendData.firstName} has been removed from your friends list.`,
-            "info"
-          );
-          await logUserAction(`Removed friend: ${friendData.firstName} ${friendData.lastName}`);
-
-          populateFriendsList(); // Refresh list after removal
-          RFModal2.style.display = "none";
         };
 
         const friendAddButton = document.createElement("button");
@@ -1688,7 +1729,13 @@ async function populateFriendsList() {
         friendAddButton.style.cursor = "pointer";
         friendAddButton.style.backgroundColor = " #3c94e7";
         friendAddButton.onclick = () => {
-          addPerson(`${friendData.firstName} ${friendData.lastName}`, 0); // Add friend to person list
+          addPerson(
+            `${friendData.firstName} ${friendData.lastName}`,
+            0,
+            [],
+            undefined,
+            true // Add friend to person list, flagged so the row shows the friend icon
+          );
           showToast(
             `${friendData.firstName} has been added to your person list.`,
             "success"
@@ -1777,6 +1824,7 @@ export async function sendFriendRequest(friendUserId, friendData) {
 
   showToast("Friend request sent!", "success");
   logUserAction(`Sent friend request to ${friendData.firstName} ${friendData.lastName}`);
+  updatePendingCount();
 }
 
 
@@ -1806,9 +1854,12 @@ async function loadFriendRequests() {
       const rejectBtn = document.createElement("button");
       rejectBtn.textContent = "❌";
       rejectBtn.onclick = async () => {
-        await remove(
-          ref(database, `users/${currentUser.uid}/pendingRequests/${id}`)
-        );
+        await Promise.all([
+          remove(ref(database, `users/${currentUser.uid}/pendingRequests/${id}`)),
+          // Also clear it from the sender's sentRequests, otherwise they'd
+          // see "request sent" forever with no way to know it was rejected.
+          remove(ref(database, `users/${id}/sentRequests/${currentUser.uid}`)),
+        ]);
         showToast("Request rejected.", "info");
         loadFriendRequests();
         updatePendingCount();
@@ -1830,9 +1881,12 @@ async function loadFriendRequests() {
       const cancelBtn = document.createElement("button");
       cancelBtn.textContent = "❌";
       cancelBtn.onclick = async () => {
-        await remove(
-          ref(database, `users/${currentUser.uid}/sentRequests/${id}`)
-        );
+        await Promise.all([
+          remove(ref(database, `users/${currentUser.uid}/sentRequests/${id}`)),
+          // Also clear it from the recipient's pendingRequests, otherwise
+          // they'd keep seeing a request that was already canceled.
+          remove(ref(database, `users/${id}/pendingRequests/${currentUser.uid}`)),
+        ]);
         showToast("Request canceled.", "info");
         loadFriendRequests();
         updatePendingCount();
@@ -1892,6 +1946,7 @@ async function approveFriendRequest(requestId, request) {
     );
     populateFriendsList();
     loadFriendRequests();
+    updatePendingCount();
   } catch (error) {
     console.error("❌ Error approving friend:", error);
     showToast(`Error approving friend: ${error.message}`, "error");

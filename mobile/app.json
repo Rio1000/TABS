@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "TABS",
+    "slug": "tabs-mobile",
+    "scheme": "tabs",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0b0b10",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tabsonfriends.app"
+    },
+    "android": {
+      "package": "com.tabsonfriends.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0b0b10",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
