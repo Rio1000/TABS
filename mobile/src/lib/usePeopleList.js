@@ -32,6 +32,17 @@ export function usePeopleList(uid) {
       const withInterest = rawList.map(applyElapsedInterest);
       setPeople(withInterest);
       setLoading(false);
+
+      // Settle any accrued interest back to Firebase right away. Otherwise
+      // the bumped amount only ever lived in local state — the next write
+      // from an unrelated edit would carry it along without advancing
+      // interest.lastInterestApplied, so the same elapsed window would get
+      // recomputed (and double-applied) the next time this list loads.
+      const changed = withInterest.some((p, i) => p.amount !== rawList[i]?.amount);
+      if (changed) {
+        savingRef.current = true;
+        set(ref(database, `users/${uid}/peopleList`), { peopleData: withInterest });
+      }
     });
 
     return unsub;

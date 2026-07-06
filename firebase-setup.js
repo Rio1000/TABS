@@ -120,7 +120,7 @@ let peopleListUnsub = null;
 let friendsListUnsub = null;
 let friendPendingRemoval = null;
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   const loginPage = document.getElementById("Loginpage");
   const signupPage = document.getElementById("signupPage");
   const friendBox = document.getElementById("friendModal");
@@ -133,6 +133,10 @@ onAuthStateChanged(auth, (user) => {
 
     logoutButton.style.display = "block";
     loginSignup.style.display = "none";
+
+    // Settle accrued interest before rendering the list, so the amounts
+    // shown on load already reflect it instead of needing a second refresh.
+    await applyInterestToAll();
 
     // Load data only after authentication
     loadListFromFirebase();
@@ -910,17 +914,6 @@ const interestrangecontainer = document.getElementById(
   "interest-range-container"
 );
 
-interestToggle.addEventListener("change", () => {
-  console.log("Interest toggle changed:", interestToggle.checked);
-
-
-
-
-  rateLabel.innerHTML = '<span class="rate">0</span>%';
-  interestRange.value = 0;
-  enableInterestForPerson();
-});
-
 // Create range slider
 const interestRange = document.createElement("input");
 interestRange.type = "range";
@@ -1023,26 +1016,68 @@ function debounce(fn, delay) {
   };
 }
 
+const COMPOUNDING_FREQUENCY_BY_PERIOD = {
+  weekly: 52,
+  monthly: 12,
+  quarterly: 4,
+  yearly: 1,
+};
+
+// Shared by updateInterest (single person, on settings change) and
+// applyInterestToAll (every person, on login) so both apply the exact same
+// compound-interest math and both correctly advance lastInterestApplied.
+function computeAccruedAmount(amount, interest) {
+  const now = Date.now();
+  if (!interest?.enabled || typeof amount !== "number") {
+    return { amount, lastInterestApplied: interest?.lastInterestApplied ?? now };
+  }
+
+  const lastApplied = interest.lastInterestApplied || now;
+  const yearsElapsed = (now - lastApplied) / (1000 * 60 * 60 * 24 * 365);
+  if (yearsElapsed <= 0) {
+    return { amount, lastInterestApplied: lastApplied };
+  }
+
+  const rate = interest.rate / 100;
+  const n = COMPOUNDING_FREQUENCY_BY_PERIOD[interest.period] || 12;
+  const newAmount = amount * Math.pow(1 + rate / n, n * yearsElapsed);
+  return { amount: newAmount, lastInterestApplied: now };
+}
+
 function updateInterest() {
   if (!currentListItem) return;
 
-  const now = Date.now();
+  // Settle whatever accrued under the OLD rate/period first — otherwise
+  // changing the rate/period (or just re-toggling) resets lastInterestApplied
+  // to now and silently discards interest already earned since the last
+  // checkpoint.
+  const amountSpan = currentListItem.querySelector(".amount-input");
+  const oldInterest = JSON.parse(currentListItem.dataset.interest || "{}");
+  const currentAmount = parseFloat(amountSpan.value);
+  if (!isNaN(currentAmount)) {
+    const settled = computeAccruedAmount(currentAmount, oldInterest);
+    if (settled.amount !== currentAmount) {
+      amountSpan.textContent = settled.amount.toFixed(2);
+      amountSpan.value = settled.amount.toFixed(2);
+    }
+  }
+
   const interest = {
     enabled: document.getElementById("interestToggle").checked,
     rate: parseFloat(document.getElementById("interestRange").value),
     period: document.getElementById("interestSelect").value,
-    lastInterestApplied: now, // ✅ Ensure lastInterestApplied is stored
+    lastInterestApplied: Date.now(), // ✅ Ensure lastInterestApplied is stored
   };
 
   currentListItem.dataset.interest = JSON.stringify(interest);
   saveListToFirebase(); // ✅ Ensure data is saved properly in Firebase
 }
 
-// Function to apply interest to all people in the list
-// Function to apply interest to all people in the list
-// Function to apply interest to all people in the list
-// Function to apply interest to all people in the list
-// Function to apply interest to all people in the list
+// Applies accrued interest to everyone in the list. Called once at login
+// (see onAuthStateChanged) rather than on DOMContentLoaded — currentUser
+// isn't set yet at DOMContentLoaded time (Firebase auth state resolves
+// asynchronously afterwards), so gating on it there meant this almost never
+// actually ran on page load.
 async function applyInterestToAll() {
   if (!currentUser) return;
 
@@ -1053,119 +1088,49 @@ async function applyInterestToAll() {
     if (snapshot.exists()) {
       const peopleData = snapshot.val();
 
-      Object.entries(peopleData).forEach(([key, person]) => {
-        const interest = person.interest || {
-          enabled: false,
-          rate: 0,
-          period: "monthly",
-          lastInterestApplied: Date.now(),
-        };
+      // Collect and await every write — a bare forEach with .then()/.catch()
+      // doesn't block the async function's return, so callers awaiting
+      // applyInterestToAll() would otherwise proceed (e.g. render the list)
+      // before any of these updates actually landed in the database.
+      const updates = Object.entries(peopleData).map(async ([key, person]) => {
+        const interest = person.interest;
+        if (!interest?.enabled) return;
 
-        if (interest.enabled) {
-          const currentAmount = person.amount || 0;
-          const interestRate = interest.rate / 100;
-          let compoundingFrequency = 1;
+        const currentAmount = person.amount || 0;
+        const settled = computeAccruedAmount(currentAmount, interest);
+        if (settled.amount === currentAmount) return;
 
-          switch (interest.period) {
-            case "weekly":
-              compoundingFrequency = 52;
-              break;
-            case "monthly":
-              compoundingFrequency = 12;
-              break;
-            case "quarterly":
-              compoundingFrequency = 4;
-              break;
-            case "yearly":
-              compoundingFrequency = 1;
-              break;
-          }
-
-          const now = Date.now();
-          const lastApplied = interest.lastInterestApplied || now;
-          const timeElapsed = (now - lastApplied) / (1000 * 60 * 60 * 24 * 365); // Convert ms to years
-
-          if (timeElapsed > 0) {
-            // Compound Interest Formula: A = P * (1 + r/n)^(n*t)
-            const newAmount =
-              currentAmount *
-              Math.pow(
-                1 + interestRate / compoundingFrequency,
-                compoundingFrequency * timeElapsed
-              );
-            const interestAmount = newAmount - currentAmount; // Interest gained
-
-            // ✅ Update person with new amount and last interest applied timestamp
-            update(
-              ref(
-                database,
-                `users/${currentUser.uid}/peopleList/peopleData/${key}`
-              ),
-              {
-                amount: newAmount,
-                interest: {
-                  ...interest,
-                  lastInterestApplied: now, // ✅ Update timestamp to prevent double application
-                },
-              }
-            )
-              .then(() => {
-                console.log(
-                  `✅ Interest applied for person at index ${key}: +${interestAmount.toFixed(
-                    2
-                  )}`
-                );
-              })
-              .catch((error) => {
-                console.error(
-                  `❌ Error updating person at index ${key}:`,
-                  error
-                );
-              });
-          }
+        try {
+          await update(
+            ref(
+              database,
+              `users/${currentUser.uid}/peopleList/peopleData/${key}`
+            ),
+            {
+              amount: settled.amount,
+              interest: {
+                ...interest,
+                lastInterestApplied: settled.lastInterestApplied, // ✅ Update timestamp to prevent double application
+              },
+            }
+          );
+          console.log(
+            `✅ Interest applied for person at index ${key}: +${(
+              settled.amount - currentAmount
+            ).toFixed(2)}`
+          );
+        } catch (error) {
+          console.error(`❌ Error updating person at index ${key}:`, error);
         }
       });
+
+      await Promise.all(updates);
     }
   } catch (error) {
     console.error("❌ Error applying interest:", error);
   }
 }
 
-
-function enableInterestForPerson(index, personName, rate = 5, period = "monthly") {
-  const now = Date.now();
-  personName = currentListItem.querySelector(".name-span").textContent;
-  const interestRef = ref(
-    database,
-    `users/${currentUser.uid}/peopleList/peopleData/${index}/interest`
-  );
-  update(interestRef, {
-    enabled: true,
-    rate: rate,
-    period: period,
-    lastInterestApplied: now, // ✅ Ensure this is always saved
-  })
-    .then(() => {
-      console.log(`✅ Interest enabled for person at index ${index}`);
-      logUserAction(`Enabled interest for ${personName} at (${rate}% ${period})`);
-
-    })
-    .catch((error) => {
-      console.error("❌ Error enabling interest:", error);
-    });
-}
-
-// Call this function when the page loads
-document.addEventListener("DOMContentLoaded", applyInterestToAll);
-document
-  .getElementById("interestToggle")
-  .addEventListener("change", applyInterestToAll);
-document
-  .getElementById("interestRange")
-  .addEventListener("input", applyInterestToAll);
-document
-  .getElementById("interestSelect")
-  .addEventListener("change", applyInterestToAll);
 
 document.querySelectorAll("#closeEditMoney").forEach((button) => {
   button.addEventListener("click", function () {
