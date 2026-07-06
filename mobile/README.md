@@ -101,5 +101,12 @@ mobile/
   not the key itself.
 - Both `npx expo export --platform android` and `--platform ios` were run
   during development to confirm the app bundles cleanly through Metro on
-  both platforms (939 modules, no resolution errors) before this was
-  committed.
+  both platforms before this was committed.
+- Pinned to **Expo SDK 54** on purpose, rather than whatever `expo@latest`
+  resolves to at scaffold time — Expo Go only runs projects matching the
+  exact SDK version it ships with, so if `npx expo start` ever reports a
+  version mismatch against your installed Expo Go, that's what to check
+  first (see your Expo Go app's home screen for the SDK it supports, and
+  align this project's `expo`/`react`/`react-native`/etc. versions in
+  `package.json` to match, e.g. via the versions listed in
+  `node_modules/expo/bundledNativeModules.json` for that SDK).
