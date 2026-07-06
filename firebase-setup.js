@@ -491,6 +491,7 @@ async function saveListToFirebase() {
     const amount = isNaN(rawAmount) || rawAmount === "" ? rawAmount : parseFloat(rawAmount);
     const status = item.getAttribute("data-status") || "neutral"; // Get status
     const interest = JSON.parse(item.dataset.interest);
+    const isFriend = item.dataset.isFriend === "true";
     let extraInfoElements = item.querySelectorAll(".extra-info-item");
     let extraInfoArray = [];
 
@@ -508,6 +509,7 @@ async function saveListToFirebase() {
       extraInfo: extraInfoArray,
       status,
       interest,
+      isFriend,
     });
   });
 
@@ -544,7 +546,8 @@ async function loadListFromFirebase() {
           person.name,
           person.amount,
           extraInfoArray,
-          person.interest
+          person.interest,
+          person.isFriend
         );
 
         if (listItem) {
@@ -735,12 +738,22 @@ async function updatePendingCount() {
   if (!currentUser) return;
 
   const pendingRef = ref(database, `users/${currentUser.uid}/pendingRequests`);
+  const sentRef = ref(database, `users/${currentUser.uid}/sentRequests`);
   try {
-    const snapshot = await get(pendingRef);
-    const count = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
-    const badge = document.getElementById("pendingCount");
-    badge.textContent = count;
-    badge.style.display = count > 0 ? "inline-block" : "none";
+    const [pendingSnap, sentSnap] = await Promise.all([
+      get(pendingRef),
+      get(sentRef),
+    ]);
+    const receivedCount = pendingSnap.exists() ? Object.keys(pendingSnap.val()).length : 0;
+    const sentCount = sentSnap.exists() ? Object.keys(sentSnap.val()).length : 0;
+
+    const receivedBadge = document.getElementById("pendingCount");
+    receivedBadge.textContent = receivedCount;
+    receivedBadge.style.display = receivedCount > 0 ? "inline-flex" : "none";
+
+    const sentBadge = document.getElementById("sentCount");
+    sentBadge.textContent = sentCount;
+    sentBadge.style.display = sentCount > 0 ? "inline-flex" : "none";
   } catch (error) {
     console.error("❌ Error updating pending count:", error);
   }
@@ -750,10 +763,12 @@ function addPerson(
   name,
   amount,
   extraInfoArray = [],
-  interest = { enabled: false, rate: 0, period: "monthly" }
+  interest = { enabled: false, rate: 0, period: "monthly" },
+  isFriend = false
 ) {
   const listItem = document.createElement("div");
   listItem.classList.add("personlist-item");
+  listItem.dataset.isFriend = isFriend ? "true" : "false";
 
   const nameAmountContainer = document.createElement("div");
   nameAmountContainer.classList.add("name-amount-container");
@@ -784,6 +799,16 @@ function addPerson(
 
   const personItem = document.createElement("div");
   personItem.appendChild(nameSpan);
+  if (isFriend) {
+    // Sibling of nameSpan, not a child of it — anything reading
+    // nameSpan.textContent as the person's name (save/edit/logging) would
+    // otherwise pick up this icon's ligature text too.
+    const friendIcon = document.createElement("span");
+    friendIcon.className = "material-icons friend-icon";
+    friendIcon.textContent = "how_to_reg";
+    friendIcon.title = "This person is one of your friends";
+    personItem.appendChild(friendIcon);
+  }
   personItem.appendChild(amountContainer);
   personItem.classList.add("person-stuff");
 
@@ -840,17 +865,28 @@ function addAdBox() {
   adItem.style.justifyContent = "center";
   adItem.style.background = "rgba(255, 255, 255, 0.05)"; // Subtly different background
 
-  // Placeholder for your Ad Code
   adItem.innerHTML = `
-    <div style="text-align: center; font-size: 12px; color: #888;">
+    <div style="text-align: center; font-size: 12px; color: #888; width: 100%;">
       <p style="margin: 0;">ADVERTISEMENT</p>
-      <div id="ad-container" style="display: flex; align-items: center; justify-content: center;">
-         <span style="opacity: 0.5;">Support Tabs <a href="https://buymeacoffee.com/TABSonFriends" style="color: #3c94e7;">here</a></span>
-      </div>
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="ca-pub-7825788728707782"
+           data-ad-slot="8944873686"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
     </div>
   `;
 
   peopleList.appendChild(adItem);
+
+  // The <ins> above is only in the DOM now, after the list has rendered —
+  // unlike the ins tags baked into index.html (pushed once at page load),
+  // this one needs its own push() once it's actually attached.
+  try {
+    (window.adsbygoogle = window.adsbygoogle || []).push({});
+  } catch (error) {
+    console.error("❌ AdSense push failed:", error);
+  }
 }
 function checkAmountOrItem() {
   const amountSpan = currentListItem.querySelector(".amount-input");
@@ -956,6 +992,22 @@ periods.forEach((period) => {
 // Append dropdown to interestBox
 interestRangeContainer.appendChild(interestDropdown);
 
+// Shared by openModal (initial render) and updateInterest (live toggle) so
+// the box's expand/collapse behavior only has one implementation. Previously
+// only openModal ever called this, so clicking the checkbox inside an
+// already-open modal changed the stored value but never touched the box's
+// height/opacity/display — it only "took effect" the next time you closed
+// and reopened the modal.
+function setInterestBoxExpanded(enabled) {
+  const interestContainer = document.getElementById("interest-container");
+  const interestRangeContainer = document.getElementById(
+    "interest-range-container"
+  );
+  interestContainer.style.height = enabled ? "130px" : "34px";
+  interestRangeContainer.style.opacity = enabled ? 1 : 0;
+  interestRangeContainer.style.display = enabled ? "flex" : "none";
+}
+
 function openModal(listItem) {
   currentListItem = listItem;
   const interest = JSON.parse(listItem.dataset.interest);
@@ -980,21 +1032,13 @@ function openModal(listItem) {
   document.getElementById("interestSelect").value = interest.period;
 
   // Update UI
-  const interestContainer = document.getElementById("interest-container");
-  const interestRangeContainer = document.getElementById(
-    "interest-range-container"
-  );
-  interestContainer.style.height = interest.enabled ? "130px" : "34px";
-  interestRangeContainer.style.opacity = interest.enabled ? 1 : 0;
-  interestRangeContainer.style.display = interest.enabled ? "flex" : "none";
+  setInterestBoxExpanded(interest.enabled);
   document.getElementById(
     "rate"
   ).innerHTML = `<span class="rate">${interest.rate}</span>%`;
 
   document.getElementById("customModal").style.display = "flex";
   checkAmountOrItem();
-
-
 }
 
 document
@@ -1070,6 +1114,10 @@ function updateInterest() {
   };
 
   currentListItem.dataset.interest = JSON.stringify(interest);
+  setInterestBoxExpanded(interest.enabled);
+  document.getElementById(
+    "rate"
+  ).innerHTML = `<span class="rate">${interest.rate}</span>%`;
   saveListToFirebase(); // ✅ Ensure data is saved properly in Firebase
 }
 
@@ -1681,7 +1729,13 @@ async function populateFriendsList() {
         friendAddButton.style.cursor = "pointer";
         friendAddButton.style.backgroundColor = " #3c94e7";
         friendAddButton.onclick = () => {
-          addPerson(`${friendData.firstName} ${friendData.lastName}`, 0); // Add friend to person list
+          addPerson(
+            `${friendData.firstName} ${friendData.lastName}`,
+            0,
+            [],
+            undefined,
+            true // Add friend to person list, flagged so the row shows the friend icon
+          );
           showToast(
             `${friendData.firstName} has been added to your person list.`,
             "success"
@@ -1770,6 +1824,7 @@ export async function sendFriendRequest(friendUserId, friendData) {
 
   showToast("Friend request sent!", "success");
   logUserAction(`Sent friend request to ${friendData.firstName} ${friendData.lastName}`);
+  updatePendingCount();
 }
 
 

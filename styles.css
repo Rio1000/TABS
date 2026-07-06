@@ -637,6 +637,14 @@ input {
   display: inline-block;
 }
 
+.friend-icon {
+  font-size: 18px;
+  color: #3c94e7;
+  vertical-align: middle;
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+
 /* Styling for the dollar sign */
 .dollar-sign {
   font-weight: bold;
@@ -1030,8 +1038,29 @@ position: fixed;
   cursor: pointer;
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
-  
+
 }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background-color: #ff4d4d;
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  vertical-align: middle;
+}
+
+.badge-sent {
+  background-color: #3c94e7;
+}
+
 #googleSignInBtn,
 #googleSignUpBtn {
   display: flex;
@@ -1297,6 +1326,14 @@ position: fixed;
   position: relative;
   align-items: center;
   justify-content: center;
+}
+
+/* .friend-content's only in-flow child is #friendBox (friendCodeBox is
+   absolutely positioned), so the shared justify-content: center above
+   centered the whole friends list vertically in the box instead of letting
+   it start at the top. */
+.friend-content {
+  justify-content: flex-start;
 }
 
 #profile-Accounts {
