@@ -84,7 +84,6 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  border-radius: 18px;
   font-size: 24px;
   padding: 10px;
   background-color: transparent;
@@ -93,6 +92,7 @@ body {
   transition: 0.3s;
   display: block;
   overflow-y: scroll;
+  border-top: 5px solid #142239;
 }
 
 .personlist::-webkit-scrollbar {
@@ -122,6 +122,7 @@ body {
   transition: 0.3s;
   flex-direction: column;
   width: 93%;
+  background-color: #1f4a5aa3;
 }
 .person-stuff{
   max-width: 75%;
