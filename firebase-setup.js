@@ -92,11 +92,33 @@ const addExtraInfoBtn = document.getElementById("add-extra-info-btn");
 const closePrompt = document.getElementById("close-prompt");
 const removeMoneyBtn = document.getElementById("remove-money-btn");
 const RFModal2 = document.getElementById("RFModal");
+
+// Currency handling — a single delegated listener updates every rendered
+// row instead of each person-row registering its own "change" listener
+// (which used to leak a new listener per person on every add/reload).
+const currencySymbols = {
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  JPY: "¥",
+};
+const currencySelectEl = document.getElementById("currency-select");
+currencySelectEl.addEventListener("change", () => {
+  const symbol = currencySymbols[currencySelectEl.value];
+  document.querySelectorAll(".dollar-sign").forEach((el) => {
+    el.textContent = symbol;
+  });
+  addMoreMoneyBtn.innerHTML = `+ ${symbol}`;
+  removeMoneyBtn.innerHTML = `- ${symbol}`;
+});
 // Function to show the modal
 
 // Auth State Listener
 let currentUser = null;
 let currentListItem = null;
+let peopleListUnsub = null;
+let friendsListUnsub = null;
+let friendPendingRemoval = null;
 
 onAuthStateChanged(auth, (user) => {
   const loginPage = document.getElementById("Loginpage");
@@ -147,7 +169,8 @@ onAuthStateChanged(auth, (user) => {
     const createdEl = document.getElementById("account-created");
 
     const peopleListRef = ref(database, `users/${user.uid}/peopleList`);
-    onValue(peopleListRef, (snapshot) => {
+    if (peopleListUnsub) peopleListUnsub();
+    peopleListUnsub = onValue(peopleListRef, (snapshot) => {
       if (snapshot.exists()) {
         const peopleData = snapshot.val().peopleData || [];
         let amountSpent = 0;
@@ -172,11 +195,14 @@ onAuthStateChanged(auth, (user) => {
     });
 
     const friendsRef = ref(database, `users/${user.uid}/friendsList`);
-    onValue(friendsRef, (snapshot) => {
+    if (friendsListUnsub) friendsListUnsub();
+    friendsListUnsub = onValue(friendsRef, (snapshot) => {
       const friends = snapshot.val();
       const totalFriends = friends ? Object.keys(friends).length : 0;
       if (totalFriendsEl) totalFriendsEl.innerText = `Total Friends: ${totalFriends}`;
     });
+
+    updatePendingCount();
 
     user.reload().then(() => {
       const creationTime = new Date(user.metadata.creationTime).toLocaleDateString();
@@ -192,6 +218,15 @@ onAuthStateChanged(auth, (user) => {
   } else {
     currentUser = null;
     console.log("No user logged in");
+
+    if (peopleListUnsub) {
+      peopleListUnsub();
+      peopleListUnsub = null;
+    }
+    if (friendsListUnsub) {
+      friendsListUnsub();
+      friendsListUnsub = null;
+    }
 
     logoutButton.style.display = "none";
     loginSignup.style.display = "flex";
@@ -339,7 +374,9 @@ function generateFriendCode() {
   return Math.random().toString(36).substring(2, 10).toUpperCase(); // Example: 'A1B2C3D4'
 }
 document.getElementById("FriendsTab").addEventListener("click", async () => {
-  console.log("FriendsTab clicked");
+  if (!currentUser) return;
+  populateFriendsList();
+  updatePendingCount();
 });
 
 
@@ -724,25 +761,9 @@ function addPerson(
   const amountContainer = document.createElement("div");
   amountContainer.classList.add("amount-container");
 
-  const currencySelect = document.getElementById("currency-select");
-  let selectedCurrency = currencySelect.value;
-  const currencySymbols = {
-    USD: "$",
-    EUR: "€",
-    GBP: "£",
-    JPY: "¥",
-  };
   const dollarSpan = document.createElement("span");
-  dollarSpan.textContent = currencySymbols[selectedCurrency];
+  dollarSpan.textContent = currencySymbols[document.getElementById("currency-select").value];
   dollarSpan.classList.add("dollar-sign");
-
-  currencySelect.addEventListener("change", () => {
-    selectedCurrency = currencySelect.value;
-    dollarSpan.textContent = currencySymbols[selectedCurrency];
-    addMoreMoneyBtn.innerHTML = `+ ${currencySymbols[selectedCurrency]}`;
-    removeMoneyBtn.innerHTML = `- ${currencySymbols[selectedCurrency]}`;
-    console.log("Selected currency:", selectedCurrency);
-  });
 
   const amountSpan = document.createElement("span");
   amountSpan.classList.add("amount-input");
@@ -1621,6 +1642,27 @@ function closeAddFriend() {
 }
 
 
+// Bound once (not per-friend-per-render) so it always acts on whichever
+// friend was last clicked via friendPendingRemoval, instead of getting
+// clobbered by the last friend rendered in populateFriendsList's loop.
+document.getElementById("removeFriendBtn").addEventListener("click", async () => {
+  if (!friendPendingRemoval) return;
+  const { friendId, friendData } = friendPendingRemoval;
+
+  await remove(
+    ref(database, `users/${currentUser.uid}/friendsList/${friendId}`)
+  );
+  showToast(
+    `${friendData.firstName} has been removed from your friends list.`,
+    "info"
+  );
+  await logUserAction(`Removed friend: ${friendData.firstName} ${friendData.lastName}`);
+
+  friendPendingRemoval = null;
+  populateFriendsList(); // Refresh list after removal
+  RFModal2.style.display = "none";
+});
+
 async function populateFriendsList() {
   const friendsListUl = document.getElementById("friendsList");
   if (!friendsListUl) return; // Exit if the <ul> element doesn't exist
@@ -1654,31 +1696,17 @@ async function populateFriendsList() {
         removeButton.id = "RemoveButton";
 
         removeButton.onclick = () => {
-          console.log("Remove button clicked for", friendData.firstName);
+          // Remember which friend this click was for, so the shared confirm
+          // button (bound once, below) removes the right one instead of
+          // whichever friend happened to render last.
+          friendPendingRemoval = { friendId, friendData };
 
           const RFModal2 = document.getElementById("RFModal");
           if (RFModal2) {
             RFModal2.style.display = "flex";
-            console.log("RFModal2 should now be visible.");
           } else {
             console.error("RFModal2 not found in DOM!");
           }
-        };
-
-
-        const removeConfirmButton = document.getElementById("removeFriendBtn");
-        removeConfirmButton.onclick = async () => {
-          await remove(
-            ref(database, `users/${currentUser.uid}/friendsList/${friendId}`)
-          );
-          showToast(
-            `${friendData.firstName} has been removed from your friends list.`,
-            "info"
-          );
-          await logUserAction(`Removed friend: ${friendData.firstName} ${friendData.lastName}`);
-
-          populateFriendsList(); // Refresh list after removal
-          RFModal2.style.display = "none";
         };
 
         const friendAddButton = document.createElement("button");
@@ -1806,9 +1834,12 @@ async function loadFriendRequests() {
       const rejectBtn = document.createElement("button");
       rejectBtn.textContent = "❌";
       rejectBtn.onclick = async () => {
-        await remove(
-          ref(database, `users/${currentUser.uid}/pendingRequests/${id}`)
-        );
+        await Promise.all([
+          remove(ref(database, `users/${currentUser.uid}/pendingRequests/${id}`)),
+          // Also clear it from the sender's sentRequests, otherwise they'd
+          // see "request sent" forever with no way to know it was rejected.
+          remove(ref(database, `users/${id}/sentRequests/${currentUser.uid}`)),
+        ]);
         showToast("Request rejected.", "info");
         loadFriendRequests();
         updatePendingCount();
@@ -1830,9 +1861,12 @@ async function loadFriendRequests() {
       const cancelBtn = document.createElement("button");
       cancelBtn.textContent = "❌";
       cancelBtn.onclick = async () => {
-        await remove(
-          ref(database, `users/${currentUser.uid}/sentRequests/${id}`)
-        );
+        await Promise.all([
+          remove(ref(database, `users/${currentUser.uid}/sentRequests/${id}`)),
+          // Also clear it from the recipient's pendingRequests, otherwise
+          // they'd keep seeing a request that was already canceled.
+          remove(ref(database, `users/${id}/pendingRequests/${currentUser.uid}`)),
+        ]);
         showToast("Request canceled.", "info");
         loadFriendRequests();
         updatePendingCount();
@@ -1892,6 +1926,7 @@ async function approveFriendRequest(requestId, request) {
     );
     populateFriendsList();
     loadFriendRequests();
+    updatePendingCount();
   } catch (error) {
     console.error("❌ Error approving friend:", error);
     showToast(`Error approving friend: ${error.message}`, "error");
