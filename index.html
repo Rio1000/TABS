@@ -65,20 +65,23 @@
                 <!-- Dynamic .personlist-item elements will be appended here -->
             </div>
 
-            <div id="add-person-box-modal">
-                <div id="add-person-box">
-                    <input id="name-input" type="text" placeholder="Name" required />
-                    <input id="amount-input" type="text" placeholder="Amount/Item" required />
-                    <div>
-                        <button id="add">Add</button>
-                        <button id="cancel">Cancel</button>
-                    </div>
-                </div>
-            </div>
-
             <div class="scroll-buttons">
                 <button id="scroll-to-bottom" onclick="scrollToBottom()">Bottom</button>
                 <button id="scroll-to-top" onclick="scrollToTop()">Top</button>
+            </div>
+        </div>
+
+        <!-- Kept as a direct child of .container (not .personlist): .personlist's
+             mask-image creates its own stacking context, which trapped this modal
+             below sibling elements like #buttons regardless of its z-index. -->
+        <div id="add-person-box-modal">
+            <div id="add-person-box">
+                <input id="name-input" type="text" placeholder="Name" required />
+                <input id="amount-input" type="text" placeholder="Amount/Item" required />
+                <div>
+                    <button id="add">Add</button>
+                    <button id="cancel">Cancel</button>
+                </div>
             </div>
         </div>
 

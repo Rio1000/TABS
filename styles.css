@@ -1611,13 +1611,13 @@ position: fixed;
 #friend-code-section{
   display: flex;
 }
-/* Kept above any open modal on purpose — a persistent bottom action bar
-   (see script.js's chrome-hiding logic, which deliberately excludes this
-   element) rather than relying on the flex-item stacking order, which
-   wasn't a reliable way to guarantee it. */
+/* Floats above the scrollable person list (z-index: auto) but stays below
+   every modal and the loader (z-index: 9999) and the side nav (10000), so
+   an open modal always renders on top of this bar instead of being
+   covered by it. */
 #buttons {
   position: relative;
-  z-index: 10001;
+  z-index: 1;
 }
 
 @media screen and (max-width: 1000px) {
