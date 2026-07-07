@@ -93,6 +93,9 @@ body {
   transition: 0.3s;
   display: block;
   overflow-y: scroll;
+  /* Items scrolling under the top edge dissolve instead of getting hard-clipped */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 48px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 48px);
 }
 
 .personlist::-webkit-scrollbar {
@@ -123,6 +126,48 @@ body {
   flex-direction: column;
   width: 93%;
   background-color: #033238b0;
+}
+
+.personlist-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0px 4px 12px 0px rgba(0, 0, 0, 0.25);
+}
+
+@keyframes item-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes item-leave {
+  from {
+    opacity: 1;
+    transform: scale(1);
+    max-height: 200px;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+    max-height: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
+.personlist-item.item-enter {
+  animation: item-enter 0.25s ease-out;
+}
+
+.personlist-item.item-leave {
+  animation: item-leave 0.22s ease-in forwards;
+  overflow: hidden;
+  pointer-events: none;
 }
 .person-stuff{
   max-width: 75%;
@@ -236,10 +281,16 @@ button,
   color: #fff;
   cursor: pointer;
   border-radius: 5px;
+  /* Was declared twice (0.3s, then 1s) — the second silently won, making
+     every button take a full second to respond to hover/press. */
   transition: 0.3s;
   margin-left: auto;
   margin-right: auto;
-  transition: 1s;
+}
+
+button:active,
+.btn:active {
+  transform: scale(0.96);
 }
 
 #Back-btn,
@@ -1411,6 +1462,7 @@ position: fixed;
   border-radius: 10px;
   box-shadow: 0px 0px 10px 0px #011d1d;
   padding: 10px;
+  transition: height 0.25s ease;
 }
 .AddOrCancleButtons{
   width: auto;
