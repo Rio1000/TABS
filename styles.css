@@ -118,7 +118,7 @@ body {
   justify-content: space-between;
   padding-left: 15px;
   padding-right: 15px;
-  border: 1px solid #ccc;
+  border: 1px solid #36718572;
   border-radius: 5px;
   margin-bottom: 10px;
   transition: 0.3s;
@@ -698,7 +698,7 @@ input {
 
 /* Styling for the dollar sign */
 .dollar-sign {
-  font-weight: bold;
+  font-weight:normal;
   font-size: 26px;
   transition: 0.3s;
 }
@@ -888,13 +888,12 @@ position: fixed;
   align-items: center;
   display: flex;
   flex-direction: column;
-  background: rgba(50, 59, 59, 0.138);
   padding: 20px;
-  border-radius: 10px;
-  text-align: center;
-  box-shadow: 0px 0px 10px 0px #011d1d;
   width: 70%;
   z-index: 1;
+  background-color: #033238;
+  border-radius: 10px;
+  box-shadow: 0px 0px 10px 0px #072c2d;
 }
 
 #info {
@@ -1079,7 +1078,7 @@ position: fixed;
   text-align: center;
   justify-content: center;
   margin-top: 10px;
-  background-color: rgba(80, 202, 211, 0.686);
+  background-color: rgba(56, 138, 147, 0.686);
   color: rgb(194, 233, 232);
   font-size: 20px;
   width: 93%;
@@ -1235,7 +1234,12 @@ position: fixed;
   border: 2px;
   color: rgb(216, 216, 216);
   font-size: 20px;
-
+  position: absolute;
+  bottom: 0px;
+  font-size: 20px;
+  border-radius: 8px;
+  width: 50%;
+  
 }
 
 
