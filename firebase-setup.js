@@ -764,7 +764,8 @@ function addPerson(
   amount,
   extraInfoArray = [],
   interest = { enabled: false, rate: 0, period: "monthly" },
-  isFriend = false
+  isFriend = false,
+  animate = false
 ) {
   const listItem = document.createElement("div");
   listItem.classList.add("personlist-item");
@@ -831,10 +832,21 @@ function addPerson(
   removeBtn.innerHTML = "<img src='check_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg' alt='Remove'/>";
   removeBtn.classList.add("remove-btn");
   removeBtn.addEventListener("click", () => {
-    peopleList.removeChild(listItem);
-    saveListToFirebase();
-    logUserAction(`Removed ${nameSpan.textContent}'s tab`);
-
+    const removedName = nameSpan.textContent;
+    // Play the exit animation before actually removing the row — saving
+    // has to happen after removal too, otherwise the row being removed is
+    // still in the DOM (and gets saved back into peopleData) when
+    // saveListToFirebase reads the current list.
+    listItem.classList.add("item-leave");
+    listItem.addEventListener(
+      "animationend",
+      () => {
+        listItem.remove();
+        saveListToFirebase();
+        logUserAction(`Removed ${removedName}'s tab`);
+      },
+      { once: true }
+    );
   });
 
   // More Button (Expand/Collapse)
@@ -855,6 +867,18 @@ function addPerson(
   listItem.dataset.interest = JSON.stringify(interest);
   listItem._dollarSpan = dollarSpan;
   listItem._amountContainer = amountContainer;
+
+  if (animate) {
+    // Only for interactive adds (the Add button, adding a friend to the
+    // list) — not the initial bulk load from Firebase, where animating
+    // every row in on every page open would look chaotic instead of smooth.
+    listItem.classList.add("item-enter");
+    listItem.addEventListener(
+      "animationend",
+      () => listItem.classList.remove("item-enter"),
+      { once: true }
+    );
+  }
 
   return listItem;
 
@@ -1533,7 +1557,7 @@ document.getElementById("add").addEventListener("click", () => {
   // Use the raw input as-is, whether it's a number or string
   const amount = isNaN(amountRaw) ? amountRaw : parseFloat(amountRaw);
 
-  addPerson(name, amount);
+  addPerson(name, amount, [], undefined, false, true);
   saveListToFirebase();
 
   // Clear inputs and hide modal after adding
@@ -1734,7 +1758,8 @@ async function populateFriendsList() {
             0,
             [],
             undefined,
-            true // Add friend to person list, flagged so the row shows the friend icon
+            true, // Add friend to person list, flagged so the row shows the friend icon
+            true // animate in
           );
           showToast(
             `${friendData.firstName} has been added to your person list.`,
