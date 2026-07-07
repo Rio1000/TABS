@@ -766,6 +766,29 @@ position: fixed;
   backdrop-filter: blur(20px);
 }
 
+/* Fade-in/out for modal open/close (see script.js's modal-fx observer,
+   which defers `display: none` on close long enough for this to play). A
+   CSS animation (rather than a transition) is used for the open state
+   because it replays every time `display` flips from none to flex, which
+   a transition alone cannot do across that boundary. */
+@keyframes modalFxIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-fx {
+  animation: modalFxIn 0.22s ease;
+}
+
+.modal-fx.modal-fx-closing {
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
 #sideNavModal {
   position: fixed;
   top: 0;
