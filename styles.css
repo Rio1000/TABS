@@ -66,7 +66,7 @@ body {
   transition: 0.3s;
   -webkit-backdrop-filter: blur(30px);
   backdrop-filter: blur(30px);
-  z-index: 2001;
+  z-index: 10000;
 
 }
 
@@ -84,7 +84,6 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  border-radius: 18px;
   font-size: 24px;
   padding: 10px;
   background-color: transparent;
@@ -761,7 +760,7 @@ position: fixed;
   text-align: center;
   overflow-y: auto;
   /* Change from 'scroll' to 'auto' */
-  z-index: 2000;
+  z-index: 9999;
   transition: backdrop-filter 0.3s ease, background-color 0.3s ease;
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
@@ -1275,8 +1274,11 @@ position: fixed;
 
 
 #friendCodeBox {
-  position: absolute;
-  top: 0px;
+  /* Was position: absolute; top: 0px — taken out of flow, so once
+     #friendBox below it was fixed to start at the top of .friend-content
+     (rather than sitting vertically centered), the two overlapped. Normal
+     flow lets it push #friendBox down by however tall it actually is,
+     rather than guessing a fixed offset. */
   display: flex;
   flex-direction: row;
   width: 100%;
@@ -1285,7 +1287,7 @@ position: fixed;
   z-index: 100;
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
-
+  flex-shrink: 0;
 }
 
 #extra-info-input {
@@ -1609,6 +1611,15 @@ position: fixed;
 #friend-code-section{
   display: flex;
 }
+/* Kept above any open modal on purpose — a persistent bottom action bar
+   (see script.js's chrome-hiding logic, which deliberately excludes this
+   element) rather than relying on the flex-item stacking order, which
+   wasn't a reliable way to guarantee it. */
+#buttons {
+  position: relative;
+  z-index: 10001;
+}
+
 @media screen and (max-width: 1000px) {
 
   #buttons {
