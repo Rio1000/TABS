@@ -443,3 +443,56 @@ function copyText() {
 
   updateChromeVisibility();
 })();
+
+// Fade modals in/out instead of an abrupt display:none <-> flex flip. Every
+// modal open/close elsewhere in script.js and firebase-setup.js toggles
+// visibility by setting `element.style.display` directly (~150 call
+// sites), so rather than rewriting each one this uses the same
+// MutationObserver technique as the chrome-hiding logic above. A
+// MutationObserver callback runs as a microtask before the next paint, so
+// when a modal is closed this can restore its display for one more frame,
+// play the fade defined by .modal-fx-closing in styles.css, and only then
+// apply the real `display: none`. The opening fade needs no JS: it's a CSS
+// animation (see .modal-fx in styles.css), which automatically replays
+// whenever `display` flips from none to visible.
+(function () {
+  const CLOSE_ANIM_MS = 180;
+  const lastVisibleDisplay = new WeakMap();
+  const selfTriggered = new WeakSet();
+  const closeTimers = new WeakMap();
+
+  document.querySelectorAll(".modal-fx").forEach((el) => {
+    const initialDisplay = getComputedStyle(el).display;
+    if (initialDisplay !== "none") lastVisibleDisplay.set(el, initialDisplay);
+
+    const observer = new MutationObserver(() => {
+      if (selfTriggered.has(el)) {
+        selfTriggered.delete(el);
+        return;
+      }
+
+      if (el.style.display !== "none") {
+        lastVisibleDisplay.set(el, el.style.display || getComputedStyle(el).display);
+        clearTimeout(closeTimers.get(el));
+        el.classList.remove("modal-fx-closing");
+        return;
+      }
+
+      const restoreDisplay = lastVisibleDisplay.get(el) || "flex";
+      selfTriggered.add(el);
+      el.style.display = restoreDisplay;
+      el.classList.add("modal-fx-closing");
+
+      closeTimers.set(
+        el,
+        setTimeout(() => {
+          selfTriggered.add(el);
+          el.style.display = "none";
+          el.classList.remove("modal-fx-closing");
+        }, CLOSE_ANIM_MS)
+      );
+    });
+
+    observer.observe(el, { attributes: true, attributeFilter: ["style"] });
+  });
+})();
