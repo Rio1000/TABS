@@ -70,7 +70,16 @@ function closeNav() {
   document.getElementById("openButton").style.display = "flex";
   document.getElementById("closeButton").style.display = "none";
 }
-document.getElementById("sideNavModal").addEventListener("click", closeNav);
+// Only close when the click lands on the backdrop itself — not on anything
+// inside the sidenav (nav links, the currency <select>, etc.), since a
+// bubbled click from those was closing the nav out from under them (most
+// noticeably, the currency dropdown would open and immediately get yanked
+// shut).
+document.getElementById("sideNavModal").addEventListener("click", (event) => {
+  if (event.target === event.currentTarget) {
+    closeNav();
+  }
+});
 
 
 
@@ -391,3 +400,46 @@ function copyText() {
         }
     }
 }
+
+// Hide the header (logo, title, menu button) whenever any modal is open.
+// The Add/Clear button bar is deliberately NOT included here — it stays
+// visible on top of open modals as a persistent bottom action bar (see the
+// dedicated z-index on #buttons in styles.css for how that's kept reliable
+// rather than left to chance). These elements share a flex-stacking context
+// with the modals, and a numeric z-index plus a translucent backdrop wasn't
+// reliably enough to keep the header from rendering on top of an open
+// modal. Rather than touching every individual modal's open/close call site
+// scattered across script.js and firebase-setup.js, this watches the modals
+// themselves (via the exact same selector the shared .modal CSS rule uses)
+// and reacts centrally whenever one's display style changes.
+(function () {
+  const chromeElements = ["#TITLE", ".Logo", "#openButton"]
+    .map((selector) => document.querySelector(selector))
+    .filter(Boolean);
+
+  const modals = Array.from(
+    document.querySelectorAll(
+      ".modal, #customModal, #editMoneyModal, #friendModal, #add-person-box-modal, " +
+        "#editNameModal, #add-extra-info-modal, #ProfileModal, #editItemModal, #RFModal, " +
+        "#loader, #loginorsignupmodal, #adsModal, #editExtraInfoModal, #addFriendModal, " +
+        "#pendingRequestsModal, #delete-account-modal, #AccountHistoryModal, #interestModal, " +
+        "#Loginpage, #signupPage"
+    )
+  );
+
+  function updateChromeVisibility() {
+    const anyModalOpen = modals.some(
+      (modal) => getComputedStyle(modal).display !== "none"
+    );
+    chromeElements.forEach((el) => {
+      el.style.visibility = anyModalOpen ? "hidden" : "";
+    });
+  }
+
+  const observer = new MutationObserver(updateChromeVisibility);
+  modals.forEach((modal) => {
+    observer.observe(modal, { attributes: true, attributeFilter: ["style"] });
+  });
+
+  updateChromeVisibility();
+})();
