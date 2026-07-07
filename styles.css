@@ -122,6 +122,7 @@ body {
   transition: 0.3s;
   flex-direction: column;
   width: 93%;
+  background-color: #033238b0;
 }
 .person-stuff{
   max-width: 75%;
@@ -1892,11 +1893,11 @@ position: fixed;
     border-radius: 18px;
     font-size: 24px;
     padding: 10px;
-    background-color: #c0caca49;
     color: rgb(241, 241, 241);
     text-align: center;
     transition: 0.3s;
     width: 300px;
+    background-color: #033238;
     /* Keep this consistent for layout control */
   }
 
