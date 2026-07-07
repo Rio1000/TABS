@@ -401,16 +401,19 @@ function copyText() {
     }
 }
 
-// Hide the header (logo, title, menu button) and the Add/Clear button bar
-// whenever any modal is open. These share a flex-stacking context with the
-// modals, and a numeric z-index plus a translucent backdrop wasn't reliably
-// enough to keep them from rendering on top of an open modal. Rather than
-// touching every individual modal's open/close call site scattered across
-// script.js and firebase-setup.js, this watches the modals themselves (via
-// the exact same selector the shared .modal CSS rule uses) and reacts
-// centrally whenever one's display style changes.
+// Hide the header (logo, title, menu button) whenever any modal is open.
+// The Add/Clear button bar is deliberately NOT included here — it stays
+// visible on top of open modals as a persistent bottom action bar (see the
+// dedicated z-index on #buttons in styles.css for how that's kept reliable
+// rather than left to chance). These elements share a flex-stacking context
+// with the modals, and a numeric z-index plus a translucent backdrop wasn't
+// reliably enough to keep the header from rendering on top of an open
+// modal. Rather than touching every individual modal's open/close call site
+// scattered across script.js and firebase-setup.js, this watches the modals
+// themselves (via the exact same selector the shared .modal CSS rule uses)
+// and reacts centrally whenever one's display style changes.
 (function () {
-  const chromeElements = ["#TITLE", ".Logo", "#openButton", "#buttons"]
+  const chromeElements = ["#TITLE", ".Logo", "#openButton"]
     .map((selector) => document.querySelector(selector))
     .filter(Boolean);
 
