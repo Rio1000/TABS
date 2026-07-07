@@ -770,6 +770,9 @@ function addPerson(
   const listItem = document.createElement("div");
   listItem.classList.add("personlist-item");
   listItem.dataset.isFriend = isFriend ? "true" : "false";
+  // Defaults to "They Owe" (owesMe, green) — loadListFromFirebase overrides
+  // this below for people explicitly saved as "iOwe".
+  listItem.setAttribute("data-status", "owesMe");
 
   const nameAmountContainer = document.createElement("div");
   nameAmountContainer.classList.add("name-amount-container");
@@ -787,6 +790,7 @@ function addPerson(
 
   const amountSpan = document.createElement("span");
   amountSpan.classList.add("amount-input");
+  amountSpan.style.color = "rgb(73, 255, 97)";
   if (!isNaN(amount)) {
     amountSpan.textContent = parseFloat(amount).toFixed(2);
     amountContainer.appendChild(dollarSpan);
@@ -936,25 +940,24 @@ function checkAmountOrItem() {
   }
 }
 
-// Ensure these buttons are created only once
-const btnContainer = document.getElementById("btn-container");
+// I Owe / They Owe toggle switch (see #btn-container in index.html). It's
+// always in one of these two states — defaults to "They Owe" (owesMe,
+// green) since a slider has no third "neutral" position.
+const oweToggle = document.getElementById("oweToggle");
+oweToggle.addEventListener("change", () => {
+  if (!currentListItem) return;
+  const amountInput = currentListItem.querySelector(".amount-input");
 
-// Create buttons only if they don't exist
-if (!document.getElementById("IOBtn")) {
-  const IOBtn = document.createElement("button");
-  IOBtn.id = "IOBtn";
-  IOBtn.textContent = "I Owe";
-  btnContainer.appendChild(IOBtn);
-  IOBtn.addEventListener("click", IOwe);
-}
+  if (oweToggle.checked) {
+    currentListItem.setAttribute("data-status", "owesMe");
+    amountInput.style.color = "rgb(73, 255, 97)";
+  } else {
+    currentListItem.setAttribute("data-status", "iOwe");
+    amountInput.style.color = "rgb(255, 73, 73)";
+  }
 
-if (!document.getElementById("UOBtn")) {
-  const UOBtn = document.createElement("button");
-  UOBtn.id = "UOBtn";
-  UOBtn.textContent = "They Owe";
-  btnContainer.appendChild(UOBtn);
-  UOBtn.addEventListener("click", UOwe);
-}
+  saveListToFirebase();
+});
 
 const interestBox = document.getElementById("interestTitle");
 if (!interestBox) {
@@ -1035,20 +1038,11 @@ function setInterestBoxExpanded(enabled) {
 function openModal(listItem) {
   currentListItem = listItem;
   const interest = JSON.parse(listItem.dataset.interest);
-  const IOBtn = document.getElementById("IOBtn");
-  const UOBtn = document.getElementById("UOBtn");
   const status = listItem.getAttribute("data-status");
 
-  if (status === "iOwe") {
-    IOBtn.disabled = true;
-    UOBtn.disabled = false;
-  } else if (status === "owesMe") {
-    IOBtn.disabled = false;
-    UOBtn.disabled = true;
-  } else {
-    IOBtn.disabled = false;
-    UOBtn.disabled = false;
-  }
+  // Defaults to "They Owe" (owesMe, checked/green) for anything other than
+  // an explicit "I Owe" — there's no neutral position on a toggle switch.
+  document.getElementById("oweToggle").checked = status !== "iOwe";
 
   // Update interest controls
   document.getElementById("interestToggle").checked = interest.enabled;
@@ -1384,50 +1378,6 @@ function handleResponse() {
 
 function closeEditExtraInfoModal() {
   document.getElementById("editExtraInfoModal").style.display = "none";
-}
-
-function UOwe() {
-  if (!currentListItem) return;
-  const status = currentListItem.getAttribute("data-status");
-  const amountInput = currentListItem.querySelector(".amount-input");
-  const IOBtn = document.getElementById("IOBtn");
-  const UOBtn = document.getElementById("UOBtn");
-
-  if (status === "owesMe") {
-    currentListItem.removeAttribute("data-status");
-    amountInput.style.color = "";
-    UOBtn.disabled = false;
-  } else {
-    currentListItem.setAttribute("data-status", "owesMe");
-    amountInput.style.color = "rgb(73, 255, 97)";
-    UOBtn.disabled = true;
-    IOBtn.disabled = false;
-  }
-
-  saveListToFirebase();
-  document.getElementById("customModal").style.display = "none";
-}
-
-function IOwe() {
-  if (!currentListItem) return;
-  const status = currentListItem.getAttribute("data-status");
-  const amountInput = currentListItem.querySelector(".amount-input");
-  const IOBtn = document.getElementById("IOBtn");
-  const UOBtn = document.getElementById("UOBtn");
-
-  if (status === "iOwe") {
-    currentListItem.removeAttribute("data-status");
-    amountInput.style.color = "";
-    IOBtn.disabled = false;
-  } else {
-    currentListItem.setAttribute("data-status", "iOwe");
-    amountInput.style.color = "rgb(255, 73, 73)";
-    IOBtn.disabled = true;
-    UOBtn.disabled = false;
-  }
-
-  saveListToFirebase();
-  document.getElementById("customModal").style.display = "none";
 }
 
 const extraInfoModal = document.getElementById("add-extra-info-modal");
