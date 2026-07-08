@@ -402,16 +402,16 @@ function copyText() {
 }
 
 // Hide the header (logo, title, menu button) whenever any modal is open.
-// The Add/Clear button bar is deliberately NOT included here — it stays
-// visible on top of open modals as a persistent bottom action bar (see the
-// dedicated z-index on #buttons in styles.css for how that's kept reliable
-// rather than left to chance). These elements share a flex-stacking context
-// with the modals, and a numeric z-index plus a translucent backdrop wasn't
-// reliably enough to keep the header from rendering on top of an open
-// modal. Rather than touching every individual modal's open/close call site
-// scattered across script.js and firebase-setup.js, this watches the modals
-// themselves (via the exact same selector the shared .modal CSS rule uses)
-// and reacts centrally whenever one's display style changes.
+// The Add/Clear button bar isn't included here — it now sits below every
+// modal in z-index (see #buttons in styles.css), so an open modal's own
+// backdrop already covers it without needing a visibility toggle. These
+// elements share a flex-stacking context with the modals, and a numeric
+// z-index plus a translucent backdrop wasn't reliably enough to keep the
+// header from rendering on top of an open modal. Rather than touching
+// every individual modal's open/close call site scattered across
+// script.js and firebase-setup.js, this watches the modals themselves
+// (via the exact same selector the shared .modal CSS rule uses) and
+// reacts centrally whenever one's display style changes.
 (function () {
   const chromeElements = ["#TITLE", ".Logo", "#openButton"]
     .map((selector) => document.querySelector(selector))
@@ -442,4 +442,57 @@ function copyText() {
   });
 
   updateChromeVisibility();
+})();
+
+// Fade modals in/out instead of an abrupt display:none <-> flex flip. Every
+// modal open/close elsewhere in script.js and firebase-setup.js toggles
+// visibility by setting `element.style.display` directly (~150 call
+// sites), so rather than rewriting each one this uses the same
+// MutationObserver technique as the chrome-hiding logic above. A
+// MutationObserver callback runs as a microtask before the next paint, so
+// when a modal is closed this can restore its display for one more frame,
+// play the fade defined by .modal-fx-closing in styles.css, and only then
+// apply the real `display: none`. The opening fade needs no JS: it's a CSS
+// animation (see .modal-fx in styles.css), which automatically replays
+// whenever `display` flips from none to visible.
+(function () {
+  const CLOSE_ANIM_MS = 180;
+  const lastVisibleDisplay = new WeakMap();
+  const selfTriggered = new WeakSet();
+  const closeTimers = new WeakMap();
+
+  document.querySelectorAll(".modal-fx").forEach((el) => {
+    const initialDisplay = getComputedStyle(el).display;
+    if (initialDisplay !== "none") lastVisibleDisplay.set(el, initialDisplay);
+
+    const observer = new MutationObserver(() => {
+      if (selfTriggered.has(el)) {
+        selfTriggered.delete(el);
+        return;
+      }
+
+      if (el.style.display !== "none") {
+        lastVisibleDisplay.set(el, el.style.display || getComputedStyle(el).display);
+        clearTimeout(closeTimers.get(el));
+        el.classList.remove("modal-fx-closing");
+        return;
+      }
+
+      const restoreDisplay = lastVisibleDisplay.get(el) || "flex";
+      selfTriggered.add(el);
+      el.style.display = restoreDisplay;
+      el.classList.add("modal-fx-closing");
+
+      closeTimers.set(
+        el,
+        setTimeout(() => {
+          selfTriggered.add(el);
+          el.style.display = "none";
+          el.classList.remove("modal-fx-closing");
+        }, CLOSE_ANIM_MS)
+      );
+    });
+
+    observer.observe(el, { attributes: true, attributeFilter: ["style"] });
+  });
 })();

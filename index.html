@@ -22,10 +22,10 @@
     <div class="container">
         <img class="Logo" src="logo.svg" alt="logo" />
         <h1 id="TITLE">TABS</h1>
-        <div class="modal" id="loader">
+        <div class="modal modal-fx" id="loader">
             <div class="loader"></div>
         </div>
-        <div class="modal" id="loginorsignupmodal">
+        <div class="modal modal-fx" id="loginorsignupmodal">
             <div id="loginorsignupbox">
                 <button id="loginbutton" onclick="openLogin()">Login</button>
                 <button id="signupbutton" onclick="openSignup()">Signup</button>
@@ -65,20 +65,23 @@
                 <!-- Dynamic .personlist-item elements will be appended here -->
             </div>
 
-            <div id="add-person-box-modal">
-                <div id="add-person-box">
-                    <input id="name-input" type="text" placeholder="Name" required />
-                    <input id="amount-input" type="text" placeholder="Amount/Item" required />
-                    <div>
-                        <button id="add">Add</button>
-                        <button id="cancel">Cancel</button>
-                    </div>
-                </div>
-            </div>
-
             <div class="scroll-buttons">
                 <button id="scroll-to-bottom" onclick="scrollToBottom()">Bottom</button>
                 <button id="scroll-to-top" onclick="scrollToTop()">Top</button>
+            </div>
+        </div>
+
+        <!-- Kept as a direct child of .container (not .personlist): .personlist's
+             mask-image creates its own stacking context, which trapped this modal
+             below sibling elements like #buttons regardless of its z-index. -->
+        <div id="add-person-box-modal" class="modal-fx">
+            <div id="add-person-box">
+                <input id="name-input" type="text" placeholder="Name" required />
+                <input id="amount-input" type="text" placeholder="Amount/Item" required />
+                <div>
+                    <button id="add">Add</button>
+                    <button id="cancel">Cancel</button>
+                </div>
             </div>
         </div>
 
@@ -89,7 +92,7 @@
 
 
         <div id="login-modal">
-            <div id="Loginpage" style="display: none">
+            <div id="Loginpage" class="modal-fx" style="display: none">
                 <div class="login-content">
                     <h2>Login</h2>
                     <input class="login-input" id="login-email" type="email" placeholder="Email" required /><br />
@@ -111,7 +114,7 @@
 
 
         <div id="signup-modal">
-            <div id="signupPage" style="display: none">
+            <div id="signupPage" class="modal-fx" style="display: none">
                 <div class="login-content">
                     <h2>Signup</h2>                        
                     <input class="login-input" id="first-name" type="text" placeholder="First Name" required /><br />
@@ -133,20 +136,29 @@
 
 
 
-        <div id="customModal">
+        <div id="customModal" class="modal-fx">
             <div class="modal-content">
                 <button type="button" class="info-b" id="add-more-money-btn">Add Money</button>
                 <button type="button" class="danger-btn" id="remove-money-btn">Remove Money</button>
                 <button type="button" id="edit-item-btn">Edit Item</button>
                 <button type="button" class="no-btn" id="add-extra-info-btn">Add Info</button>
                 <button type="button" class="edt-name" id="edit-name-btn">Edit Name</button>
-                <div id="btn-container"></div>
+                <div id="btn-container">
+                    <div class="owe-toggle">
+                        <span class="owe-toggle-label">I Owe</span>
+                        <div class="switch owe-switch">
+                            <input type="checkbox" id="oweToggle" checked />
+                            <label for="oweToggle"></label>
+                        </div>
+                        <span class="owe-toggle-label">They Owe</span>
+                    </div>
+                </div>
                 <button type="button" class="danger-btn" id="interest-btn">Interest</button>
 
                 <button class="close-btn" id="close-prompt">Close</button>
             </div>
         </div>
-        <div id="interestModal">
+        <div id="interestModal" class="modal-fx">
             <div id="interest-container">
                 <div id="interestTitle">
                     <p id="interestTitleText">Interest</p>
@@ -157,7 +169,7 @@
         </div>
 
         <!-- Friend Modal -->
-        <div class="modal" id="friendModal">
+        <div class="modal modal-fx" id="friendModal">
             <div class="friend-content">
                 <div id="friendCodeBox">
                     <button id="addFriendBtn">Add</button>
@@ -172,7 +184,7 @@
         </div>
 
         <!-- Add Friend Modal -->
-        <div class="modal" id="addFriendModal">
+        <div class="modal modal-fx" id="addFriendModal">
             <div id="addFriendBox">
                 <input id="friend-code" type="text" placeholder="Friend Code" required />
                 <div>
@@ -183,14 +195,14 @@
         </div>
 
         <!-- Pending Requests Modal -->
-        <div class="modal" id="pendingRequestsModal">
+        <div class="modal modal-fx" id="pendingRequestsModal">
             <div id="pendingRequestsBox">
                 <ul id="pendingRequestsList"></ul>
                 <button id="closePendingRequests">Close</button>
             </div>
         </div>
         <!-- Edit Money Modal -->
-        <div class="modal" id="editMoneyModal">
+        <div class="modal modal-fx" id="editMoneyModal">
             <div id="editMoneyAdd">
                 <h2>Add Money</h2>
                 <input id="editMoneyInput" type="number" placeholder="Amount" required />
@@ -208,7 +220,7 @@
                 </div>
             </div>
         </div>
-        <div class="modal" id="editNameModal">
+        <div class="modal modal-fx" id="editNameModal">
             <div id="editNameBox">
                 <h2>Edit Name</h2>
                 <input id="editNameInput" type="text" placeholder="Name" required />
@@ -218,7 +230,7 @@
                 </div>
             </div>
         </div>
-        <div class="modal" id="add-extra-info-modal">
+        <div class="modal modal-fx" id="add-extra-info-modal">
             <div id="add-extra-info-box">
                 <h2>Add Extra Info</h2>
                 <textarea id="extra-info-input" placeholder="Extra Info" required></textarea>
@@ -228,7 +240,7 @@
                 </div>
             </div>
         </div>
-        <div class="modal" id="RFModal" class="modal">
+        <div class="modal modal-fx" id="RFModal">
             <div id="RemovefriendBox">
                 <div id="Removefriend" class="AddOrCancleButtons">
                     <button id="removeFriendBtn">Remove</button>
@@ -236,7 +248,7 @@
                 </div>
             </div>
         </div>
-        <div class="modal" id="editItemModal">
+        <div class="modal modal-fx" id="editItemModal">
             <div id="editItemBox">
                 <h2>Edit Item</h2>
                 <input id="editItemInput" type="text" placeholder="Item" required />
@@ -246,7 +258,7 @@
                 </div>
             </div>
         </div>
-        <div class="modal" id="editExtraInfoModal">
+        <div class="modal modal-fx" id="editExtraInfoModal">
             <div id="editinffoBox">
                 <h2>Edit Extra Info</h2>
                 <textarea id="editinffoInput" placeholder="Extra Info" required></textarea>
@@ -257,7 +269,7 @@
             </div>
         </div>
 
-        <div class="modal" id="adsModal">
+        <div class="modal modal-fx" id="adsModal">
             <div id="adsBox">
                 <div>
                     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7825788728707782"crossorigin="anonymous"></script>
@@ -286,7 +298,7 @@
         <!-- Profile Modal -->
 
 
-        <div class="modal" id="ProfileModal">
+        <div class="modal modal-fx" id="ProfileModal">
             <div id="ProfileBox">
                 <div class="topnav" id="topnav">
                     <a id="profileInfo">Profile</a>
@@ -327,7 +339,7 @@
             <a id="closeProfile" class="close-btn">Close</a>
 
         </div>
-        <div class="modal" id="delete-account-modal">
+        <div class="modal modal-fx" id="delete-account-modal">
             <div id="delete-account-box">
                 <div>
                     <p id="delete-account-prompt">Are you sure you want to<br> delete your account?</p>
@@ -336,7 +348,7 @@
                 </div>
             </div>
         </div>
-        <div class="modal" id="AccountHistoryModal">
+        <div class="modal modal-fx" id="AccountHistoryModal">
             <div id="AccountHistoryBox">
                 <h2>Account History</h2>
                 <ul id="account-history-list"></ul>
@@ -346,7 +358,7 @@
                 </div>
             </div>
         </div>
-        <div class="modal" id="clearAccountHistoryModal">
+        <div class="modal modal-fx" id="clearAccountHistoryModal">
             <div id="clearAccountHistoryBox">
                 <p>Are you sure you want to clear your account history?</p>
                 <div id="clearAccountHistoryButtons">
@@ -355,7 +367,7 @@
                 </div>
             </div>
         </div>
-        <div class="modal" id="clear-list-modal">
+        <div class="modal modal-fx" id="clear-list-modal">
             <div id="clear-list-box">
                 <div>
                     <p id="clear-list-prompt">Are you sure you want to clear the list?</p>
