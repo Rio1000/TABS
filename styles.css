@@ -70,7 +70,8 @@ body {
 
 /* Login/Signup now use the shared full-screen .modal style (see the big
    .modal rule below); this card holds the actual form content. */
-.login-content {
+.login-content,
+#loginorsignupbox {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -80,9 +81,11 @@ body {
   border-radius: 10px;
   box-shadow: 0px 0px 10px 0px #011d1d;
   padding: 50px 30px 20px;
-  width: min(400px, 85vw);
+  width: min(300px, 85vw);
   max-height: 85vh;
   overflow-y: auto;
+
+
 }
 
 #Ads {
@@ -788,6 +791,7 @@ position: fixed;
   backdrop-filter: blur(20px);
 }
 
+  display: flex;
 /* Fade-in/out for modal open/close (see script.js's modal-fx observer,
    which defers `display: none` on close long enough for this to play). A
    CSS animation (rather than a transition) is used for the open state
