@@ -58,6 +58,11 @@
         <span class="open-btn " id="openButton" onclick="openNav()"><img
                 src="folder_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg" alt="menu"></span>
 
+        <span class="open-btn" id="notificationsBtn" title="Notifications" style="display: none;">
+            <span class="material-icons">notifications</span>
+            <span id="notificationBadge" class="badge" style="display: none;">0</span>
+        </span>
+
 
         <div class="personlist">
             <div id="people-list">
@@ -85,14 +90,14 @@
             </div>
         </div>
 
-        <div id="buttons">
+        <div id="buttons" class="hidden">
             <button id="add-person-btn">Add</button>
             <button id="clear-list-btn">Clear</button>
         </div>
 
 
         <div id="login-modal">
-            <div id="Loginpage" class="modal-fx" style="display: none">
+            <div id="Loginpage" class="modal modal-fx" style="display: none">
                 <div class="login-content">
                     <h2>Login</h2>
                     <input class="login-input" id="login-email" type="email" placeholder="Email" required /><br />
@@ -106,7 +111,6 @@
                         <button id="reset-password">Reset Password</button>
                     </div>
                     <button id="Back-btn">⬅️</button>
-                    </button>
                 </div>
             </div>
         </div>
@@ -114,7 +118,7 @@
 
 
         <div id="signup-modal">
-            <div id="signupPage" class="modal-fx" style="display: none">
+            <div id="signupPage" class="modal modal-fx" style="display: none">
                 <div class="login-content">
                     <h2>Signup</h2>                        
                     <input class="login-input" id="first-name" type="text" placeholder="First Name" required /><br />
@@ -376,6 +380,69 @@
                 </div>
             </div>
         </div>
+        <!-- Notifications Modal -->
+        <div class="modal modal-fx" id="notificationsModal">
+            <div id="notificationsBox">
+                <h2>Notifications</h2>
+                <ul id="notificationsList"></ul>
+                <div class="notification-buttons">
+                    <button id="markAllReadBtn">Mark All Read</button>
+                    <button id="clearNotificationsBtn">Clear All</button>
+                    <button id="closeNotifications">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Settings Modal -->
+        <div class="modal modal-fx" id="notificationSettingsModal">
+            <div id="notificationSettingsBox">
+                <h2>Notification Settings</h2>
+                <div class="notification-setting-row">
+                    <span>Enable notifications</span>
+                    <div class="switch">
+                        <input type="checkbox" id="notifEnabledToggle" checked />
+                        <label for="notifEnabledToggle"></label>
+                    </div>
+                </div>
+                <div class="notification-setting-row">
+                    <span>Friend activity</span>
+                    <div class="switch">
+                        <input type="checkbox" id="notifFriendsToggle" checked />
+                        <label for="notifFriendsToggle"></label>
+                    </div>
+                </div>
+                <div class="notification-setting-row">
+                    <span>Payment reminders</span>
+                    <div class="switch">
+                        <input type="checkbox" id="notifRemindersToggle" checked />
+                        <label for="notifRemindersToggle"></label>
+                    </div>
+                </div>
+                <button id="closeNotificationSettings">Close</button>
+            </div>
+        </div>
+
+        <!-- SMS Reminder Modal -->
+        <div class="modal modal-fx" id="smsReminderModal">
+            <div id="smsReminderBox">
+                <h2 id="smsReminderTitle">Remind Friend</h2>
+                <p id="smsReminderSubtitle"></p>
+                <button id="sendSmsNowBtn">Send SMS Now</button>
+                <div class="notification-setting-row">
+                    <span>Auto reminders</span>
+                    <div class="switch">
+                        <input type="checkbox" id="autoRemindToggle" />
+                        <label for="autoRemindToggle"></label>
+                    </div>
+                </div>
+                <div id="autoRemindFrequency">
+                    <input type="range" id="autoRemindRange" min="1" max="7" value="7" />
+                    <p id="autoRemindLabel">Once a week</p>
+                </div>
+                <button id="closeSmsReminder">Close</button>
+            </div>
+        </div>
+
         <!-- Firebase -->
         <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
         <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js"></script>

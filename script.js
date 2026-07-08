@@ -83,19 +83,36 @@ document.getElementById("sideNavModal").addEventListener("click", (event) => {
 
 
 
+// Shared visibility helpers for the person list and its Add/Clear controls.
+// The old code toggled the two buttons by wrong IDs ("addPersonBtn"/
+// "clearListBtn" — the real IDs are "add-person-btn"/"clear-list-btn"), so
+// the buttons never actually hid, and the styled #buttons container kept
+// rendering as an empty box behind the login screen. Everything now goes
+// through these helpers, which also toggle the container itself.
+function setListControlsVisible(visible) {
+  const buttonsBox = document.getElementById("buttons");
+  if (buttonsBox) buttonsBox.classList.toggle("hidden", !visible);
+  const addPersonBtn = document.getElementById("add-person-btn");
+  const clearListBtn = document.getElementById("clear-list-btn");
+  if (addPersonBtn) addPersonBtn.style.display = visible ? "flex" : "none";
+  if (clearListBtn) clearListBtn.style.display = visible ? "flex" : "none";
+}
+
+function setPersonListVisible(visible) {
+  // .personlist has a class, not an id — the old getElementById("personlist")
+  // lookups always returned null, so the list never actually hid.
+  const personlist = document.querySelector(".personlist");
+  const peopleListEl = document.getElementById("people-list");
+  if (personlist) personlist.style.display = visible ? "" : "none";
+  if (peopleListEl) peopleListEl.style.display = visible ? "flex" : "none";
+}
+
 function openLogin() {
   document.getElementById("Loginpage").style.display = "flex";
   document.getElementById("signupPage").style.display = "none";
-  const personlist = document.getElementById("personlist");
-  const subscript = document.getElementById("Subscript");
-  const peopleList = document.getElementById("people-list");
-  const addPersonBtn = document.getElementById("add-person-btn");
-  const clearListBtn = document.getElementById("clear-list-btn");
-  if (personlist) personlist.style.display = "none";
-  if (subscript) subscript.style.display = "none";
-  if (peopleList) peopleList.style.display = "none";
-  if (addPersonBtn) addPersonBtn.style.display = "none";
-  if (clearListBtn) clearListBtn.style.display = "none";
+  document.getElementById("loginorsignupmodal").style.display = "none";
+  setPersonListVisible(false);
+  setListControlsVisible(false);
 
   closeNav();
 }
@@ -196,43 +213,23 @@ document.getElementById("Back-btn").addEventListener("click", () => {
   document.getElementById("signupPage").style.display = "none";
   document.getElementById("loginorsignupmodal").style.display = "flex";
   document.getElementById("Loginpage").style.display = "none";
-  const personlist = document.getElementById("personlist");
-  const peopleList = document.getElementById("people-list");
-  const addPersonBtn = document.getElementById("add-person-btn");
-  const clearListBtn = document.getElementById("clear-list-btn");
-  if (personlist) personlist.style.display = "none";
-  if (peopleList) peopleList.style.display = "none";
-  if (addPersonBtn) addPersonBtn.style.display = "none";
-  if (clearListBtn) clearListBtn.style.display = "none";
+  setPersonListVisible(false);
+  setListControlsVisible(false);
 });
 document.getElementById("Back-btn2").addEventListener("click", () => {
   document.getElementById("signupPage").style.display = "none";
   document.getElementById("Loginpage").style.display = "none";
   document.getElementById("loginorsignupmodal").style.display = "flex";
-  const personlist = document.getElementById("personlist");
-  const peopleList = document.getElementById("people-list");
-  const addPersonBtn = document.getElementById("add-person-btn");
-  const clearListBtn = document.getElementById("clear-list-btn");
-  if (personlist) personlist.style.display = "none";
-  if (peopleList) peopleList.style.display = "none";
-  if (addPersonBtn) addPersonBtn.style.display = "none";
-  if (clearListBtn) clearListBtn.style.display = "none";
+  setPersonListVisible(false);
+  setListControlsVisible(false);
 });
 document.getElementById("ContinueasGuest").addEventListener("click", () => {
   document.getElementById("signupPage").style.display = "none";
   document.getElementById("Loginpage").style.display = "none";
   document.getElementById("loginorsignupmodal").style.display = "none";
   document.getElementById("loader").style.display = "none";
-  document.getElementById("clearListBtn").style.display = "flex";
-  const personlist = document.getElementById("personlist");
-  const peopleList = document.getElementById("people-list");
-  const addPersonBtn = document.getElementById("add-person-btn");
-  const clearListBtn = document.getElementById("clear-list-btn");
-  if (personlist) personlist.style.display = "flex";
-  if (peopleList) peopleList.style.display = "flex";
-  if (addPersonBtn) addPersonBtn.style.display = "flex";
-  if (clearListBtn) clearListBtn.style.display = "flex";
-
+  setPersonListVisible(true);
+  setListControlsVisible(true);
 })
 document.getElementById("profileInfo").addEventListener("click", () => {
   
@@ -413,7 +410,7 @@ function copyText() {
 // (via the exact same selector the shared .modal CSS rule uses) and
 // reacts centrally whenever one's display style changes.
 (function () {
-  const chromeElements = ["#TITLE", ".Logo", "#openButton"]
+  const chromeElements = ["#TITLE", ".Logo", "#openButton", "#notificationsBtn"]
     .map((selector) => document.querySelector(selector))
     .filter(Boolean);
 
