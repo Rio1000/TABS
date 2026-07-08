@@ -45,7 +45,10 @@
           // Only the profile owner can manage their own friends list
           ".write": "$uid === auth.uid",
           "$pushed_id": {
-            ".validate": "newData.hasChild('userId') && newData.hasChild('firstName') && newData.hasChild('lastName') && newData.hasChild('friendCode')"
+            // friendCode/phoneNumber are intentionally NOT required: RTDB drops
+            // null children, so a friend with no friendCode (or no phone) would
+            // fail a hasChild() check and have the whole write denied.
+            ".validate": "newData.hasChild('userId') && newData.hasChild('firstName') && newData.hasChild('lastName')"
           }
         },
         "sentRequests": {
