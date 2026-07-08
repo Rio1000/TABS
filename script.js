@@ -231,9 +231,6 @@ document.getElementById("ContinueasGuest").addEventListener("click", () => {
   setPersonListVisible(true);
   setListControlsVisible(true);
 })
-document.getElementById("profileInfo").addEventListener("click", () => {
-  
-});
 const scrollToBottomBtn = document.getElementById('scroll-to-bottom');
 const scrollToTopBtn = document.getElementById('scroll-to-top');
 
