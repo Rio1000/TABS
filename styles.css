@@ -811,6 +811,98 @@ position: fixed;
   transition: opacity 0.18s ease;
 }
 
+/* The modal's direct children are its content card(s) — they pop in/out
+   along with the backdrop fade above. */
+@keyframes modalCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(26px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modalCardOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(18px) scale(0.94);
+  }
+}
+
+.modal-fx > * {
+  animation: modalCardIn 0.28s cubic-bezier(0.22, 1.1, 0.36, 1);
+}
+
+.modal-fx.modal-fx-closing > * {
+  animation: modalCardOut 0.18s ease forwards;
+}
+
+/* Swapping directly from one modal to another (login → signup, tab modal →
+   add-money, …): both backdrops are identical, so hold the backdrop steady
+   and only slide the cards — old card exits left, new card enters from the
+   right. script.js detects same-tick close+open pairs and applies these
+   classes instead of the fade above. */
+@keyframes modalCardSwapIn {
+  from {
+    opacity: 0;
+    transform: translateX(70px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes modalCardSwapOut {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-70px) scale(0.97);
+  }
+}
+
+.modal-fx.modal-fx-swap-in {
+  animation: none; /* backdrop is already up from the outgoing modal */
+}
+
+.modal-fx.modal-fx-swap-in > * {
+  animation: modalCardSwapIn 0.26s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
+}
+
+.modal-fx.modal-fx-swap-out {
+  animation: none;
+  /* Hand the backdrop off to the incoming modal instantly so the two
+     translucent layers don't stack into a darker pulse mid-swap. */
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.modal-fx.modal-fx-swap-out > * {
+  animation: modalCardSwapOut 0.22s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-fx,
+  .modal-fx > *,
+  .modal-fx.modal-fx-closing,
+  .modal-fx.modal-fx-closing > *,
+  .modal-fx.modal-fx-swap-in > *,
+  .modal-fx.modal-fx-swap-out > * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 #sideNavModal {
   position: fixed;
   top: 0;

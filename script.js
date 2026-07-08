@@ -441,25 +441,89 @@ function copyText() {
   updateChromeVisibility();
 })();
 
-// Fade modals in/out instead of an abrupt display:none <-> flex flip. Every
-// modal open/close elsewhere in script.js and firebase-setup.js toggles
-// visibility by setting `element.style.display` directly (~150 call
-// sites), so rather than rewriting each one this uses the same
-// MutationObserver technique as the chrome-hiding logic above. A
-// MutationObserver callback runs as a microtask before the next paint, so
-// when a modal is closed this can restore its display for one more frame,
-// play the fade defined by .modal-fx-closing in styles.css, and only then
-// apply the real `display: none`. The opening fade needs no JS: it's a CSS
-// animation (see .modal-fx in styles.css), which automatically replays
-// whenever `display` flips from none to visible.
+// Animate modals in/out instead of an abrupt display:none <-> flex flip.
+// Every modal open/close elsewhere in script.js and firebase-setup.js
+// toggles visibility by setting `element.style.display` directly (~150
+// call sites), so rather than rewriting each one this uses the same
+// MutationObserver technique as the chrome-hiding logic above.
+//
+// Opening: pure CSS — the .modal-fx backdrop fade and .modal-fx > * card
+// pop-in (styles.css) replay automatically whenever `display` flips from
+// none to visible.
+//
+// Closing: a closed modal's display is restored for the length of the exit
+// animation (.modal-fx-closing), then set back to none for real. Both the
+// observer callbacks and the requestAnimationFrame below run before the
+// frame paints, so the modal never flashes hidden in between.
+//
+// Swapping: opens and closes that land in the same tick (openSignup()
+// hiding the login page while showing the signup page, the tab modal
+// closing as the add-money modal opens, …) are batched here and handled
+// as one pre-paint pass. When a batch contains both, it's a swap: the
+// backdrop is held steady and only the content cards slide out/in
+// (.modal-fx-swap-out / .modal-fx-swap-in) instead of fading the whole
+// screen out and back in.
 (function () {
-  const CLOSE_ANIM_MS = 180;
+  const CLOSE_ANIM_MS = 190;
+  const SWAP_ANIM_MS = 320;
   const lastVisibleDisplay = new WeakMap();
   const selfTriggered = new WeakSet();
   const closeTimers = new WeakMap();
+  const swapInTimers = new WeakMap();
+  const wasVisible = new WeakMap();
+
+  let pendingOpens = [];
+  let pendingCloses = [];
+  let flushScheduled = false;
+
+  function flushModalChanges() {
+    flushScheduled = false;
+    const opens = pendingOpens;
+    // A modal closed and reopened within the same tick nets out to "still
+    // open" — it must not be treated as (half of) a swap.
+    const openSet = new Set(pendingOpens);
+    const closes = pendingCloses.filter((el) => !openSet.has(el));
+    pendingOpens = [];
+    pendingCloses = [];
+    const isSwap = opens.length > 0 && closes.length > 0;
+
+    closes.forEach((el) => {
+      const restoreDisplay = lastVisibleDisplay.get(el) || "flex";
+      selfTriggered.add(el);
+      el.style.display = restoreDisplay;
+      el.classList.add(isSwap ? "modal-fx-swap-out" : "modal-fx-closing");
+
+      closeTimers.set(
+        el,
+        setTimeout(() => {
+          selfTriggered.add(el);
+          el.style.display = "none";
+          el.classList.remove("modal-fx-closing", "modal-fx-swap-out");
+        }, isSwap ? SWAP_ANIM_MS : CLOSE_ANIM_MS)
+      );
+    });
+
+    if (isSwap) {
+      opens.forEach((el) => {
+        el.classList.add("modal-fx-swap-in");
+        clearTimeout(swapInTimers.get(el));
+        swapInTimers.set(
+          el,
+          setTimeout(() => el.classList.remove("modal-fx-swap-in"), SWAP_ANIM_MS + 80)
+        );
+      });
+    }
+  }
+
+  function scheduleFlush() {
+    if (flushScheduled) return;
+    flushScheduled = true;
+    requestAnimationFrame(flushModalChanges);
+  }
 
   document.querySelectorAll(".modal-fx").forEach((el) => {
     const initialDisplay = getComputedStyle(el).display;
+    wasVisible.set(el, initialDisplay !== "none");
     if (initialDisplay !== "none") lastVisibleDisplay.set(el, initialDisplay);
 
     const observer = new MutationObserver(() => {
@@ -468,26 +532,25 @@ function copyText() {
         return;
       }
 
-      if (el.style.display !== "none") {
+      // Only genuine visibility transitions count — style mutations on an
+      // already-open modal (opacity tweaks, hideAllModals() re-hiding an
+      // already-hidden one) must not register as opens/closes, or a lone
+      // close could be misread as a swap.
+      const visible =
+        (el.style.display || getComputedStyle(el).display) !== "none";
+      const before = wasVisible.get(el);
+      wasVisible.set(el, visible);
+      if (visible === before) return;
+
+      if (visible) {
         lastVisibleDisplay.set(el, el.style.display || getComputedStyle(el).display);
         clearTimeout(closeTimers.get(el));
-        el.classList.remove("modal-fx-closing");
-        return;
+        el.classList.remove("modal-fx-closing", "modal-fx-swap-out");
+        pendingOpens.push(el);
+      } else {
+        pendingCloses.push(el);
       }
-
-      const restoreDisplay = lastVisibleDisplay.get(el) || "flex";
-      selfTriggered.add(el);
-      el.style.display = restoreDisplay;
-      el.classList.add("modal-fx-closing");
-
-      closeTimers.set(
-        el,
-        setTimeout(() => {
-          selfTriggered.add(el);
-          el.style.display = "none";
-          el.classList.remove("modal-fx-closing");
-        }, CLOSE_ANIM_MS)
-      );
+      scheduleFlush();
     });
 
     observer.observe(el, { attributes: true, attributeFilter: ["style"] });
