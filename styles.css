@@ -242,23 +242,38 @@ body {
   margin-bottom: 10px;
 }
 
+/* Labeled pill, deliberately distinct from the red remove (✖️) button next
+   to it and from the ✔️ accept-request buttons — icon + "Add to list" text
+   on a purple background so its job (add this friend to the tab list) is
+   unmistakable. !important overrides the generic red `#friendsList li
+   button` rule. */
 .add-friend-to-list {
   margin-left: 10px;
-  width: 30px;
+  width: auto !important;
   height: 30px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: #3c94e7;
+  gap: 4px;
+  background-color: #7a4fd6 !important;
   color: #fff;
   border: none;
   border-radius: 10px;
-  font-size: 16px;
+  font-size: 13px;
   cursor: pointer;
   text-decoration: none;
   font-weight: bold;
   line-height: 1;
-  padding: 0;
+  padding: 0 10px !important;
+  white-space: nowrap;
+}
+
+.add-friend-to-list:hover {
+  background-color: #6a3fc6 !important;
+}
+
+.add-friend-to-list .material-icons {
+  font-size: 18px;
 }
 
 .extra-info-text {
@@ -1504,7 +1519,8 @@ position: fixed;
 }
 
 #name-input,
-#amount-input,
+#money-input,
+#item-input,
 #editMoneyInput,
 #editNameInput,
 #extra-info-input,
