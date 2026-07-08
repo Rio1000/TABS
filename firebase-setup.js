@@ -141,6 +141,12 @@ onAuthStateChanged(auth, async (user) => {
     // (see approveFriendRequest's cross-user fallback) before rendering.
     await reconcileAcceptedRequests();
 
+    // Backfill the UID-keyed friend index used by the phone-number read
+    // rule (see database rules). friendsList is keyed by push-id, which
+    // security rules can't look up by member UID, so each user maintains a
+    // parallel users/{uid}/friendUids/{friendUid} index on their own node.
+    await syncFriendUids();
+
     // Load data only after authentication
     loadListFromFirebase();
     populateFriendsList();
@@ -1703,6 +1709,13 @@ document.getElementById("removeFriendBtn").addEventListener("click", async () =>
   await remove(
     ref(database, `users/${currentUser.uid}/friendsList/${friendId}`)
   );
+  // Also drop the UID-keyed index entry so this ex-friend can no longer read
+  // our phone number (friendData.userId is the friend's UID).
+  if (friendData.userId) {
+    await remove(
+      ref(database, `users/${currentUser.uid}/friendUids/${friendData.userId}`)
+    );
+  }
   showToast(
     `${friendData.firstName} has been removed from your friends list.`,
     "info"
@@ -1968,6 +1981,13 @@ async function approveFriendRequest(requestId, request) {
       friendCode: request.friendCode ?? null,
     });
 
+    // UID-keyed index (own node) so the phone-read rule can verify this
+    // friendship without scanning the push-keyed friendsList.
+    await set(
+      ref(database, `users/${currentUser.uid}/friendUids/${request.fromUserId}`),
+      true
+    );
+
     // Remove pending request
     await remove(
       ref(database, `users/${currentUser.uid}/pendingRequests/${requestId}`)
@@ -2071,6 +2091,11 @@ async function reconcileAcceptedRequests() {
           friendCode: req.friendCode ?? null,
         });
       }
+      // Keep the UID-keyed index in step (see syncFriendUids / phone rule).
+      await set(
+        ref(database, `users/${currentUser.uid}/friendUids/${req.fromUserId}`),
+        true
+      );
       await remove(
         ref(database, `users/${currentUser.uid}/sentRequests/${req.fromUserId}`)
       );
@@ -2401,10 +2426,43 @@ async function getFriendPhone(friendUserId) {
     );
     return snapshot.exists() ? snapshot.val() : null;
   } catch (error) {
-    // Their profile may not be readable under the database rules — the SMS
-    // composer still opens, the user just picks the contact themselves.
+    // Their profile may not be readable — this happens when the friendship
+    // predates the friendUids index and the friend hasn't logged in since
+    // (so they haven't run syncFriendUids to authorize us yet). The SMS
+    // composer still opens; the user just picks the contact themselves.
     console.warn("⚠️ Could not read friend's phone number:", error);
     return null;
+  }
+}
+
+// Rebuild the UID-keyed friend index from the (push-keyed) friendsList on our
+// own node. Security rules can't scan friendsList by member UID, so the
+// phone-number read rule checks users/{owner}/friendUids/{reader} instead —
+// a value only the owner can write, which keeps the check unforgeable.
+// Running this on login backfills the index for friendships made before the
+// index existed, and self-heals if an entry ever goes missing.
+async function syncFriendUids() {
+  if (!currentUser) return;
+  try {
+    const snapshot = await get(
+      ref(database, `users/${currentUser.uid}/friendsList`)
+    );
+    if (!snapshot.exists()) return;
+
+    const updates = {};
+    snapshot.forEach((child) => {
+      const friendUid = child.val().userId;
+      if (friendUid) updates[friendUid] = true;
+    });
+
+    if (Object.keys(updates).length > 0) {
+      await update(
+        ref(database, `users/${currentUser.uid}/friendUids`),
+        updates
+      );
+    }
+  } catch (error) {
+    console.error("❌ Error syncing friendUids index:", error);
   }
 }
 

@@ -1,0 +1,74 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+
+        "profile": {
+          ".write": "$uid === auth.uid",
+
+          "phoneNumber": {
+            // A friend may read ONLY this field. The check looks at the
+            // profile owner's own friendUids index (which only the owner can
+            // write), so a caller can't grant themselves access — the
+            // friendship has to be one the owner actually recorded.
+            ".read": "auth.uid === $uid || root.child('users').child($uid).child('friendUids').child(auth.uid).exists()"
+          }
+        },
+
+        "peopleList":   { ".write": "$uid === auth.uid" },
+        "history":      { ".write": "$uid === auth.uid" },
+        "lastCleared":  { ".write": "$uid === auth.uid" },
+        "spending":     { ".write": "$uid === auth.uid" },
+        "settings":     { ".write": "$uid === auth.uid" },
+        "notifications": {
+          // Owner can read/manage; anyone signed in may push a notification
+          // (friend request/accept, reminder) into someone else's inbox.
+          ".write": "$uid === auth.uid",
+          "$notif_id": {
+            ".write": "auth != null",
+            ".validate": "!newData.exists() || (newData.hasChild('message') && newData.hasChild('timestamp'))"
+          }
+        },
+        "autoReminders": { ".write": "$uid === auth.uid" },
+
+        "friendUids": {
+          // UID-keyed mirror of friendsList, maintained by the owner only and
+          // used purely to authorize friends to read the phone number above.
+          ".write": "$uid === auth.uid",
+          "$friend_uid": {
+            ".validate": "newData.isBoolean()"
+          }
+        },
+
+        "friendsList": {
+          // Only the profile owner can manage their own friends list
+          ".write": "$uid === auth.uid",
+          "$pushed_id": {
+            ".validate": "newData.hasChild('userId') && newData.hasChild('firstName') && newData.hasChild('lastName') && newData.hasChild('friendCode')"
+          }
+        },
+        "sentRequests": {
+           // Only the profile owner can manage their own sent requests
+           ".write": "$uid === auth.uid",
+           "$receiver_uid": {
+             ".validate": "!newData.exists() || (newData.hasChild('toUserId') && newData.hasChild('firstName') && newData.hasChild('lastName'))"
+           }
+        },
+        "pendingRequests": {
+          "$requester_uid": {
+            ".write": "auth.uid === $requester_uid || auth.uid === $uid",
+            ".validate": "!newData.exists() || (newData.hasChild('fromUserId') && newData.hasChild('firstName') && newData.hasChild('lastName') && newData.child('fromUserId').val() === $requester_uid)"
+          }
+        }
+      }
+    },
+    "friendCodes": {
+      ".read": "auth != null",
+      "$code": {
+        ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid)",
+        ".validate": "!newData.exists() || (newData.hasChild('userId') && newData.child('userId').val() === auth.uid)"
+      }
+    }
+  }
+}
