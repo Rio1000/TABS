@@ -244,7 +244,7 @@ body {
 
 .add-friend-to-list {
   margin-left: 10px;
-  width: 30px;
+  width: auto;
   height: 30px;
   display: flex;
   align-items: center;
@@ -791,7 +791,6 @@ position: fixed;
   backdrop-filter: blur(20px);
 }
 
-  display: flex;
 /* Fade-in/out for modal open/close (see script.js's modal-fx observer,
    which defers `display: none` on close long enough for this to play). A
    CSS animation (rather than a transition) is used for the open state
@@ -1533,6 +1532,9 @@ position: fixed;
      (rather than sitting vertically centered), the two overlapped. Normal
      flow lets it push #friendBox down by however tall it actually is,
      rather than guessing a fixed offset. */
+  position: absolute;
+  bottom: 0px;
+  width: 100%;
   display: flex;
   flex-direction: row;
   width: 100%;
@@ -1628,9 +1630,9 @@ position: fixed;
   padding: 20px;
   border-radius: 10px;
   text-align: center;
-  width: 70%;
+  width: 90%;
   margin-top: 60px;
-  height: 70%;
+  height: 90%;
   position: relative;
   align-items: center;
   justify-content: center;
@@ -1692,8 +1694,6 @@ position: fixed;
 
 #closeFriendModal {
   background-color: rgba(175, 53, 44, 0.8);
-  position: absolute;
-  bottom: 0px;
   font-size: 20px;
   border-radius: 8px;
   width: 50%;

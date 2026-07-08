@@ -1747,7 +1747,7 @@ async function populateFriendsList() {
 
         const friendAddButton = document.createElement("button");
         friendAddButton.classList.add("add-friend-to-list");
-        friendAddButton.textContent = "➕";
+        friendAddButton.textContent = "Add To List";
         friendAddButton.style.marginLeft = "10px";
         friendAddButton.style.cursor = "pointer";
         friendAddButton.style.backgroundColor = " #3c94e7";
