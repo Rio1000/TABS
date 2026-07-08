@@ -119,13 +119,12 @@ let currentListItem = null;
 let peopleListUnsub = null;
 let friendsListUnsub = null;
 let friendPendingRemoval = null;
+let notificationsUnsub = null;
 
 onAuthStateChanged(auth, async (user) => {
   const loginPage = document.getElementById("Loginpage");
   const signupPage = document.getElementById("signupPage");
   const friendBox = document.getElementById("friendModal");
-  const addPersonBtn = document.getElementById("addPersonBtn");
-  const clearListBtn = document.getElementById("clearListBtn");
 
   if (user) {
     currentUser = user;
@@ -138,19 +137,28 @@ onAuthStateChanged(auth, async (user) => {
     // shown on load already reflect it instead of needing a second refresh.
     await applyInterestToAll();
 
+    // Pick up friend requests that were accepted while we were offline
+    // (see approveFriendRequest's cross-user fallback) before rendering.
+    await reconcileAcceptedRequests();
+
     // Load data only after authentication
     loadListFromFirebase();
     populateFriendsList();
     loadAddWindow();
+    loadNotificationPrefs();
+    subscribeToNotifications();
+    checkAutoReminders();
 
     // Hide login/signup pages
     if (loginPage) loginPage.style.display = "none";
     if (signupPage) signupPage.style.display = "none";
     if (friendBox) friendBox.style.display = "none";
 
-    // Show buttons if they exist
-    if (addPersonBtn) addPersonBtn.style.display = "flex";
-    if (clearListBtn) clearListBtn.style.display = "flex";
+    // Show the list controls (helpers live in script.js — the old code
+    // looked these buttons up by IDs that don't exist, so they never
+    // actually toggled).
+    setListControlsVisible(true);
+    document.getElementById("notificationsBtn").style.display = "flex";
     document.getElementById("loginorsignupmodal").style.display = "none";
     document.getElementById("topnav").style.display = "flex";
     document.getElementById("NotLoggedIn").style.display = "none";
@@ -231,6 +239,10 @@ onAuthStateChanged(auth, async (user) => {
       friendsListUnsub();
       friendsListUnsub = null;
     }
+    if (notificationsUnsub) {
+      notificationsUnsub();
+      notificationsUnsub = null;
+    }
 
     logoutButton.style.display = "none";
     loginSignup.style.display = "flex";
@@ -239,8 +251,10 @@ onAuthStateChanged(auth, async (user) => {
     peopleList.innerHTML = "";
 
     // Reset UI elements if necessary
-    if (addPersonBtn) addPersonBtn.style.display = "none";
-    if (clearListBtn) clearListBtn.style.display = "none";
+    setListControlsVisible(false);
+    document.getElementById("notificationsBtn").style.display = "none";
+    const folderBadge = document.getElementById("folderNotificationBadge");
+    if (folderBadge) folderBadge.style.display = "none";
     document.getElementById("loginorsignupmodal").style.display = "flex";
     document.getElementById("topnav").style.display = "none";
     document.getElementById("ProfileModal").style.display = "none";
@@ -744,7 +758,11 @@ async function updatePendingCount() {
       get(pendingRef),
       get(sentRef),
     ]);
-    const receivedCount = pendingSnap.exists() ? Object.keys(pendingSnap.val()).length : 0;
+    // Acceptance markers (type: "accepted") live under pendingRequests too,
+    // but they're bookkeeping, not requests awaiting a decision.
+    const receivedCount = pendingSnap.exists()
+      ? Object.values(pendingSnap.val()).filter((req) => req.type !== "accepted").length
+      : 0;
     const sentCount = sentSnap.exists() ? Object.keys(sentSnap.val()).length : 0;
 
     const receivedBadge = document.getElementById("pendingCount");
@@ -864,6 +882,18 @@ function addPerson(
   extraBox.classList.add("extra-info-box");
   extraBox.appendChild(removeBtn);
   extraBox.appendChild(addInfoBtn);
+
+  if (isFriend) {
+    // SMS reminder — only for rows that came from the friends list, since
+    // reminding someone over SMS needs a real linked account (and phone
+    // number) behind the row.
+    const smsBtn = document.createElement("button");
+    smsBtn.innerHTML = '<span class="material-icons">sms</span>';
+    smsBtn.classList.add("sms-remind-btn");
+    smsBtn.title = "Send a payment reminder over SMS";
+    smsBtn.addEventListener("click", () => openSmsReminderModal(listItem));
+    extraBox.appendChild(smsBtn);
+  }
   nameAmountContainer.appendChild(personItem);
   nameAmountContainer.appendChild(extraBox);
 
@@ -888,6 +918,12 @@ function addPerson(
 
 }
 function addAdBox() {
+  // Idempotent: loadListFromFirebase can run more than once per session
+  // (login, reloads), and stacking a new ad box each time both clutters the
+  // list and double-push()es slots AdSense then refuses to fill.
+  const existingAd = peopleList.querySelector(".ad-box");
+  if (existingAd) existingAd.remove();
+
   const adItem = document.createElement("div");
   adItem.classList.add("personlist-item", "ad-box");
   adItem.style.justifyContent = "center";
@@ -906,16 +942,31 @@ function addAdBox() {
   `;
 
   peopleList.appendChild(adItem);
+  pushAdWhenVisible(adItem);
+}
 
-  // The <ins> above is only in the DOM now, after the list has rendered —
-  // unlike the ins tags baked into index.html (pushed once at page load),
-  // this one needs its own push() once it's actually attached.
-  try {
-    (window.adsbygoogle = window.adsbygoogle || []).push({});
-  } catch (error) {
-    console.error("❌ AdSense push failed:", error);
+// The <ins> is only in the DOM after the list has rendered — unlike the ins
+// tags baked into index.html (pushed once at page load), it needs its own
+// push(). But AdSense skips slots with zero layout width ("availableWidth=0"),
+// and the person list can still be display:none at this point (e.g. the
+// loader or a login page is up), so wait until the box actually has width.
+function pushAdWhenVisible(adItem, attempt = 0) {
+  if (adItem.offsetWidth > 0) {
+    try {
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (error) {
+      console.error("❌ AdSense push failed:", error);
+    }
+  } else if (attempt < 40) {
+    setTimeout(() => pushAdWhenVisible(adItem, attempt + 1), 250);
   }
 }
+
+// Guests never run loadListFromFirebase (it bails without a user), so give
+// them the ad box in the person list too.
+document.getElementById("ContinueasGuest").addEventListener("click", () => {
+  addAdBox();
+});
 function checkAmountOrItem() {
   const amountSpan = currentListItem.querySelector(".amount-input");
   const text = amountSpan.textContent.trim();
@@ -1489,30 +1540,43 @@ addPersonBtn.addEventListener("click", () => {
 });
 document.getElementById("add").addEventListener("click", () => {
   const nameInput = document.getElementById("name-input");
-  const amountInput = document.getElementById("amount-input");
+  const moneyInput = document.getElementById("money-input");
+  const itemInput = document.getElementById("item-input");
 
   const name = nameInput.value.trim();
-  const amountRaw = amountInput.value.trim();
+  const moneyRaw = moneyInput.value.trim();
+  const itemRaw = itemInput.value.trim();
 
   if (!name) {
     showToast("Name cannot be empty", "error");
     return;
   }
 
-  if (!amountRaw) {
-    showToast("Amount cannot be empty", "error");
+  const hasMoney = moneyRaw !== "" && !isNaN(moneyRaw);
+  if (moneyRaw !== "" && !hasMoney) {
+    showToast("Amount must be a number.", "error");
     return;
   }
 
-  // Use the raw input as-is, whether it's a number or string
-  const amount = isNaN(amountRaw) ? amountRaw : parseFloat(amountRaw);
+  if (!hasMoney && !itemRaw) {
+    showToast("Enter an amount, an item, or both.", "error");
+    return;
+  }
 
-  addPerson(name, amount, [], undefined, false, true);
+  // Money and item are two separate fields now:
+  //  - money only  -> amount shows normally (with the currency sign)
+  //  - item only   -> the item text takes the amount slot, as before
+  //  - both         -> money shows as the amount, item goes in as an info row
+  const amount = hasMoney ? parseFloat(moneyRaw) : itemRaw;
+  const extraInfo = hasMoney && itemRaw ? [{ text: itemRaw }] : [];
+
+  addPerson(name, amount, extraInfo, undefined, false, true);
   saveListToFirebase();
 
   // Clear inputs and hide modal after adding
   nameInput.value = "";
-  amountInput.value = "";
+  moneyInput.value = "";
+  itemInput.value = "";
   logUserAction(`Added a tab for: ${name}`);
 
   document.getElementById("add-person-box-modal").style.display = "none";
@@ -1698,10 +1762,12 @@ async function populateFriendsList() {
 
         const friendAddButton = document.createElement("button");
         friendAddButton.classList.add("add-friend-to-list");
-        friendAddButton.textContent = "➕";
-        friendAddButton.style.marginLeft = "10px";
-        friendAddButton.style.cursor = "pointer";
-        friendAddButton.style.backgroundColor = " #3c94e7";
+        // Labeled + icon'd (rather than a bare "➕") so it reads clearly as
+        // "add this friend to my tab list" and can't be mistaken for an
+        // accept-request button.
+        friendAddButton.innerHTML =
+          '<span class="material-icons">playlist_add</span><span>Add to list</span>';
+        friendAddButton.title = "Add this friend to your tab list";
         friendAddButton.onclick = () => {
           addPerson(
             `${friendData.firstName} ${friendData.lastName}`,
@@ -1799,6 +1865,10 @@ export async function sendFriendRequest(friendUserId, friendData) {
 
   showToast("Friend request sent!", "success");
   logUserAction(`Sent friend request to ${friendData.firstName} ${friendData.lastName}`);
+  addNotification(friendUserId, {
+    type: "friend-request",
+    message: `${myProfile.firstName} ${myProfile.lastName} sent you a friend request`,
+  });
   updatePendingCount();
 }
 
@@ -1806,6 +1876,10 @@ export async function sendFriendRequest(friendUserId, friendData) {
 async function loadFriendRequests() {
   const list = document.getElementById("pendingRequestsList");
   list.innerHTML = "";
+
+  // Turn any acceptance markers into real friendships before rendering, so
+  // they never show up as bogus "incoming requests".
+  await reconcileAcceptedRequests();
 
   const incomingRef = ref(database, `users/${currentUser.uid}/pendingRequests`);
   const outgoingRef = ref(database, `users/${currentUser.uid}/sentRequests`);
@@ -1819,6 +1893,7 @@ async function loadFriendRequests() {
   if (incomingSnap.exists()) {
     const incoming = incomingSnap.val();
     Object.entries(incoming).forEach(([id, req]) => {
+      if (req.type === "accepted") return; // handled by reconcile above
       const li = document.createElement("li");
       li.textContent = `${req.firstName} ${req.lastName} sent you a friend request`;
 
@@ -1879,52 +1954,136 @@ async function loadFriendRequests() {
 
 async function approveFriendRequest(requestId, request) {
   try {
-    // Add to current user's friend list
+    // Do everything under our own uid first — these writes are always
+    // permitted. The cross-user mirroring below is best-effort: database
+    // rules may deny writing into the other user's friendsList, and that
+    // used to abort this whole function AFTER the friend was already added
+    // to our list, surfacing a permissions error for an accept that had
+    // effectively succeeded.
     const userFriendRef = ref(database, `users/${currentUser.uid}/friendsList`);
     await set(push(userFriendRef), {
       userId: request.fromUserId,
       firstName: request.firstName,
       lastName: request.lastName,
-      friendCode: request.friendCode,
+      friendCode: request.friendCode ?? null,
     });
-
-    // Add current user to their friends list
-    const profileSnapshot = await get(
-      ref(database, `users/${currentUser.uid}/profile`)
-    );
-    const currentProfile = profileSnapshot.val();
-
-    const otherFriendRef = ref(
-      database,
-      `users/${request.fromUserId}/friendsList`
-    );
-    await set(push(otherFriendRef), {
-      userId: currentUser.uid,
-      firstName: currentProfile.firstName,
-      lastName: currentProfile.lastName,
-      friendCode: currentProfile.friendCode,
-    });
-
-    // Also remove from the sender's sent requests list
-    await remove(
-      ref(database, `users/${request.fromUserId}/sentRequests/${currentUser.uid}`)
-    );
 
     // Remove pending request
     await remove(
       ref(database, `users/${currentUser.uid}/pendingRequests/${requestId}`)
     );
 
+    const profileSnapshot = await get(
+      ref(database, `users/${currentUser.uid}/profile`)
+    );
+    const currentProfile = profileSnapshot.val();
+    const myInfo = {
+      userId: currentUser.uid,
+      firstName: currentProfile.firstName,
+      lastName: currentProfile.lastName,
+      friendCode: currentProfile.friendCode ?? null,
+    };
+
+    // Mirror the friendship onto the sender's side, best-effort.
+    try {
+      const otherFriendRef = ref(
+        database,
+        `users/${request.fromUserId}/friendsList`
+      );
+      await set(push(otherFriendRef), myInfo);
+      await remove(
+        ref(database, `users/${request.fromUserId}/sentRequests/${currentUser.uid}`)
+      );
+    } catch (crossUserError) {
+      // Rules blocked the direct write. Leave an acceptance marker in the
+      // sender's pendingRequests instead — that path is known to accept
+      // cross-user writes (it's how the request reached us in the first
+      // place) — and their client completes the friendship on next load
+      // via reconcileAcceptedRequests().
+      console.warn(
+        "⚠️ Could not write to sender's friendsList directly, leaving acceptance marker:",
+        crossUserError
+      );
+      try {
+        await set(
+          ref(database, `users/${request.fromUserId}/pendingRequests/${currentUser.uid}`),
+          { ...myInfo, fromUserId: currentUser.uid, type: "accepted" }
+        );
+      } catch (markerError) {
+        console.error("❌ Could not leave acceptance marker either:", markerError);
+      }
+    }
+
+    // Let the sender know, best-effort.
+    addNotification(request.fromUserId, {
+      type: "friend-accept",
+      message: `${currentProfile.firstName} ${currentProfile.lastName} accepted your friend request!`,
+    });
+
     showToast(
       `${request.firstName} has been added to your friends list!`,
       "success"
     );
+    await logUserAction(`Accepted friend request from ${request.firstName} ${request.lastName}`);
     populateFriendsList();
     loadFriendRequests();
     updatePendingCount();
   } catch (error) {
     console.error("❌ Error approving friend:", error);
     showToast(`Error approving friend: ${error.message}`, "error");
+  }
+}
+
+// Completes friendships that were accepted while this user was offline (or
+// where rules blocked the acceptor from writing into this user's
+// friendsList): the acceptor leaves a {type: "accepted"} marker in our
+// pendingRequests, and this turns it into a real friendsList entry.
+async function reconcileAcceptedRequests() {
+  if (!currentUser) return;
+
+  try {
+    const pendingSnap = await get(
+      ref(database, `users/${currentUser.uid}/pendingRequests`)
+    );
+    if (!pendingSnap.exists()) return;
+
+    const accepted = Object.entries(pendingSnap.val()).filter(
+      ([, req]) => req.type === "accepted"
+    );
+    if (accepted.length === 0) return;
+
+    const friendsSnap = await get(
+      ref(database, `users/${currentUser.uid}/friendsList`)
+    );
+    const existingFriendIds = new Set();
+    if (friendsSnap.exists()) {
+      friendsSnap.forEach((child) => {
+        existingFriendIds.add(child.val().userId);
+      });
+    }
+
+    for (const [markerId, req] of accepted) {
+      if (!existingFriendIds.has(req.fromUserId)) {
+        await set(push(ref(database, `users/${currentUser.uid}/friendsList`)), {
+          userId: req.fromUserId,
+          firstName: req.firstName,
+          lastName: req.lastName,
+          friendCode: req.friendCode ?? null,
+        });
+      }
+      await remove(
+        ref(database, `users/${currentUser.uid}/sentRequests/${req.fromUserId}`)
+      );
+      await remove(
+        ref(database, `users/${currentUser.uid}/pendingRequests/${markerId}`)
+      );
+      addNotification(currentUser.uid, {
+        type: "friend-accept",
+        message: `${req.firstName} ${req.lastName} accepted your friend request!`,
+      });
+    }
+  } catch (error) {
+    console.error("❌ Error reconciling accepted requests:", error);
   }
 }
 
@@ -1965,8 +2124,7 @@ closeWindow[0].onclick = function () {
 
   if (loginPage) loginPage.style.display = "none";
   if (signupPage) signupPage.style.display = "none";
-  if (addPersonBtn) addPersonBtn.style.display = "flex";
-  if (clearListBtn) clearListBtn.style.display = "flex";
+  setListControlsVisible(true);
   if (friendBox) friendBox.style.display = "none";
   // Load the add window
   loadAddWindow();
@@ -1981,20 +2139,14 @@ function windowClosed() {
 
   if (loginPage) loginPage.style.display = "none";
   if (signupPage) signupPage.style.display = "none";
-  if (addPersonBtn) addPersonBtn.style.display = "flex";
-  if (clearListBtn) clearListBtn.style.display = "flex";
+  setListControlsVisible(true);
   if (friendBox) friendBox.style.display = "none";
 }
 
 function loadAddWindow() {
-  // Show Person List and Subscript
-  const personlist = document.getElementById("personlist");
-  const subscript = document.getElementById("Subscript");
-  const peopleList = document.getElementById("people-list");
-
-  if (personlist) personlist.style.display = "flex";
-  if (subscript) subscript.style.display = "flex";
-  if (peopleList) peopleList.style.display = "flex";
+  // Show Person List (helper lives in script.js and also fixes the old
+  // getElementById("personlist") lookup — .personlist is a class, not an id)
+  setPersonListVisible(true);
 }
 
 var slider = document.getElementById("interestRange");
@@ -2004,6 +2156,404 @@ output.innerHTML = slider.value + "%";
 slider.oninput = function () {
   output.innerHTML = this.value + "%";
 };
+
+// ---------------------------------------------------------------------------
+// Notification system
+//
+// Notifications live at users/{uid}/notifications and are written either by
+// the user's own client (reminders, reconciled accepts) or best-effort by
+// other users' clients (friend requests/accepts). A realtime listener keeps
+// the bell badge and the notifications modal in sync and toasts anything
+// that arrives while the app is open.
+// ---------------------------------------------------------------------------
+
+let latestNotifications = {};
+let knownNotificationKeys = null;
+let notificationPrefs = { enabled: true, friends: true, reminders: true };
+
+function notificationAllowed(type) {
+  if (!notificationPrefs.enabled) return false;
+  if ((type === "friend-request" || type === "friend-accept") && !notificationPrefs.friends) return false;
+  if (type === "sms-reminder" && !notificationPrefs.reminders) return false;
+  return true;
+}
+
+// Best-effort delivery: writing into another user's node can be blocked by
+// database rules, and a missed notification should never break the action
+// that triggered it.
+async function addNotification(targetUid, notification) {
+  try {
+    await push(ref(database, `users/${targetUid}/notifications`), {
+      ...notification,
+      read: false,
+      timestamp: Date.now(),
+    });
+  } catch (error) {
+    console.warn("⚠️ Could not deliver notification:", error);
+  }
+}
+
+function subscribeToNotifications() {
+  if (!currentUser) return;
+  if (notificationsUnsub) notificationsUnsub();
+  knownNotificationKeys = null;
+
+  const notifRef = ref(database, `users/${currentUser.uid}/notifications`);
+  notificationsUnsub = onValue(notifRef, (snapshot) => {
+    latestNotifications = snapshot.exists() ? snapshot.val() : {};
+    renderNotifications();
+
+    // Toast only notifications that arrived after the initial snapshot.
+    if (knownNotificationKeys) {
+      Object.entries(latestNotifications).forEach(([key, notif]) => {
+        if (!knownNotificationKeys.has(key) && !notif.read && notificationAllowed(notif.type)) {
+          showToast(notif.message, "success");
+        }
+      });
+    }
+    knownNotificationKeys = new Set(Object.keys(latestNotifications));
+  });
+}
+
+function renderNotifications() {
+  const list = document.getElementById("notificationsList");
+  const badge = document.getElementById("notificationBadge");
+  const folderBadge = document.getElementById("folderNotificationBadge");
+  list.innerHTML = "";
+
+  const entries = Object.entries(latestNotifications).sort(
+    ([, a], [, b]) => (b.timestamp || 0) - (a.timestamp || 0)
+  );
+
+  // Drive both the badge on the Notifications menu item and the count that
+  // sits on the folder button itself (so an unread count is visible without
+  // opening the menu).
+  const unreadCount = entries.filter(([, notif]) => !notif.read).length;
+  const badgeText = unreadCount > 9 ? "9+" : String(unreadCount);
+  const badgeDisplay = unreadCount > 0 ? "inline-flex" : "none";
+  badge.textContent = badgeText;
+  badge.style.display = badgeDisplay;
+  if (folderBadge) {
+    folderBadge.textContent = badgeText;
+    folderBadge.style.display = badgeDisplay;
+  }
+
+  if (entries.length === 0) {
+    list.innerHTML = "<li>No notifications yet.</li>";
+    return;
+  }
+
+  entries.forEach(([key, notif]) => {
+    const li = document.createElement("li");
+    if (!notif.read) li.classList.add("unread");
+
+    const messageSpan = document.createElement("span");
+    messageSpan.classList.add("notification-message");
+    messageSpan.textContent = notif.message;
+
+    const timeSpan = document.createElement("span");
+    timeSpan.classList.add("notification-time");
+    timeSpan.textContent = notif.timestamp
+      ? new Date(notif.timestamp).toLocaleString()
+      : "";
+    messageSpan.appendChild(timeSpan);
+    li.appendChild(messageSpan);
+
+    // Payment reminders get a shortcut straight into the SMS composer.
+    if (notif.type === "sms-reminder") {
+      const textBtn = document.createElement("button");
+      textBtn.classList.add("notification-action");
+      textBtn.textContent = "Text now";
+      textBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        openSmsComposer(notif.phone, notif.smsBody || notif.message);
+      });
+      li.appendChild(textBtn);
+    }
+
+    li.addEventListener("click", () => {
+      if (!notif.read) {
+        update(ref(database, `users/${currentUser.uid}/notifications/${key}`), {
+          read: true,
+        });
+      }
+    });
+
+    list.appendChild(li);
+  });
+}
+
+document.getElementById("notificationsBtn").addEventListener("click", () => {
+  document.getElementById("notificationsModal").style.display = "flex";
+  closeNav(); // the trigger now lives inside the folder side-nav
+});
+document.getElementById("closeNotifications").addEventListener("click", () => {
+  document.getElementById("notificationsModal").style.display = "none";
+});
+document.getElementById("markAllReadBtn").addEventListener("click", () => {
+  if (!currentUser) return;
+  const updates = {};
+  Object.entries(latestNotifications).forEach(([key, notif]) => {
+    if (!notif.read) updates[`${key}/read`] = true;
+  });
+  if (Object.keys(updates).length > 0) {
+    update(ref(database, `users/${currentUser.uid}/notifications`), updates);
+  }
+});
+document.getElementById("clearNotificationsBtn").addEventListener("click", async () => {
+  if (!currentUser) return;
+  await remove(ref(database, `users/${currentUser.uid}/notifications`));
+  showToast("Notifications cleared.", "success");
+});
+
+// --- Notification settings (the Profile "Manage Notifications" button) ---
+
+async function loadNotificationPrefs() {
+  if (!currentUser) return;
+  try {
+    const snapshot = await get(
+      ref(database, `users/${currentUser.uid}/settings/notifications`)
+    );
+    if (snapshot.exists()) {
+      notificationPrefs = { ...notificationPrefs, ...snapshot.val() };
+    }
+  } catch (error) {
+    console.error("❌ Error loading notification settings:", error);
+  }
+  document.getElementById("notifEnabledToggle").checked = notificationPrefs.enabled;
+  document.getElementById("notifFriendsToggle").checked = notificationPrefs.friends;
+  document.getElementById("notifRemindersToggle").checked = notificationPrefs.reminders;
+}
+
+async function saveNotificationPrefs() {
+  notificationPrefs = {
+    enabled: document.getElementById("notifEnabledToggle").checked,
+    friends: document.getElementById("notifFriendsToggle").checked,
+    reminders: document.getElementById("notifRemindersToggle").checked,
+  };
+  if (!currentUser) return;
+  try {
+    await set(
+      ref(database, `users/${currentUser.uid}/settings/notifications`),
+      notificationPrefs
+    );
+  } catch (error) {
+    showToast("Could not save notification settings.", "error");
+  }
+}
+
+["notifEnabledToggle", "notifFriendsToggle", "notifRemindersToggle"].forEach((id) => {
+  document.getElementById(id).addEventListener("change", saveNotificationPrefs);
+});
+manageNotifications.addEventListener("click", () => {
+  document.getElementById("notificationSettingsModal").style.display = "flex";
+});
+document.getElementById("closeNotificationSettings").addEventListener("click", () => {
+  document.getElementById("notificationSettingsModal").style.display = "none";
+});
+
+// ---------------------------------------------------------------------------
+// SMS payment reminders (friend rows only)
+//
+// "Send SMS Now" opens the phone's SMS composer via an sms: link with a
+// prefilled message. Auto reminders can't send texts by themselves from a
+// static web app — instead the chosen frequency (once a day … once a week)
+// is stored at users/{uid}/autoReminders/{friendUserId}, and whenever a
+// reminder comes due the app drops an in-app notification with a "Text now"
+// shortcut into the composer.
+// ---------------------------------------------------------------------------
+
+let currentReminderTarget = null;
+
+function openSmsComposer(phone, body) {
+  const digits = phone ? String(phone).replace(/\D/g, "") : "";
+  // iOS expects "sms:123&body=", everything else "sms:123?body="
+  const separator = /iPad|iPhone|iPod/.test(navigator.userAgent) ? "&" : "?";
+  window.location.href = `sms:${digits}${separator}body=${encodeURIComponent(body)}`;
+}
+
+function buildReminderMessage(name, amountText) {
+  const firstName = name.split(" ")[0];
+  const amount = parseFloat(amountText);
+  const owed = !isNaN(amount) ? `$${amount.toFixed(2)}` : amountText;
+  return `Hey ${firstName}, friendly reminder that you owe me ${owed} — tracked on TABS!`;
+}
+
+async function findFriendByName(fullName) {
+  const snapshot = await get(
+    ref(database, `users/${currentUser.uid}/friendsList`)
+  );
+  if (!snapshot.exists()) return null;
+  let match = null;
+  snapshot.forEach((child) => {
+    const friend = child.val();
+    if (`${friend.firstName} ${friend.lastName}`.trim() === fullName.trim()) {
+      match = friend;
+    }
+  });
+  return match;
+}
+
+async function getFriendPhone(friendUserId) {
+  try {
+    const snapshot = await get(
+      ref(database, `users/${friendUserId}/profile/phoneNumber`)
+    );
+    return snapshot.exists() ? snapshot.val() : null;
+  } catch (error) {
+    // Their profile may not be readable under the database rules — the SMS
+    // composer still opens, the user just picks the contact themselves.
+    console.warn("⚠️ Could not read friend's phone number:", error);
+    return null;
+  }
+}
+
+function updateAutoRemindUI() {
+  const enabled = document.getElementById("autoRemindToggle").checked;
+  const frequencyBox = document.getElementById("autoRemindFrequency");
+  frequencyBox.style.display = enabled ? "flex" : "none";
+
+  const days = parseInt(document.getElementById("autoRemindRange").value, 10);
+  const label = document.getElementById("autoRemindLabel");
+  if (days === 1) label.textContent = "Once a day";
+  else if (days === 7) label.textContent = "Once a week";
+  else label.textContent = `Every ${days} days`;
+}
+
+async function openSmsReminderModal(listItem) {
+  const name = listItem.querySelector(".name-span").textContent.trim();
+  const amountText = listItem.querySelector(".amount-input").textContent.trim();
+
+  document.getElementById("smsReminderTitle").textContent = `Remind ${name}`;
+  document.getElementById("smsReminderSubtitle").textContent = !isNaN(parseFloat(amountText))
+    ? `They owe you $${parseFloat(amountText).toFixed(2)}`
+    : `They owe you: ${amountText}`;
+
+  currentReminderTarget = { name, amountText, friendUserId: null, phone: null };
+  document.getElementById("autoRemindToggle").checked = false;
+  document.getElementById("autoRemindRange").value = 7;
+  updateAutoRemindUI();
+  document.getElementById("smsReminderModal").style.display = "flex";
+
+  const friend = await findFriendByName(name);
+  if (friend) {
+    currentReminderTarget.friendUserId = friend.userId;
+    currentReminderTarget.phone = await getFriendPhone(friend.userId);
+
+    try {
+      const snapshot = await get(
+        ref(database, `users/${currentUser.uid}/autoReminders/${friend.userId}`)
+      );
+      if (snapshot.exists()) {
+        const saved = snapshot.val();
+        document.getElementById("autoRemindToggle").checked = !!saved.enabled;
+        document.getElementById("autoRemindRange").value = saved.frequencyDays || 7;
+        updateAutoRemindUI();
+      }
+    } catch (error) {
+      console.error("❌ Error loading auto-reminder settings:", error);
+    }
+  }
+}
+
+document.getElementById("sendSmsNowBtn").addEventListener("click", async () => {
+  if (!currentReminderTarget) return;
+  const { name, amountText, phone, friendUserId } = currentReminderTarget;
+  openSmsComposer(phone, buildReminderMessage(name, amountText));
+  logUserAction(`Sent an SMS reminder to ${name}`);
+
+  // Sending manually also resets the auto-reminder clock.
+  if (friendUserId) {
+    try {
+      await update(
+        ref(database, `users/${currentUser.uid}/autoReminders/${friendUserId}`),
+        { lastSent: Date.now() }
+      );
+    } catch (error) {
+      // No auto reminder saved yet — nothing to update.
+    }
+  }
+});
+
+async function saveAutoReminderSettings() {
+  if (!currentUser || !currentReminderTarget) return;
+  const toggle = document.getElementById("autoRemindToggle");
+  const { name, friendUserId, phone } = currentReminderTarget;
+
+  if (!friendUserId) {
+    if (toggle.checked) {
+      toggle.checked = false;
+      updateAutoRemindUI();
+      showToast("Auto reminders only work for people from your friends list.", "error");
+    }
+    return;
+  }
+
+  const reminderRef = ref(
+    database,
+    `users/${currentUser.uid}/autoReminders/${friendUserId}`
+  );
+
+  if (!toggle.checked) {
+    await remove(reminderRef);
+    return;
+  }
+
+  const existing = await get(reminderRef);
+  await set(reminderRef, {
+    enabled: true,
+    frequencyDays: parseInt(document.getElementById("autoRemindRange").value, 10),
+    friendName: name,
+    phone: phone ?? null,
+    lastSent: existing.exists() ? existing.val().lastSent || Date.now() : Date.now(),
+  });
+}
+
+document.getElementById("autoRemindToggle").addEventListener("change", () => {
+  updateAutoRemindUI();
+  saveAutoReminderSettings();
+});
+document.getElementById("autoRemindRange").addEventListener("input", updateAutoRemindUI);
+document.getElementById("autoRemindRange").addEventListener("change", saveAutoReminderSettings);
+document.getElementById("closeSmsReminder").addEventListener("click", () => {
+  document.getElementById("smsReminderModal").style.display = "none";
+});
+
+// On login, surface any auto reminders that have come due as notifications
+// (with a "Text now" shortcut) and advance their clock.
+async function checkAutoReminders() {
+  if (!currentUser) return;
+
+  try {
+    const snapshot = await get(
+      ref(database, `users/${currentUser.uid}/autoReminders`)
+    );
+    if (!snapshot.exists()) return;
+
+    const now = Date.now();
+    const DAY_MS = 24 * 60 * 60 * 1000;
+
+    for (const [friendUserId, reminder] of Object.entries(snapshot.val())) {
+      if (!reminder.enabled) continue;
+      const frequencyMs = (reminder.frequencyDays || 7) * DAY_MS;
+      if (now - (reminder.lastSent || 0) < frequencyMs) continue;
+
+      await addNotification(currentUser.uid, {
+        type: "sms-reminder",
+        message: `Reminder: time to text ${reminder.friendName} about what they owe you.`,
+        phone: reminder.phone ?? null,
+        smsBody: `Hey ${String(reminder.friendName).split(" ")[0]}, friendly reminder that you still owe me — check TABS!`,
+      });
+      await update(
+        ref(database, `users/${currentUser.uid}/autoReminders/${friendUserId}`),
+        { lastSent: now }
+      );
+    }
+  } catch (error) {
+    console.error("❌ Error checking auto reminders:", error);
+  }
+}
+
 // Get a reference to the user's profile data
 
 

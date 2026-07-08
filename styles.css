@@ -50,9 +50,7 @@ body {
 }
 
 /* Input Box Styles */
-#friendInputBox,
-#Loginpage,
-#signupPage {
+#friendInputBox {
   display: none;
   position: absolute;
   top: 50%;
@@ -67,6 +65,26 @@ body {
   -webkit-backdrop-filter: blur(30px);
   backdrop-filter: blur(30px);
   z-index: 10000;
+
+}
+
+/* Login/Signup now use the shared full-screen .modal style (see the big
+   .modal rule below); this card holds the actual form content. */
+.login-content,
+#loginorsignupbox {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: rgba(3, 50, 56, 0.85);
+  border: 1px solid #36718572;
+  border-radius: 10px;
+  box-shadow: 0px 0px 10px 0px #011d1d;
+  padding: 50px 30px 20px;
+  width: min(300px, 85vw);
+  max-height: 85vh;
+  overflow-y: auto;
+
 
 }
 
@@ -224,23 +242,38 @@ body {
   margin-bottom: 10px;
 }
 
+/* Labeled pill, deliberately distinct from the red remove (✖️) button next
+   to it and from the ✔️ accept-request buttons — icon + "Add to list" text
+   on a purple background so its job (add this friend to the tab list) is
+   unmistakable. !important overrides the generic red `#friendsList li
+   button` rule. */
 .add-friend-to-list {
   margin-left: 10px;
-  width: 30px;
+  width: auto;
   height: 30px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: #3c94e7;
+  gap: 4px;
+  background-color: #4f9bd6 !important;
   color: #fff;
   border: none;
   border-radius: 10px;
-  font-size: 16px;
+  font-size: 13px;
   cursor: pointer;
   text-decoration: none;
   font-weight: bold;
   line-height: 1;
-  padding: 0;
+  padding: 0 10px !important;
+  white-space: nowrap;
+}
+
+.add-friend-to-list:hover {
+  background-color: #6a3fc6 !important;
+}
+
+.add-friend-to-list .material-icons {
+  font-size: 18px;
 }
 
 .extra-info-text {
@@ -297,11 +330,18 @@ button:active,
   position: absolute;
   top: 0;
   left: 0;
-  margin-left: 10px;
+  margin: 0 0 0 10px;
   padding: 0px;
   border: none;
+  background-color: transparent !important;
   cursor: pointer;
   font-size: 44px;
+}
+
+/* Signup form buttons match the login page's full-width button column */
+#signupPage .login-content > button:not(#Back-btn2) {
+  width: 100%;
+  margin: 10px 0;
 }
 
 button:hover {
@@ -789,6 +829,98 @@ position: fixed;
   transition: opacity 0.18s ease;
 }
 
+/* The modal's direct children are its content card(s) — they pop in/out
+   along with the backdrop fade above. */
+@keyframes modalCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(26px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modalCardOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(18px) scale(0.94);
+  }
+}
+
+.modal-fx > * {
+  animation: modalCardIn 0.28s cubic-bezier(0.22, 1.1, 0.36, 1);
+}
+
+.modal-fx.modal-fx-closing > * {
+  animation: modalCardOut 0.18s ease forwards;
+}
+
+/* Swapping directly from one modal to another (login → signup, tab modal →
+   add-money, …): both backdrops are identical, so hold the backdrop steady
+   and only slide the cards — old card exits left, new card enters from the
+   right. script.js detects same-tick close+open pairs and applies these
+   classes instead of the fade above. */
+@keyframes modalCardSwapIn {
+  from {
+    opacity: 0;
+    transform: translateX(70px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes modalCardSwapOut {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-70px) scale(0.97);
+  }
+}
+
+.modal-fx.modal-fx-swap-in {
+  animation: none; /* backdrop is already up from the outgoing modal */
+}
+
+.modal-fx.modal-fx-swap-in > * {
+  animation: modalCardSwapIn 0.26s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
+}
+
+.modal-fx.modal-fx-swap-out {
+  animation: none;
+  /* Hand the backdrop off to the incoming modal instantly so the two
+     translucent layers don't stack into a darker pulse mid-swap. */
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.modal-fx.modal-fx-swap-out > * {
+  animation: modalCardSwapOut 0.22s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-fx,
+  .modal-fx > *,
+  .modal-fx.modal-fx-closing,
+  .modal-fx.modal-fx-closing > *,
+  .modal-fx.modal-fx-swap-in > *,
+  .modal-fx.modal-fx-swap-out > * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 #sideNavModal {
   position: fixed;
   top: 0;
@@ -1037,6 +1169,9 @@ position: fixed;
 #cancelDeleteAccount,
 #cancelClearHistory,
 #clear-list-cancel,
+#closeNotifications,
+#closeNotificationSettings,
+#closeSmsReminder,
 #close-interest {
   background-color: rgba(211, 80, 80, 0.8);
   border: 2px solid transparent;
@@ -1069,6 +1204,9 @@ position: fixed;
 #PayMyTuition,
 #menu-button,
 #clearListBtn,
+#markAllReadBtn,
+#clearNotificationsBtn,
+#sendSmsNowBtn,
 #interest-btn {
   text-align: center;
   justify-content: center;
@@ -1182,7 +1320,6 @@ position: fixed;
   text-align: left;
   padding: 10px;
 }
-
 #profileInfo,
 #profileStats,
 #profileAccount {
@@ -1212,10 +1349,180 @@ position: fixed;
   width: 50%;
 }
 
-#manage-notifications {
-  background-color: #573b3b !important;
-  border-style: none !important;
-  cursor: not-allowed !important;
+/* Notifications now live as a side-nav link (#notificationsBtn) with the
+   Friends/Login styling; the folder open button carries the unread count so
+   it's visible without opening the menu. */
+#notificationsBtn {
+  background-color: #4c98af;
+  color: #eaf6f8;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Count badge sitting on the folder button itself. Anchored to the top-LEFT
+   corner because the folder button hugs the right screen edge — a top-right
+   badge would clip off-screen. */
+#folderNotificationBadge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  margin-left: 0;
+  transform: translate(-35%, -35%);
+  pointer-events: none;
+  box-shadow: 0 0 0 2px #033238;
+}
+
+/* Empty-list message shown when the user has no tabs. Sits in normal flow
+   between the title and the Add/Clear bar, centered, and ignores clicks so
+   it never blocks the buttons beneath it. */
+#empty-list-message {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  color: rgb(194, 233, 232);
+  margin: 40px auto;
+  padding: 24px 20px;
+  max-width: 320px;
+  pointer-events: none;
+}
+
+#empty-list-message p {
+  margin: 0;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+#empty-list-message span {
+  font-size: 15px;
+  opacity: 0.75;
+}
+
+#notificationsBox,
+#notificationSettingsBox,
+#smsReminderBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  background-color: rgba(50, 59, 59, 0.8);
+  border-radius: 10px;
+  box-shadow: 0px 0px 10px 0px #000000;
+  width: 75%;
+  max-width: 500px;
+  max-height: 70vh;
+  padding: 20px;
+}
+
+#notificationsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+#notificationsList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background-color: rgba(89, 125, 134, 0.35);
+  cursor: pointer;
+}
+
+#notificationsList li.unread {
+  background-color: rgb(89, 125, 134);
+  border-left: 4px solid #48ceff;
+}
+
+.notification-message {
+  flex-grow: 1;
+  word-break: break-word;
+}
+
+.notification-time {
+  display: block;
+  font-size: 12px;
+  color: #c7c7c7;
+  margin-top: 4px;
+}
+
+.notification-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.notification-action {
+  width: auto !important;
+  flex-shrink: 0;
+  padding: 6px 10px;
+  background-color: #3c94e7 !important;
+  border: none;
+  font-size: 14px;
+}
+
+.notification-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 90%;
+  margin-top: 10px;
+  font-size: 18px;
+}
+
+#autoRemindFrequency {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin-top: 10px;
+}
+
+#smsReminderSubtitle {
+  color: #c7c7c7;
+  margin: 0 0 10px;
+}
+
+/* SMS reminder button on friend rows in the person list */
+.sms-remind-btn {
+  margin-left: 10px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #2fae60;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+
+.sms-remind-btn .material-icons {
+  font-size: 20px;
+}
+
+/* Make sure the AdSense <ins> inside the person-list ad box actually gets
+   layout width — a zero-width container makes AdSense skip filling it. */
+.ad-box > div,
+.ad-box .adsbygoogle {
+  width: 100%;
+  min-width: 250px;
 }
 
 #close-prompt {
@@ -1243,7 +1550,8 @@ position: fixed;
 }
 
 #name-input,
-#amount-input,
+#money-input,
+#item-input,
 #editMoneyInput,
 #editNameInput,
 #extra-info-input,
@@ -1272,6 +1580,9 @@ position: fixed;
      (rather than sitting vertically centered), the two overlapped. Normal
      flow lets it push #friendBox down by however tall it actually is,
      rather than guessing a fixed offset. */
+  position: absolute;
+  bottom: 0px;
+  width: 100%;
   display: flex;
   flex-direction: row;
   width: 100%;
@@ -1367,9 +1678,9 @@ position: fixed;
   padding: 20px;
   border-radius: 10px;
   text-align: center;
-  width: 70%;
+  width: 90%;
   margin-top: 60px;
-  height: 70%;
+  height: 90%;
   position: relative;
   align-items: center;
   justify-content: center;
@@ -1431,8 +1742,6 @@ position: fixed;
 
 #closeFriendModal {
   background-color: rgba(175, 53, 44, 0.8);
-  position: absolute;
-  bottom: 0px;
   font-size: 20px;
   border-radius: 8px;
   width: 50%;
@@ -1466,7 +1775,8 @@ position: fixed;
   border-radius: 7px;;
 }
 
-#interestRange {
+#interestRange,
+#autoRemindRange {
   -webkit-appearance: none;
   appearance: none;
   margin: 3px;
@@ -1480,7 +1790,8 @@ position: fixed;
   transition: opacity 0.2s;
 }
 
-#interestRange::-webkit-slider-thumb {
+#interestRange::-webkit-slider-thumb,
+#autoRemindRange::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 25px;
@@ -1490,7 +1801,8 @@ position: fixed;
   cursor: pointer;
 }
 
-#interestRange::-moz-range-thumb {
+#interestRange::-moz-range-thumb,
+#autoRemindRange::-moz-range-thumb {
   width: 25px;
   height: 25px;
   border-radius: 50%;
@@ -1669,7 +1981,7 @@ position: fixed;
     border-radius: 5px;
     transition: 0.3s;
     box-shadow: 0px 0px 50px 0px #033238;
-    background-color: rgba(25, 162, 162, 0.422);
+    background-color: #033238;
     margin-bottom: 5px;
   }
 }

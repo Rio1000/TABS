@@ -83,19 +83,37 @@ document.getElementById("sideNavModal").addEventListener("click", (event) => {
 
 
 
+// Shared visibility helpers for the person list and its Add/Clear controls.
+// The old code toggled the two buttons by wrong IDs ("addPersonBtn"/
+// "clearListBtn" — the real IDs are "add-person-btn"/"clear-list-btn"), so
+// the buttons never actually hid, and the styled #buttons container kept
+// rendering as an empty box behind the login screen. Everything now goes
+// through these helpers, which also toggle the container itself.
+function setListControlsVisible(visible) {
+  const buttonsBox = document.getElementById("buttons");
+  if (buttonsBox) buttonsBox.classList.toggle("hidden", !visible);
+  const addPersonBtn = document.getElementById("add-person-btn");
+  const clearListBtn = document.getElementById("clear-list-btn");
+  if (addPersonBtn) addPersonBtn.style.display = visible ? "flex" : "none";
+  if (clearListBtn) clearListBtn.style.display = visible ? "flex" : "none";
+}
+
+function setPersonListVisible(visible) {
+  // .personlist has a class, not an id — the old getElementById("personlist")
+  // lookups always returned null, so the list never actually hid.
+  const personlist = document.querySelector(".personlist");
+  const peopleListEl = document.getElementById("people-list");
+  if (personlist) personlist.style.display = visible ? "" : "none";
+  if (peopleListEl) peopleListEl.style.display = visible ? "flex" : "none";
+  if (typeof updateEmptyState === "function") updateEmptyState();
+}
+
 function openLogin() {
   document.getElementById("Loginpage").style.display = "flex";
   document.getElementById("signupPage").style.display = "none";
-  const personlist = document.getElementById("personlist");
-  const subscript = document.getElementById("Subscript");
-  const peopleList = document.getElementById("people-list");
-  const addPersonBtn = document.getElementById("add-person-btn");
-  const clearListBtn = document.getElementById("clear-list-btn");
-  if (personlist) personlist.style.display = "none";
-  if (subscript) subscript.style.display = "none";
-  if (peopleList) peopleList.style.display = "none";
-  if (addPersonBtn) addPersonBtn.style.display = "none";
-  if (clearListBtn) clearListBtn.style.display = "none";
+  document.getElementById("loginorsignupmodal").style.display = "none";
+  setPersonListVisible(false);
+  setListControlsVisible(false);
 
   closeNav();
 }
@@ -115,6 +133,7 @@ document.getElementById("Profile").addEventListener("click", () => {
   document.getElementById("ProfileModal").style.display = "flex";
   document.getElementById("ProfileBox").style.display = "flex";
   document.getElementById("ProfileModal").style.opacity = "1";
+  activateProfileTab(0); // Always reopen on the highlighted Info tab
   closeNav();
 });
 document.getElementById("closeProfile").addEventListener("click", () => {
@@ -196,47 +215,24 @@ document.getElementById("Back-btn").addEventListener("click", () => {
   document.getElementById("signupPage").style.display = "none";
   document.getElementById("loginorsignupmodal").style.display = "flex";
   document.getElementById("Loginpage").style.display = "none";
-  const personlist = document.getElementById("personlist");
-  const peopleList = document.getElementById("people-list");
-  const addPersonBtn = document.getElementById("add-person-btn");
-  const clearListBtn = document.getElementById("clear-list-btn");
-  if (personlist) personlist.style.display = "none";
-  if (peopleList) peopleList.style.display = "none";
-  if (addPersonBtn) addPersonBtn.style.display = "none";
-  if (clearListBtn) clearListBtn.style.display = "none";
+  setPersonListVisible(false);
+  setListControlsVisible(false);
 });
 document.getElementById("Back-btn2").addEventListener("click", () => {
   document.getElementById("signupPage").style.display = "none";
   document.getElementById("Loginpage").style.display = "none";
   document.getElementById("loginorsignupmodal").style.display = "flex";
-  const personlist = document.getElementById("personlist");
-  const peopleList = document.getElementById("people-list");
-  const addPersonBtn = document.getElementById("add-person-btn");
-  const clearListBtn = document.getElementById("clear-list-btn");
-  if (personlist) personlist.style.display = "none";
-  if (peopleList) peopleList.style.display = "none";
-  if (addPersonBtn) addPersonBtn.style.display = "none";
-  if (clearListBtn) clearListBtn.style.display = "none";
+  setPersonListVisible(false);
+  setListControlsVisible(false);
 });
 document.getElementById("ContinueasGuest").addEventListener("click", () => {
   document.getElementById("signupPage").style.display = "none";
   document.getElementById("Loginpage").style.display = "none";
   document.getElementById("loginorsignupmodal").style.display = "none";
   document.getElementById("loader").style.display = "none";
-  document.getElementById("clearListBtn").style.display = "flex";
-  const personlist = document.getElementById("personlist");
-  const peopleList = document.getElementById("people-list");
-  const addPersonBtn = document.getElementById("add-person-btn");
-  const clearListBtn = document.getElementById("clear-list-btn");
-  if (personlist) personlist.style.display = "flex";
-  if (peopleList) peopleList.style.display = "flex";
-  if (addPersonBtn) addPersonBtn.style.display = "flex";
-  if (clearListBtn) clearListBtn.style.display = "flex";
-
+  setPersonListVisible(true);
+  setListControlsVisible(true);
 })
-document.getElementById("profileInfo").addEventListener("click", () => {
-  
-});
 const scrollToBottomBtn = document.getElementById('scroll-to-bottom');
 const scrollToTopBtn = document.getElementById('scroll-to-top');
 
@@ -277,10 +273,31 @@ window.addEventListener('load', updateScrollButtons);
 window.addEventListener('resize', updateScrollButtons);
 peopleList.addEventListener('scroll', updateScrollButtons);
 
+// Show a centered "no tabs yet" message whenever the list has no real
+// people in it. The ad box also lives in #people-list and carries the
+// .personlist-item class, so it's excluded from the count — an empty list
+// with only an ad still counts as empty.
+function updateEmptyState() {
+  const message = document.getElementById("empty-list-message");
+  if (!message) return;
+  const realItems = peopleList.querySelectorAll(
+    ".personlist-item:not(.ad-box)"
+  ).length;
+  // Only surface the message once the list controls are visible (i.e. the
+  // user is past the login/guest screen); otherwise it would show behind
+  // the login modal on first load.
+  const listActive =
+    getComputedStyle(document.getElementById("people-list")).display !== "none";
+  message.style.display = realItems === 0 && listActive ? "flex" : "none";
+}
 
 // Optional: recheck after dynamically adding items
-const observer = new MutationObserver(updateScrollButtons);
+const observer = new MutationObserver(() => {
+  updateScrollButtons();
+  updateEmptyState();
+});
 observer.observe(peopleList, { childList: true, subtree: true });
+window.addEventListener('load', updateEmptyState);
 
 const profileInfoButton = document.getElementById('profileInfo');
 const profileStatsButton = document.getElementById('profileStats');
@@ -293,21 +310,30 @@ const profileAccounts = document.getElementById('profile-Accounts');
 const buttons = [profileInfoButton, profileStatsButton, profileAccountButton];
 const sections = [profileInfo, profileStats, profileAccounts];
 
-buttons.forEach((button, index) => {
-  button.addEventListener('click', () => {
-    sections.forEach((section, i) => {
-      section.style.display = i === index ? "flex" : "none";
-    });
-    buttons.forEach((btn, i) => {
-      btn.style.backgroundColor = i === index
-        ? "rgba(89, 192, 199, 0.8)"
-        : "rgba(50, 108, 112, 0.8)";
-    });
-    if (button.id === 'profileStats') {
-      document.dispatchEvent(new Event('renderSpendingChart'));
-    }
+// Activate a profile tab: show its section and give its button the lighter
+// (active) background while the others get the default darker one.
+function activateProfileTab(index) {
+  sections.forEach((section, i) => {
+    section.style.display = i === index ? "flex" : "none";
   });
+  buttons.forEach((btn, i) => {
+    btn.style.backgroundColor = i === index
+      ? "rgba(89, 192, 199, 0.8)"
+      : "rgba(50, 108, 112, 0.8)";
+  });
+  if (buttons[index] && buttons[index].id === 'profileStats') {
+    document.dispatchEvent(new Event('renderSpendingChart'));
+  }
+}
+
+buttons.forEach((button, index) => {
+  button.addEventListener('click', () => activateProfileTab(index));
 });
+
+// Start on the Profile Info tab so it's already highlighted the first time
+// the profile opens — otherwise no tab button looks active even though the
+// info section is the one being shown.
+activateProfileTab(0);
 
 document.getElementById("view-account-history").addEventListener("click", () => {
   document.getElementById("AccountHistoryModal").style.display = "flex";
@@ -444,25 +470,89 @@ function copyText() {
   updateChromeVisibility();
 })();
 
-// Fade modals in/out instead of an abrupt display:none <-> flex flip. Every
-// modal open/close elsewhere in script.js and firebase-setup.js toggles
-// visibility by setting `element.style.display` directly (~150 call
-// sites), so rather than rewriting each one this uses the same
-// MutationObserver technique as the chrome-hiding logic above. A
-// MutationObserver callback runs as a microtask before the next paint, so
-// when a modal is closed this can restore its display for one more frame,
-// play the fade defined by .modal-fx-closing in styles.css, and only then
-// apply the real `display: none`. The opening fade needs no JS: it's a CSS
-// animation (see .modal-fx in styles.css), which automatically replays
-// whenever `display` flips from none to visible.
+// Animate modals in/out instead of an abrupt display:none <-> flex flip.
+// Every modal open/close elsewhere in script.js and firebase-setup.js
+// toggles visibility by setting `element.style.display` directly (~150
+// call sites), so rather than rewriting each one this uses the same
+// MutationObserver technique as the chrome-hiding logic above.
+//
+// Opening: pure CSS — the .modal-fx backdrop fade and .modal-fx > * card
+// pop-in (styles.css) replay automatically whenever `display` flips from
+// none to visible.
+//
+// Closing: a closed modal's display is restored for the length of the exit
+// animation (.modal-fx-closing), then set back to none for real. Both the
+// observer callbacks and the requestAnimationFrame below run before the
+// frame paints, so the modal never flashes hidden in between.
+//
+// Swapping: opens and closes that land in the same tick (openSignup()
+// hiding the login page while showing the signup page, the tab modal
+// closing as the add-money modal opens, …) are batched here and handled
+// as one pre-paint pass. When a batch contains both, it's a swap: the
+// backdrop is held steady and only the content cards slide out/in
+// (.modal-fx-swap-out / .modal-fx-swap-in) instead of fading the whole
+// screen out and back in.
 (function () {
-  const CLOSE_ANIM_MS = 180;
+  const CLOSE_ANIM_MS = 190;
+  const SWAP_ANIM_MS = 320;
   const lastVisibleDisplay = new WeakMap();
   const selfTriggered = new WeakSet();
   const closeTimers = new WeakMap();
+  const swapInTimers = new WeakMap();
+  const wasVisible = new WeakMap();
+
+  let pendingOpens = [];
+  let pendingCloses = [];
+  let flushScheduled = false;
+
+  function flushModalChanges() {
+    flushScheduled = false;
+    const opens = pendingOpens;
+    // A modal closed and reopened within the same tick nets out to "still
+    // open" — it must not be treated as (half of) a swap.
+    const openSet = new Set(pendingOpens);
+    const closes = pendingCloses.filter((el) => !openSet.has(el));
+    pendingOpens = [];
+    pendingCloses = [];
+    const isSwap = opens.length > 0 && closes.length > 0;
+
+    closes.forEach((el) => {
+      const restoreDisplay = lastVisibleDisplay.get(el) || "flex";
+      selfTriggered.add(el);
+      el.style.display = restoreDisplay;
+      el.classList.add(isSwap ? "modal-fx-swap-out" : "modal-fx-closing");
+
+      closeTimers.set(
+        el,
+        setTimeout(() => {
+          selfTriggered.add(el);
+          el.style.display = "none";
+          el.classList.remove("modal-fx-closing", "modal-fx-swap-out");
+        }, isSwap ? SWAP_ANIM_MS : CLOSE_ANIM_MS)
+      );
+    });
+
+    if (isSwap) {
+      opens.forEach((el) => {
+        el.classList.add("modal-fx-swap-in");
+        clearTimeout(swapInTimers.get(el));
+        swapInTimers.set(
+          el,
+          setTimeout(() => el.classList.remove("modal-fx-swap-in"), SWAP_ANIM_MS + 80)
+        );
+      });
+    }
+  }
+
+  function scheduleFlush() {
+    if (flushScheduled) return;
+    flushScheduled = true;
+    requestAnimationFrame(flushModalChanges);
+  }
 
   document.querySelectorAll(".modal-fx").forEach((el) => {
     const initialDisplay = getComputedStyle(el).display;
+    wasVisible.set(el, initialDisplay !== "none");
     if (initialDisplay !== "none") lastVisibleDisplay.set(el, initialDisplay);
 
     const observer = new MutationObserver(() => {
@@ -471,26 +561,25 @@ function copyText() {
         return;
       }
 
-      if (el.style.display !== "none") {
+      // Only genuine visibility transitions count — style mutations on an
+      // already-open modal (opacity tweaks, hideAllModals() re-hiding an
+      // already-hidden one) must not register as opens/closes, or a lone
+      // close could be misread as a swap.
+      const visible =
+        (el.style.display || getComputedStyle(el).display) !== "none";
+      const before = wasVisible.get(el);
+      wasVisible.set(el, visible);
+      if (visible === before) return;
+
+      if (visible) {
         lastVisibleDisplay.set(el, el.style.display || getComputedStyle(el).display);
         clearTimeout(closeTimers.get(el));
-        el.classList.remove("modal-fx-closing");
-        return;
+        el.classList.remove("modal-fx-closing", "modal-fx-swap-out");
+        pendingOpens.push(el);
+      } else {
+        pendingCloses.push(el);
       }
-
-      const restoreDisplay = lastVisibleDisplay.get(el) || "flex";
-      selfTriggered.add(el);
-      el.style.display = restoreDisplay;
-      el.classList.add("modal-fx-closing");
-
-      closeTimers.set(
-        el,
-        setTimeout(() => {
-          selfTriggered.add(el);
-          el.style.display = "none";
-          el.classList.remove("modal-fx-closing");
-        }, CLOSE_ANIM_MS)
-      );
+      scheduleFlush();
     });
 
     observer.observe(el, { attributes: true, attributeFilter: ["style"] });
