@@ -1866,6 +1866,10 @@ export async function sendFriendRequest(friendUserId, friendData) {
     firstName: myProfile.firstName,
     lastName: myProfile.lastName,
     friendCode: myProfile.friendCode,
+    // Carried along so the recipient can store our number on their own
+    // friendsList entry for us when they accept — that way SMS reminders read
+    // the phone from their own subtree instead of cross-reading our profile.
+    phoneNumber: myProfile.phoneNumber ?? null,
   });
 
   // Add a request to the current user's sent requests
@@ -1979,6 +1983,9 @@ async function approveFriendRequest(requestId, request) {
       firstName: request.firstName,
       lastName: request.lastName,
       friendCode: request.friendCode ?? null,
+      // Their number, carried in on the request — stored here so reminders
+      // read it from our own subtree (no cross-user profile read).
+      phoneNumber: request.phoneNumber ?? null,
     });
 
     // UID-keyed index (own node) so the phone-read rule can verify this
@@ -2002,36 +2009,25 @@ async function approveFriendRequest(requestId, request) {
       firstName: currentProfile.firstName,
       lastName: currentProfile.lastName,
       friendCode: currentProfile.friendCode ?? null,
+      // Our number goes to the sender's friendsList entry for us (directly or
+      // via the acceptance marker) so their reminders can read it locally.
+      phoneNumber: currentProfile.phoneNumber ?? null,
     };
 
-    // Mirror the friendship onto the sender's side, best-effort.
+    // Mirror the friendship onto the sender's side. Security rules
+    // (correctly) don't let us write into another user's friendsList or
+    // sentRequests, so instead of attempting those doomed writes we leave an
+    // acceptance marker in the sender's pendingRequests — a path we ARE
+    // allowed to write, since that's how their request reached us. Their
+    // client turns the marker into a real friendship (and clears their own
+    // sentRequest) on next load via reconcileAcceptedRequests().
     try {
-      const otherFriendRef = ref(
-        database,
-        `users/${request.fromUserId}/friendsList`
+      await set(
+        ref(database, `users/${request.fromUserId}/pendingRequests/${currentUser.uid}`),
+        { ...myInfo, fromUserId: currentUser.uid, type: "accepted" }
       );
-      await set(push(otherFriendRef), myInfo);
-      await remove(
-        ref(database, `users/${request.fromUserId}/sentRequests/${currentUser.uid}`)
-      );
-    } catch (crossUserError) {
-      // Rules blocked the direct write. Leave an acceptance marker in the
-      // sender's pendingRequests instead — that path is known to accept
-      // cross-user writes (it's how the request reached us in the first
-      // place) — and their client completes the friendship on next load
-      // via reconcileAcceptedRequests().
-      console.warn(
-        "⚠️ Could not write to sender's friendsList directly, leaving acceptance marker:",
-        crossUserError
-      );
-      try {
-        await set(
-          ref(database, `users/${request.fromUserId}/pendingRequests/${currentUser.uid}`),
-          { ...myInfo, fromUserId: currentUser.uid, type: "accepted" }
-        );
-      } catch (markerError) {
-        console.error("❌ Could not leave acceptance marker either:", markerError);
-      }
+    } catch (markerError) {
+      console.error("❌ Could not leave acceptance marker:", markerError);
     }
 
     // Let the sender know, best-effort.
@@ -2089,6 +2085,7 @@ async function reconcileAcceptedRequests() {
           firstName: req.firstName,
           lastName: req.lastName,
           friendCode: req.friendCode ?? null,
+          phoneNumber: req.phoneNumber ?? null, // carried in via the marker
         });
       }
       // Keep the UID-keyed index in step (see syncFriendUids / phone rule).
@@ -2233,6 +2230,15 @@ function subscribeToNotifications() {
       Object.entries(latestNotifications).forEach(([key, notif]) => {
         if (!knownNotificationKeys.has(key) && !notif.read && notificationAllowed(notif.type)) {
           showToast(notif.message, "success");
+          // Someone just accepted our request — pull the acceptance marker
+          // through immediately so their name appears in our friends list
+          // without waiting for a reload.
+          if (notif.type === "friend-accept") {
+            reconcileAcceptedRequests().then(() => {
+              populateFriendsList();
+              updatePendingCount();
+            });
+          }
         }
       });
     }
@@ -2426,11 +2432,12 @@ async function getFriendPhone(friendUserId) {
     );
     return snapshot.exists() ? snapshot.val() : null;
   } catch (error) {
-    // Their profile may not be readable — this happens when the friendship
-    // predates the friendUids index and the friend hasn't logged in since
-    // (so they haven't run syncFriendUids to authorize us yet). The SMS
-    // composer still opens; the user just picks the contact themselves.
-    console.warn("⚠️ Could not read friend's phone number:", error);
+    // Expected for older friendships: the phone isn't stored on our own
+    // friendsList entry yet, and the friend hasn't logged in since the
+    // friendUids index shipped (so their rules don't authorize us to read
+    // their profile). Not an error — the composer just opens without a
+    // prefilled number. Logged at debug level so it isn't alarming.
+    console.debug("Friend phone not available yet (using blank number):", error?.code);
     return null;
   }
 }
@@ -2496,7 +2503,12 @@ async function openSmsReminderModal(listItem) {
   const friend = await findFriendByName(name);
   if (friend) {
     currentReminderTarget.friendUserId = friend.userId;
-    currentReminderTarget.phone = await getFriendPhone(friend.userId);
+    // Prefer the phone number stored on our OWN friendsList entry (copied in
+    // when the friendship was made) — no cross-user read, so no permission
+    // barrier. Only fall back to reading their profile for older friendships
+    // whose record predates phone denormalization.
+    currentReminderTarget.phone =
+      friend.phoneNumber || (await getFriendPhone(friend.userId));
 
     try {
       const snapshot = await get(
