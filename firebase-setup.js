@@ -2407,7 +2407,7 @@ function buildReminderMessage(name, amountText) {
   const firstName = name.split(" ")[0];
   const amount = parseFloat(amountText);
   const owed = !isNaN(amount) ? `$${amount.toFixed(2)}` : amountText;
-  return `Hey ${firstName}, friendly reminder that you owe me ${owed} — tracked on TABS!`;
+  return `Hey ${firstName}, friendly reminder that you owe me ${owed} 🔫— tracked on TABS!`;
 }
 
 async function findFriendByName(fullName) {
