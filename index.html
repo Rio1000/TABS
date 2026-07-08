@@ -40,6 +40,8 @@
                 <a class="sideNavA" href="javascript:void(0)" id="Login" onclick="openLogin()">Login or Signup</a>
                 <a class="sideNavA" id="Profile">Profile</a>
                 <a class="sideNavA" href="javascript:void(0)" id="FriendsTab" onclick="openFriends()">Friends</a>
+                <a class="sideNavA" id="notificationsBtn" style="display: none;">Notifications <span
+                        id="notificationBadge" class="badge" style="display: none;">0</span></a>
                 <a class="sideNavA" id="Ads">Surprize :)</a>
                 <a class="sideNavA" id="feedback" href="https://forms.gle/G86aVpZWKLvJWjNU6">feedback</a>
 
@@ -56,13 +58,15 @@
 
         <!-- Dropdown Menu -->
         <span class="open-btn " id="openButton" onclick="openNav()"><img
-                src="folder_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg" alt="menu"></span>
+                src="folder_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg" alt="menu">
+            <span id="folderNotificationBadge" class="badge" title="Unread notifications"
+                style="display: none;">0</span></span>
 
-        <span class="open-btn" id="notificationsBtn" title="Notifications" style="display: none;">
-            <span class="material-icons">notifications</span>
-            <span id="notificationBadge" class="badge" style="display: none;">0</span>
-        </span>
 
+        <div id="empty-list-message" style="display: none;">
+            <p>You don't have any tabs yet.</p>
+            <span>Tap "Add" to start tracking who owes what.</span>
+        </div>
 
         <div class="personlist">
             <div id="people-list">

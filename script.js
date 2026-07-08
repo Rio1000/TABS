@@ -105,6 +105,7 @@ function setPersonListVisible(visible) {
   const peopleListEl = document.getElementById("people-list");
   if (personlist) personlist.style.display = visible ? "" : "none";
   if (peopleListEl) peopleListEl.style.display = visible ? "flex" : "none";
+  if (typeof updateEmptyState === "function") updateEmptyState();
 }
 
 function openLogin() {
@@ -132,6 +133,7 @@ document.getElementById("Profile").addEventListener("click", () => {
   document.getElementById("ProfileModal").style.display = "flex";
   document.getElementById("ProfileBox").style.display = "flex";
   document.getElementById("ProfileModal").style.opacity = "1";
+  activateProfileTab(0); // Always reopen on the highlighted Info tab
   closeNav();
 });
 document.getElementById("closeProfile").addEventListener("click", () => {
@@ -271,10 +273,31 @@ window.addEventListener('load', updateScrollButtons);
 window.addEventListener('resize', updateScrollButtons);
 peopleList.addEventListener('scroll', updateScrollButtons);
 
+// Show a centered "no tabs yet" message whenever the list has no real
+// people in it. The ad box also lives in #people-list and carries the
+// .personlist-item class, so it's excluded from the count — an empty list
+// with only an ad still counts as empty.
+function updateEmptyState() {
+  const message = document.getElementById("empty-list-message");
+  if (!message) return;
+  const realItems = peopleList.querySelectorAll(
+    ".personlist-item:not(.ad-box)"
+  ).length;
+  // Only surface the message once the list controls are visible (i.e. the
+  // user is past the login/guest screen); otherwise it would show behind
+  // the login modal on first load.
+  const listActive =
+    getComputedStyle(document.getElementById("people-list")).display !== "none";
+  message.style.display = realItems === 0 && listActive ? "flex" : "none";
+}
 
 // Optional: recheck after dynamically adding items
-const observer = new MutationObserver(updateScrollButtons);
+const observer = new MutationObserver(() => {
+  updateScrollButtons();
+  updateEmptyState();
+});
 observer.observe(peopleList, { childList: true, subtree: true });
+window.addEventListener('load', updateEmptyState);
 
 const profileInfoButton = document.getElementById('profileInfo');
 const profileStatsButton = document.getElementById('profileStats');
@@ -287,21 +310,30 @@ const profileAccounts = document.getElementById('profile-Accounts');
 const buttons = [profileInfoButton, profileStatsButton, profileAccountButton];
 const sections = [profileInfo, profileStats, profileAccounts];
 
-buttons.forEach((button, index) => {
-  button.addEventListener('click', () => {
-    sections.forEach((section, i) => {
-      section.style.display = i === index ? "flex" : "none";
-    });
-    buttons.forEach((btn, i) => {
-      btn.style.backgroundColor = i === index
-        ? "rgba(89, 192, 199, 0.8)"
-        : "rgba(50, 108, 112, 0.8)";
-    });
-    if (button.id === 'profileStats') {
-      document.dispatchEvent(new Event('renderSpendingChart'));
-    }
+// Activate a profile tab: show its section and give its button the lighter
+// (active) background while the others get the default darker one.
+function activateProfileTab(index) {
+  sections.forEach((section, i) => {
+    section.style.display = i === index ? "flex" : "none";
   });
+  buttons.forEach((btn, i) => {
+    btn.style.backgroundColor = i === index
+      ? "rgba(89, 192, 199, 0.8)"
+      : "rgba(50, 108, 112, 0.8)";
+  });
+  if (buttons[index] && buttons[index].id === 'profileStats') {
+    document.dispatchEvent(new Event('renderSpendingChart'));
+  }
+}
+
+buttons.forEach((button, index) => {
+  button.addEventListener('click', () => activateProfileTab(index));
 });
+
+// Start on the Profile Info tab so it's already highlighted the first time
+// the profile opens — otherwise no tab button looks active even though the
+// info section is the one being shown.
+activateProfileTab(0);
 
 document.getElementById("view-account-history").addEventListener("click", () => {
   document.getElementById("AccountHistoryModal").style.display = "flex";
@@ -407,7 +439,7 @@ function copyText() {
 // (via the exact same selector the shared .modal CSS rule uses) and
 // reacts centrally whenever one's display style changes.
 (function () {
-  const chromeElements = ["#TITLE", ".Logo", "#openButton", "#notificationsBtn"]
+  const chromeElements = ["#TITLE", ".Logo", "#openButton"]
     .map((selector) => document.querySelector(selector))
     .filter(Boolean);
 

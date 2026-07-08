@@ -1349,22 +1349,55 @@ position: fixed;
   width: 50%;
 }
 
-/* Notification bell (reuses .open-btn placement, shifted left of the menu
-   folder icon). Hidden by default; shown by JS once a user is logged in. */
+/* Notifications now live as a side-nav link (#notificationsBtn) with the
+   Friends/Login styling; the folder open button carries the unread count so
+   it's visible without opening the menu. */
 #notificationsBtn {
-  right: 92px;
-  border-radius: 10px;
+  background-color: #4c98af;
+  color: #eaf6f8;
+  align-items: center;
+  justify-content: space-between;
 }
 
-#notificationsBtn .material-icons {
-  font-size: 30px;
-}
-
-#notificationBadge {
+/* Count badge sitting on the folder button itself. Anchored to the top-LEFT
+   corner because the folder button hugs the right screen edge — a top-right
+   badge would clip off-screen. */
+#folderNotificationBadge {
   position: absolute;
-  top: -8px;
-  right: -8px;
+  top: 6px;
+  left: 6px;
   margin-left: 0;
+  transform: translate(-35%, -35%);
+  pointer-events: none;
+  box-shadow: 0 0 0 2px #033238;
+}
+
+/* Empty-list message shown when the user has no tabs. Sits in normal flow
+   between the title and the Add/Clear bar, centered, and ignores clicks so
+   it never blocks the buttons beneath it. */
+#empty-list-message {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  color: rgb(194, 233, 232);
+  margin: 40px auto;
+  padding: 24px 20px;
+  max-width: 320px;
+  pointer-events: none;
+}
+
+#empty-list-message p {
+  margin: 0;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+#empty-list-message span {
+  font-size: 15px;
+  opacity: 0.75;
 }
 
 #notificationsBox,

@@ -253,6 +253,8 @@ onAuthStateChanged(auth, async (user) => {
     // Reset UI elements if necessary
     setListControlsVisible(false);
     document.getElementById("notificationsBtn").style.display = "none";
+    const folderBadge = document.getElementById("folderNotificationBadge");
+    if (folderBadge) folderBadge.style.display = "none";
     document.getElementById("loginorsignupmodal").style.display = "flex";
     document.getElementById("topnav").style.display = "none";
     document.getElementById("ProfileModal").style.display = "none";
@@ -2216,15 +2218,25 @@ function subscribeToNotifications() {
 function renderNotifications() {
   const list = document.getElementById("notificationsList");
   const badge = document.getElementById("notificationBadge");
+  const folderBadge = document.getElementById("folderNotificationBadge");
   list.innerHTML = "";
 
   const entries = Object.entries(latestNotifications).sort(
     ([, a], [, b]) => (b.timestamp || 0) - (a.timestamp || 0)
   );
 
+  // Drive both the badge on the Notifications menu item and the count that
+  // sits on the folder button itself (so an unread count is visible without
+  // opening the menu).
   const unreadCount = entries.filter(([, notif]) => !notif.read).length;
-  badge.textContent = unreadCount > 9 ? "9+" : unreadCount;
-  badge.style.display = unreadCount > 0 ? "inline-flex" : "none";
+  const badgeText = unreadCount > 9 ? "9+" : String(unreadCount);
+  const badgeDisplay = unreadCount > 0 ? "inline-flex" : "none";
+  badge.textContent = badgeText;
+  badge.style.display = badgeDisplay;
+  if (folderBadge) {
+    folderBadge.textContent = badgeText;
+    folderBadge.style.display = badgeDisplay;
+  }
 
   if (entries.length === 0) {
     list.innerHTML = "<li>No notifications yet.</li>";
@@ -2273,6 +2285,7 @@ function renderNotifications() {
 
 document.getElementById("notificationsBtn").addEventListener("click", () => {
   document.getElementById("notificationsModal").style.display = "flex";
+  closeNav(); // the trigger now lives inside the folder side-nav
 });
 document.getElementById("closeNotifications").addEventListener("click", () => {
   document.getElementById("notificationsModal").style.display = "none";
