@@ -1538,30 +1538,43 @@ addPersonBtn.addEventListener("click", () => {
 });
 document.getElementById("add").addEventListener("click", () => {
   const nameInput = document.getElementById("name-input");
-  const amountInput = document.getElementById("amount-input");
+  const moneyInput = document.getElementById("money-input");
+  const itemInput = document.getElementById("item-input");
 
   const name = nameInput.value.trim();
-  const amountRaw = amountInput.value.trim();
+  const moneyRaw = moneyInput.value.trim();
+  const itemRaw = itemInput.value.trim();
 
   if (!name) {
     showToast("Name cannot be empty", "error");
     return;
   }
 
-  if (!amountRaw) {
-    showToast("Amount cannot be empty", "error");
+  const hasMoney = moneyRaw !== "" && !isNaN(moneyRaw);
+  if (moneyRaw !== "" && !hasMoney) {
+    showToast("Amount must be a number.", "error");
     return;
   }
 
-  // Use the raw input as-is, whether it's a number or string
-  const amount = isNaN(amountRaw) ? amountRaw : parseFloat(amountRaw);
+  if (!hasMoney && !itemRaw) {
+    showToast("Enter an amount, an item, or both.", "error");
+    return;
+  }
 
-  addPerson(name, amount, [], undefined, false, true);
+  // Money and item are two separate fields now:
+  //  - money only  -> amount shows normally (with the currency sign)
+  //  - item only   -> the item text takes the amount slot, as before
+  //  - both         -> money shows as the amount, item goes in as an info row
+  const amount = hasMoney ? parseFloat(moneyRaw) : itemRaw;
+  const extraInfo = hasMoney && itemRaw ? [{ text: itemRaw }] : [];
+
+  addPerson(name, amount, extraInfo, undefined, false, true);
   saveListToFirebase();
 
   // Clear inputs and hide modal after adding
   nameInput.value = "";
-  amountInput.value = "";
+  moneyInput.value = "";
+  itemInput.value = "";
   logUserAction(`Added a tab for: ${name}`);
 
   document.getElementById("add-person-box-modal").style.display = "none";
@@ -1747,10 +1760,12 @@ async function populateFriendsList() {
 
         const friendAddButton = document.createElement("button");
         friendAddButton.classList.add("add-friend-to-list");
-        friendAddButton.textContent = "Add To List";
-        friendAddButton.style.marginLeft = "10px";
-        friendAddButton.style.cursor = "pointer";
-        friendAddButton.style.backgroundColor = " #3c94e7";
+        // Labeled + icon'd (rather than a bare "➕") so it reads clearly as
+        // "add this friend to my tab list" and can't be mistaken for an
+        // accept-request button.
+        friendAddButton.innerHTML =
+          '<span class="material-icons">playlist_add</span><span>Add to list</span>';
+        friendAddButton.title = "Add this friend to your tab list";
         friendAddButton.onclick = () => {
           addPerson(
             `${friendData.firstName} ${friendData.lastName}`,
