@@ -2014,34 +2014,20 @@ async function approveFriendRequest(requestId, request) {
       phoneNumber: currentProfile.phoneNumber ?? null,
     };
 
-    // Mirror the friendship onto the sender's side, best-effort.
+    // Mirror the friendship onto the sender's side. Security rules
+    // (correctly) don't let us write into another user's friendsList or
+    // sentRequests, so instead of attempting those doomed writes we leave an
+    // acceptance marker in the sender's pendingRequests — a path we ARE
+    // allowed to write, since that's how their request reached us. Their
+    // client turns the marker into a real friendship (and clears their own
+    // sentRequest) on next load via reconcileAcceptedRequests().
     try {
-      const otherFriendRef = ref(
-        database,
-        `users/${request.fromUserId}/friendsList`
+      await set(
+        ref(database, `users/${request.fromUserId}/pendingRequests/${currentUser.uid}`),
+        { ...myInfo, fromUserId: currentUser.uid, type: "accepted" }
       );
-      await set(push(otherFriendRef), myInfo);
-      await remove(
-        ref(database, `users/${request.fromUserId}/sentRequests/${currentUser.uid}`)
-      );
-    } catch (crossUserError) {
-      // Rules blocked the direct write. Leave an acceptance marker in the
-      // sender's pendingRequests instead — that path is known to accept
-      // cross-user writes (it's how the request reached us in the first
-      // place) — and their client completes the friendship on next load
-      // via reconcileAcceptedRequests().
-      console.warn(
-        "⚠️ Could not write to sender's friendsList directly, leaving acceptance marker:",
-        crossUserError
-      );
-      try {
-        await set(
-          ref(database, `users/${request.fromUserId}/pendingRequests/${currentUser.uid}`),
-          { ...myInfo, fromUserId: currentUser.uid, type: "accepted" }
-        );
-      } catch (markerError) {
-        console.error("❌ Could not leave acceptance marker either:", markerError);
-      }
+    } catch (markerError) {
+      console.error("❌ Could not leave acceptance marker:", markerError);
     }
 
     // Let the sender know, best-effort.
@@ -2244,6 +2230,15 @@ function subscribeToNotifications() {
       Object.entries(latestNotifications).forEach(([key, notif]) => {
         if (!knownNotificationKeys.has(key) && !notif.read && notificationAllowed(notif.type)) {
           showToast(notif.message, "success");
+          // Someone just accepted our request — pull the acceptance marker
+          // through immediately so their name appears in our friends list
+          // without waiting for a reload.
+          if (notif.type === "friend-accept") {
+            reconcileAcceptedRequests().then(() => {
+              populateFriendsList();
+              updatePendingCount();
+            });
+          }
         }
       });
     }
