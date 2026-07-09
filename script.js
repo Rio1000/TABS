@@ -1,4 +1,5 @@
 function showToast(message, type = "success") {
+
   Toastify({
     text: `${message}`, // Prepend icon to message
     duration: 2000,
@@ -68,11 +69,11 @@ function closeNav() {
   }, 400); // same as your CSS transition duration
 
   document.getElementById("openButton").style.display = "flex";
-  document.getElementById("closeButton").style.display = "none";
+  document.getElementById("close-folder-icon").getAttribute('src') === 'folder_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg'
 }
 // Only close when the click lands on the backdrop itself — not on anything
 // inside the sidenav (nav links, the currency <select>, etc.), since a
-// bubbled click from those was closing the nav out from under them (most
+// bubbled click from those was clthe nav out from under them (most
 // noticeably, the currency dropdown would open and immediately get yanked
 // shut).
 document.getElementById("sideNavModal").addEventListener("click", (event) => {
@@ -384,7 +385,6 @@ document.getElementById("interest-btn").addEventListener("click", () => {
 document.getElementById("close-interest").addEventListener("click", () => {
   document.getElementById("interestModal").style.display = "none";
 });
-
 
 const phoneInput = document.getElementById('phonenumber');
 phoneInput.addEventListener('input', () => {

@@ -393,7 +393,7 @@ button:hover {
 .sideNavA {
   top: -80px;
   position: relative;
-  color: #b6c5b9;
+  color: #000000;
   text-decoration: none;
   border-style: hidden;
   padding: 10px;
@@ -407,6 +407,7 @@ button:hover {
   transition: 1s;
   width: auto;
   text-align: left;
+  text-indent: 10px;
 }
 
 .sidenav label {
@@ -1073,7 +1074,7 @@ input {
   top: -80px;
   right: -2px;
   position: relative;
-  color: #b6c5b9;
+  color: #061e22;
   text-decoration: none;
   border-style: hidden;
   padding: 10px;
@@ -1086,6 +1087,7 @@ input {
   display: flex;
   transition: 1s;
   width: 90%;
+  text-indent: 5px;
 }
 
 .modal button,
@@ -1360,7 +1362,7 @@ input {
    it's visible without opening the menu. */
 #notificationsBtn {
   background-color: #4c98af;
-  color: #eaf6f8;
+  color: #061e22;
   align-items: center;
   justify-content: space-between;
 }
