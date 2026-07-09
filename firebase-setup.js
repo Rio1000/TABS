@@ -2779,14 +2779,20 @@ function renderProfilePaymentHandles() {
 
 async function savePaymentSettings() {
   if (!currentUser) return;
-  paymentSettings = {
-    enabled: document.getElementById("paymentsEnabledToggle").checked,
-  };
-  myPaymentHandles = {
+  const enabled = document.getElementById("paymentsEnabledToggle").checked;
+  const handles = {
     venmo: cleanHandle(document.getElementById("venmoHandleInput").value),
     paypal: cleanHandle(document.getElementById("paypalHandleInput").value),
     cashApp: cleanHandle(document.getElementById("cashAppHandleInput").value),
   };
+  // Only one handle is required — but if the feature is on, at least one must be
+  // set, otherwise there's nothing to request with.
+  if (enabled && !handles.venmo && !handles.paypal && !handles.cashApp) {
+    showToast("Add at least one payment handle (Venmo, PayPal, or Cash App).", "error");
+    return;
+  }
+  paymentSettings = { enabled };
+  myPaymentHandles = handles;
   try {
     await Promise.all([
       set(ref(database, `users/${currentUser.uid}/settings/payments`), paymentSettings),
@@ -2911,11 +2917,34 @@ function openSmsComposer(phone, body) {
   window.location.href = `sms:${digits}${separator}body=${encodeURIComponent(body)}`;
 }
 
+// Witty, Duolingo-style reminder lines, loaded from reminder-messages.json so
+// they're easy to edit without touching code. Falls back to a couple of
+// built-ins if the file can't be fetched (e.g. offline).
+let reminderMessages = [
+  "Hey {name}, friendly reminder that you owe me {amount} — tracked on TABS!",
+  "{name}, your {amount} tab misses you. Reunite them? 🥹",
+];
+
+async function loadReminderMessages() {
+  try {
+    const res = await fetch("reminder-messages.json", { cache: "no-cache" });
+    const data = await res.json();
+    if (Array.isArray(data.messages) && data.messages.length) {
+      reminderMessages = data.messages;
+    }
+  } catch (error) {
+    console.debug("Using built-in reminder messages:", error?.message);
+  }
+}
+loadReminderMessages();
+
 function buildReminderMessage(name, amountText) {
   const firstName = name.split(" ")[0];
   const amount = parseFloat(amountText);
   const owed = !isNaN(amount) ? `$${amount.toFixed(2)}` : amountText;
-  return `Hey ${firstName}, friendly reminder that you owe me ${owed} 🔫— tracked on TABS!`;
+  const template =
+    reminderMessages[Math.floor(Math.random() * reminderMessages.length)];
+  return template.replaceAll("{name}", firstName).replaceAll("{amount}", owed);
 }
 
 async function findFriendByName(fullName) {
