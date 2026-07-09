@@ -164,6 +164,15 @@ function accountPredatesPush(user) {
 // - denied → nothing we can do from JS (they'd have to change it in the browser).
 async function initPush(user) {
   try {
+    // Running inside the native mobile shell (a WebView)? Ask it for the
+    // device's push token instead of doing web push — service workers / web
+    // push don't work inside an iOS WKWebView. The shell calls
+    // window.__onNativePushToken back with the token.
+    if (window.ReactNativeWebView) {
+      requestNativePushToken();
+      return;
+    }
+
     if (FCM_VAPID_KEY.startsWith("REPLACE_WITH")) return;
     if (typeof Notification === "undefined") return;
     if (!(await isMessagingSupported())) return;
@@ -206,6 +215,34 @@ function showEnableNotificationsPrompt() {
     },
   }).showToast();
 }
+
+// --- Native (mobile WebView) push bridge -----------------------------------
+// Ask the native shell to grant permission and hand back this device's push
+// token. The shell listens for this message (see mobile/App.js).
+function requestNativePushToken() {
+  try {
+    window.ReactNativeWebView.postMessage(
+      JSON.stringify({ type: "requestPushToken" })
+    );
+  } catch (error) {
+    console.error("requestNativePushToken failed:", error);
+  }
+}
+
+// The native shell injects a call to this with the device's Expo push token.
+// We store it under the signed-in user just like a web token; the Cloud
+// Function recognises Expo-format tokens and delivers via the Expo push API.
+window.__onNativePushToken = async (token, platform) => {
+  try {
+    if (!currentUser || !token) return;
+    await set(ref(database, `users/${currentUser.uid}/pushTokens/${token}`), {
+      platform: platform || "mobile",
+      updatedAt: Date.now(),
+    });
+  } catch (error) {
+    console.error("Storing native push token failed:", error);
+  }
+};
 
 // Sends a reminder as a push notification via the Cloud Function. Returns
 // { delivered, reason }. delivered=false with reason "no-devices" means the
