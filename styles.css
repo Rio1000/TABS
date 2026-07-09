@@ -1995,7 +1995,9 @@ body.payments-enabled .pay-request-btn {
 }
 
 .switch input:checked ~ label::after {
-  translate: 30px 0;
+  /* Travel = label content width (70px) − dot width (20px) = 50px, so the dot
+     lands flush against the right edge instead of stopping short. */
+  translate: 50px 0;
   background: #59ba39;
 }
 
