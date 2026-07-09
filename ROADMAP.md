@@ -163,6 +163,77 @@ flag) → Phase 2 (fill/house ads) → Phase 4 (only if AdSense underperforms).`
 
 ---
 
+## Track 3 — Venmo / PayPal / Cash App "request money" links
+
+**Goal:** when a tab is added, let the creditor kick off a real money request in
+Venmo/PayPal/Cash App — but TABS **never touches money**; it only builds a link
+and hands off to the payment app, which manages the entire transaction.
+Toggleable per user in settings.
+
+### The honest constraint (read first)
+- **Venmo has no public API.** You cannot programmatically create a Venmo charge
+  from a third-party server. The *only* sanctioned way is Venmo's **deep-link /
+  URL scheme**, which opens the Venmo app with a prefilled request the user taps
+  to send. That's actually a perfect fit here — it keeps money entirely inside
+  Venmo and out of TABS.
+- **PayPal** *does* have an Invoicing/Orders API, but it needs OAuth, a business
+  account, server credentials, and compliance overhead. For a "TABS never moves
+  money" design that's overkill — **PayPal.Me links** achieve the same hand-off
+  with zero backend and zero secrets.
+- So the whole track is **link-building, not payments integration.** No PCI
+  scope, no API keys, no money in TABS. This is exactly the model you want.
+
+### How each provider's link works (note the direction!)
+| Provider | Link | Who provides the handle | Direction |
+|---|---|---|---|
+| **Venmo** (charge/request) | `https://venmo.com/<debtorUser>?txn=charge&amount=<amt>&note=<note>` (app scheme `venmo://paycharge?txn=charge&recipients=…`) | the **debtor** (person who owes) | requests money *from* them |
+| **PayPal.Me** | `https://paypal.me/<creditorUser>/<amt>` | the **creditor** (person owed) | debtor opens it and *pays* |
+| **Cash App** | `https://cash.app/$<creditorTag>/<amt>` | the **creditor** | debtor opens it and *pays* |
+
+The asymmetry matters: a Venmo *charge* needs the **debtor's** username, while
+PayPal.Me / Cash App links carry the **creditor's** handle for the debtor to pay.
+So the settings model has to store both a user's own handles *and* respect that
+a Venmo request requires the other party to have shared theirs.
+
+### Data model
+- `users/{uid}/profile/paymentHandles`: `{ venmo, paypal, cashApp }` (strings,
+  optional). Reuse the same friend-scoped read rule already used for
+  `phoneNumber` so only confirmed friends can read them.
+- `users/{uid}/settings/paymentRequests`: `{ enabled: bool, defaultProvider }`.
+  When `enabled` is false, TABS shows no request buttons for that user and
+  exposes none of their handles.
+
+### UI
+- **Settings/Profile:** a "Payment requests" toggle + fields for Venmo / PayPal.Me
+  / Cash App handles (mirrors how `phoneNumber` and `friendCode` are edited today).
+- **On a person/tab row:** a "Request" button right next to the existing
+  `.sms-remind-btn` (`firebase-setup.js` ~line 927). It's shown only when the
+  relevant handle is available and the relevant party has the feature enabled.
+  Clicking builds the link with the tab's amount + a note (e.g. "TABS: dinner")
+  and does `window.open(link)` / sets `location.href` — same hand-off pattern as
+  `openSmsComposer`. On mobile (the WebView shell) the OS deep-links straight
+  into the Venmo/PayPal/Cash App app.
+- **Guardrail:** a small "opens <provider> — TABS doesn't move money" caption, so
+  it's clear the transfer happens entirely in the payment app.
+
+### Nice-to-haves (later)
+- Remember which tabs were "requested" (timestamp on the person row) so the UI
+  can show "Requested ✓" — still just metadata, no money.
+- A combined reminder: the push/SMS reminder could include the payment link.
+- PayPal **Invoicing API** as an *optional* upgrade for users who want a real
+  emailed invoice with tracking — clearly separate, opt-in, and still never
+  routing money through TABS.
+
+### MVP (small, shippable)
+1. Add `paymentHandles` + the settings toggle and edit fields.
+2. Add the friend-scoped read rule for `paymentHandles`.
+3. Add a "Request on Venmo/PayPal/Cash App" button on friend rows that builds
+   and opens the link from the tab amount.
+That's the entire "request money, TABS never transfers" feature — no API, no
+secrets, no Blaze requirement.
+
+---
+
 ## Suggested overall sequencing
 1. **Track 1, native-composer default** — removes the Twilio dependency/cost
    immediately with near-zero code.
@@ -170,4 +241,6 @@ flag) → Phase 2 (fill/house ads) → Phase 4 (only if AdSense underperforms).`
    through the list.
 3. **Track 1, FCM push** — the real upgrade: free, reliable, carrier-free
    reminders for app users.
-4. **Track 2, Phase 2–4** — squeeze yield and add consent/ad-free controls.
+4. **Track 3 MVP** — payment-request links (Venmo/PayPal/Cash App): high user
+   value, small surface, no backend or money-handling.
+5. **Track 2, Phase 2–4** — squeeze yield and add consent/ad-free controls.
