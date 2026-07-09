@@ -69,7 +69,6 @@ function closeNav() {
   }, 400); // same as your CSS transition duration
 
   document.getElementById("openButton").style.display = "flex";
-  document.getElementById("close-folder-icon").getAttribute('src') === 'folder_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg'
 }
 // Only close when the click lands on the backdrop itself — not on anything
 // inside the sidenav (nav links, the currency <select>, etc.), since a
