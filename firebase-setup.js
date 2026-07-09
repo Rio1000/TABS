@@ -30,6 +30,13 @@ import {
   httpsCallable,
 } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-functions.js";
 
+import {
+  getMessaging,
+  getToken,
+  onMessage,
+  isSupported as isMessagingSupported,
+} from "https://www.gstatic.com/firebasejs/10.6.0/firebase-messaging.js";
+
 // Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyA93Cfu5ehpOeZMCBKtiTvw1kJZZU_EvkE",
@@ -68,6 +75,93 @@ const auth = getAuth(app);
 // Callable that sends SMS through Twilio server-side (see functions/index.js).
 const functionsClient = getFunctions(app);
 const sendReminderSmsFn = httpsCallable(functionsClient, "sendReminderSms");
+// Callable that delivers a reminder as a real push notification to the
+// friend's device via Firebase Cloud Messaging — free, no carrier, no spam
+// flagging. This is what the reminder buttons use now instead of Twilio/SMS.
+const sendReminderPushFn = httpsCallable(functionsClient, "sendReminderPush");
+
+// ---------------------------------------------------------------------------
+// Push notifications (Firebase Cloud Messaging)
+//
+// Web Push certificate ("VAPID" key pair). Generate it once in the Firebase
+// Console → Project settings → Cloud Messaging → Web configuration → "Web Push
+// certificates" → Generate key pair, then paste the public key here. Until you
+// do, push registration is skipped (the app still works, reminders just report
+// that the friend has no device registered).
+// ---------------------------------------------------------------------------
+const FCM_VAPID_KEY = "REPLACE_WITH_YOUR_WEB_PUSH_PUBLIC_KEY";
+
+let messaging = null;
+
+// Register this browser to receive push, and store its token under the signed-
+// in user so friends' reminders can reach it. Safe to call on every login: FCM
+// returns a stable token and we just re-write the same key. Never throws.
+async function registerPushToken() {
+  try {
+    if (!currentUser) return;
+    if (FCM_VAPID_KEY.startsWith("REPLACE_WITH")) {
+      console.warn(
+        "Push disabled: set FCM_VAPID_KEY in firebase-setup.js (see SETUP.md)."
+      );
+      return;
+    }
+    if (!(await isMessagingSupported())) return; // e.g. iOS Safari < 16.4
+
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      console.log("Notification permission not granted; push skipped.");
+      return;
+    }
+
+    const registration = await navigator.serviceWorker.register(
+      "/firebase-messaging-sw.js"
+    );
+    if (!messaging) messaging = getMessaging(app);
+
+    const token = await getToken(messaging, {
+      vapidKey: FCM_VAPID_KEY,
+      serviceWorkerRegistration: registration,
+    });
+    if (!token) return;
+
+    await set(ref(database, `users/${currentUser.uid}/pushTokens/${token}`), {
+      platform: "web",
+      updatedAt: Date.now(),
+    });
+
+    // Surface reminders that arrive while the tab is focused (the service
+    // worker only fires when the tab is backgrounded/closed).
+    onMessage(messaging, (payload) => {
+      const body = payload.notification?.body || payload.data?.message || "";
+      if (body) showToast(body, "success");
+    });
+  } catch (error) {
+    console.error("Push registration failed:", error);
+  }
+}
+
+// Sends a reminder as a push notification via the Cloud Function. Returns
+// { delivered, reason }. delivered=false with reason "no-devices" means the
+// friend hasn't enabled notifications anywhere.
+async function sendReminderPushViaFCM(friendUid, message) {
+  if (!friendUid) return { delivered: false, reason: "no-friend" };
+  try {
+    const result = await sendReminderPushFn({ friendUid, message });
+    return result.data || { delivered: false, reason: "unknown" };
+  } catch (error) {
+    console.error("Push reminder failed:", error);
+    const notDeployed =
+      error?.code === "functions/not-found" ||
+      error?.code === "functions/internal";
+    showToast(
+      notDeployed
+        ? "Reminders aren't set up yet — try again once notifications are configured."
+        : error?.message || "Couldn't send the reminder.",
+      "error"
+    );
+    return { delivered: false, reason: "error" };
+  }
+}
 
 // Sends a reminder text via the Twilio Cloud Function. Returns true on
 // success; on failure shows a toast and returns false so the caller can fall
@@ -185,6 +279,7 @@ onAuthStateChanged(auth, async (user) => {
     loadNotificationPrefs();
     subscribeToNotifications();
     checkAutoReminders();
+    registerPushToken(); // ask for notification permission & store this device's token
 
     // Hide login/signup pages
     if (loginPage) loginPage.style.display = "none";
@@ -2321,20 +2416,26 @@ function renderNotifications() {
     messageSpan.appendChild(timeSpan);
     li.appendChild(messageSpan);
 
-    // Payment reminders get a shortcut to text the friend right away —
-    // through Twilio when possible, otherwise the device's SMS composer.
+    // Payment reminders get a shortcut to push the friend a reminder right
+    // away — a real notification on their device via FCM, no SMS app.
     if (notif.type === "sms-reminder") {
       const textBtn = document.createElement("button");
       textBtn.classList.add("notification-action");
-      textBtn.textContent = "Text now";
+      textBtn.textContent = "Remind now";
       textBtn.addEventListener("click", async (event) => {
         event.stopPropagation();
         const body = notif.smsBody || notif.message;
-        const sent = await sendReminderSmsViaTwilio(notif.friendUid, body);
-        if (sent) {
+        const { delivered, reason } = await sendReminderPushViaFCM(
+          notif.friendUid,
+          body
+        );
+        if (delivered) {
           showToast("Reminder sent.", "success");
-        } else {
-          openSmsComposer(notif.phone, body);
+        } else if (reason === "no-devices") {
+          showToast(
+            "They haven't turned on notifications, so they can't be reminded.",
+            "error"
+          );
         }
       });
       li.appendChild(textBtn);
@@ -2572,17 +2673,20 @@ document.getElementById("sendSmsNowBtn").addEventListener("click", async () => {
 
   btn.disabled = true;
   try {
-    // Try to send it straight through Twilio (no leaving the app). Falls back
-    // to the device's SMS composer if the function isn't set up or the friend
-    // has no number on file.
-    const sentAutomatically = await sendReminderSmsViaTwilio(friendUserId, message);
-    if (sentAutomatically) {
-      showToast(`Reminder texted to ${name}.`, "success");
+    // Deliver a real push notification to the friend's device via FCM — no
+    // SMS app, no carrier. If they haven't enabled notifications on any device
+    // we tell the sender instead of silently doing nothing.
+    const { delivered, reason } = await sendReminderPushViaFCM(friendUserId, message);
+    if (delivered) {
+      showToast(`Reminder sent to ${name}.`, "success");
       document.getElementById("smsReminderModal").style.display = "none";
-    } else {
-      openSmsComposer(phone, message);
+    } else if (reason === "no-devices") {
+      showToast(
+        `${name} hasn't turned on notifications yet, so they can't be reminded on their device.`,
+        "error"
+      );
     }
-    logUserAction(`Sent an SMS reminder to ${name}`);
+    logUserAction(`Sent a reminder to ${name}`);
 
     // Sending manually also resets the auto-reminder clock.
     if (friendUserId) {

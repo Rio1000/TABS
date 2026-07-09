@@ -96,3 +96,97 @@ exports.sendReminderSms = onCall(async (request) => {
       );
     }
   });
+
+// Send a reminder as a real PUSH notification to the friend's device(s), via
+// Firebase Cloud Messaging. This is the free, carrier-free replacement for the
+// Twilio SMS path: no phone number, no 10DLC, nothing a carrier can flag. The
+// recipient just needs to have granted notification permission on the web app
+// or mobile app, which registers a token under users/{uid}/pushTokens.
+exports.sendReminderPush = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "You must be signed in.");
+  }
+
+  const callerUid = request.auth.uid;
+  const friendUid = String(request.data?.friendUid || "").trim();
+  const title = String(request.data?.title || "TABS reminder").slice(0, 100);
+  const body = String(request.data?.message || "").slice(0, 320);
+
+  if (!friendUid) {
+    throw new HttpsError("invalid-argument", "Missing friendUid.");
+  }
+  if (!body) {
+    throw new HttpsError("invalid-argument", "Missing message.");
+  }
+
+  const db = admin.database();
+
+  // Same guard as the SMS path: only a CONFIRMED friend (verified from the
+  // recipient's own friendUids index, which only they can write) can be
+  // notified — you can't push to an arbitrary UID you happen to know.
+  const friendshipSnap = await db
+    .ref(`users/${friendUid}/friendUids/${callerUid}`)
+    .get();
+  if (!friendshipSnap.exists()) {
+    throw new HttpsError(
+      "permission-denied",
+      "You can only remind a confirmed friend."
+    );
+  }
+
+  const tokensSnap = await db.ref(`users/${friendUid}/pushTokens`).get();
+  const tokens = tokensSnap.exists() ? Object.keys(tokensSnap.val()) : [];
+  if (tokens.length === 0) {
+    // Not an error — the friend just hasn't enabled notifications on any
+    // device. The client uses this to show a helpful message.
+    return { delivered: false, reason: "no-devices", successCount: 0 };
+  }
+
+  const linkUrl = "https://tabsonfriends.com";
+  const message = {
+    tokens,
+    notification: { title, body },
+    data: { type: "sms-reminder", fromUid: callerUid },
+    webpush: {
+      notification: { title, body, icon: "/logo.png" },
+      fcmOptions: { link: linkUrl },
+    },
+  };
+
+  try {
+    const resp = await admin.messaging().sendEachForMulticast(message);
+
+    // Prune tokens FCM reports as dead so we don't keep retrying them.
+    const stale = [];
+    resp.responses.forEach((r, i) => {
+      const code = r.error?.code;
+      if (
+        code === "messaging/registration-token-not-registered" ||
+        code === "messaging/invalid-registration-token" ||
+        code === "messaging/invalid-argument"
+      ) {
+        stale.push(tokens[i]);
+      }
+    });
+    await Promise.all(
+      stale.map((t) =>
+        db.ref(`users/${friendUid}/pushTokens/${t}`).remove().catch(() => {})
+      )
+    );
+
+    logger.info(
+      `Push by ${callerUid} to ${friendUid}: ${resp.successCount}/${tokens.length} delivered`
+    );
+    return {
+      delivered: resp.successCount > 0,
+      successCount: resp.successCount,
+      reason: resp.successCount > 0 ? null : "all-failed",
+    };
+  } catch (err) {
+    logger.error("FCM send failed:", err);
+    throw new HttpsError(
+      "internal",
+      "Could not send the notification right now. Please try again later."
+    );
+  }
+});
