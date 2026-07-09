@@ -30,6 +30,16 @@
                 <button id="loginbutton" onclick="openLogin()">Login</button>
                 <button id="signupbutton" onclick="openSignup()">Signup</button>
                 <button id="ContinueasGuest">Continue as Guest<br /> (Nothing will be saved)</button>
+                <!-- Static A-ADS unit on the public landing so A-ADS's verifier
+                     bot (which isn't logged in) can find the ad at the site URL.
+                     The in-list adbox only renders after login, which the bot
+                     can't reach. -->
+                <div id="landing-ad" style="width:100%;margin-top:14px;text-align:center;">
+                    <p style="margin:0 0 4px;font-size:11px;color:#8aa;">ADVERTISEMENT</p>
+                    <iframe data-aa="2447531" src="//acceptable.a-ads.com/2447531/?size=Adaptive"
+                        scrolling="no"
+                        style="border:0;padding:0;width:100%;height:auto;min-height:90px;overflow:hidden;display:block;margin:auto;background:transparent;"></iframe>
+                </div>
             </div>
         </div>
         <div id="sideNavModal">

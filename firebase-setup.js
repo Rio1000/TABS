@@ -344,6 +344,7 @@ currencySelectEl.addEventListener("change", () => {
 
 // Auth State Listener
 let currentUser = null;
+let currentUserName = ""; // "First Last" of the signed-in user, for reminders
 let currentListItem = null;
 let peopleListUnsub = null;
 let friendsListUnsub = null;
@@ -403,6 +404,7 @@ onAuthStateChanged(auth, async (user) => {
     const profileRef = ref(database, `users/${user.uid}/profile`);
     get(profileRef).then((snapshot) => {
       const profileData = snapshot.val();
+      currentUserName = `${profileData.firstName || ""} ${profileData.lastName || ""}`.trim();
       document.getElementById('profile-name').innerHTML = `Name: <br> ${profileData.firstName} ${profileData.lastName}`;
       document.getElementById('profile-email').innerHTML = `Email: <br> ${profileData.email}`;
       document.getElementById('profile-phone').innerHTML = `Phone Number: <br> ${profileData.phoneNumber}`;
@@ -2531,6 +2533,20 @@ async function addNotification(targetUid, notification) {
   }
 }
 
+// Drop an in-app notification into the reminded friend's TABS inbox (in
+// addition to the device push), so they see it inside the app too — and it
+// names who reminded them. Type "reminder-received" is intentionally not
+// "sms-reminder" so it doesn't render a "Remind now" button on their side.
+async function notifyReminderRecipient(friendUid, body) {
+  if (!friendUid) return;
+  const from = currentUserName || "A friend";
+  await addNotification(friendUid, {
+    type: "reminder-received",
+    message: `${from} sent you a reminder: ${body}`,
+    fromUid: currentUser ? currentUser.uid : null,
+  });
+}
+
 function subscribeToNotifications() {
   if (!currentUser) return;
   if (notificationsUnsub) notificationsUnsub();
@@ -2619,13 +2635,11 @@ function renderNotifications() {
           notif.friendUid,
           body
         );
+        await notifyReminderRecipient(notif.friendUid, body);
         if (delivered) {
           showToast("Reminder sent.", "success");
         } else if (reason === "no-devices") {
-          showToast(
-            "They haven't turned on notifications, so they can't be reminded.",
-            "error"
-          );
+          showToast("Reminded in-app (they have no device notifications on).", "success");
         }
       });
       li.appendChild(textBtn);
@@ -2705,6 +2719,18 @@ async function saveNotificationPrefs() {
 ["notifEnabledToggle", "notifFriendsToggle", "notifRemindersToggle"].forEach((id) => {
   document.getElementById(id).addEventListener("change", saveNotificationPrefs);
 });
+
+// Turning the master notifications toggle ON is a user gesture, so use it to
+// (re)request device notification permission — the same registration the
+// legacy-account banner triggers. Routes to the native shell inside the app.
+document.getElementById("notifEnabledToggle").addEventListener("change", (e) => {
+  if (!e.target.checked) return;
+  if (window.ReactNativeWebView) {
+    requestNativePushToken();
+  } else {
+    registerPushToken();
+  }
+});
 manageNotifications.addEventListener("click", () => {
   document.getElementById("notificationSettingsModal").style.display = "flex";
 });
@@ -2734,6 +2760,14 @@ const fmtAmount = (n) => Number(n).toFixed(2);
 
 function venmoChargeLink(username, amount, note) {
   const params = new URLSearchParams({ txn: "charge" });
+  if (amount) params.set("amount", fmtAmount(amount));
+  if (note) params.set("note", note);
+  return `https://venmo.com/${encodeURIComponent(cleanHandle(username))}?${params.toString()}`;
+}
+// "Pay me" link built from YOUR Venmo — the friend opens it and pays you (same
+// direction as PayPal.Me / Cash App links). Works from any row.
+function venmoPayLink(username, amount, note) {
+  const params = new URLSearchParams({ txn: "pay" });
   if (amount) params.set("amount", fmtAmount(amount));
   if (note) params.set("note", note);
   return `https://venmo.com/${encodeURIComponent(cleanHandle(username))}?${params.toString()}`;
@@ -2860,11 +2894,14 @@ async function openPaymentRequestModal(listItem) {
     optionsEl.appendChild(btn);
   };
 
-  if (friendVenmo) {
-    addOption("Request on Venmo", () => {
-      window.open(venmoChargeLink(friendVenmo, amt, "TABS: settle up"), "_blank");
-      document.getElementById("paymentRequestModal").style.display = "none";
-    });
+  const note = "TABS: settle up";
+
+  // Your own handles → a "pay me" link the friend opens to pay you. Works on
+  // every row (friend or not) and needs only ONE handle configured.
+  if (myPaymentHandles.venmo) {
+    addOption("Copy my Venmo link", () =>
+      copyPaymentLink(venmoPayLink(myPaymentHandles.venmo, amt, note), name)
+    );
   }
   if (myPaymentHandles.paypal) {
     addOption("Copy my PayPal.Me link", () =>
@@ -2877,12 +2914,20 @@ async function openPaymentRequestModal(listItem) {
     );
   }
 
+  // Bonus for a linked friend who shared their Venmo: charge them directly
+  // (opens Venmo with a request to them, which you tap to send).
+  if (friendVenmo) {
+    addOption(`Charge ${name.split(" ")[0]} on Venmo`, () => {
+      window.open(venmoChargeLink(friendVenmo, amt, note), "_blank");
+      document.getElementById("paymentRequestModal").style.display = "none";
+    });
+  }
+
   if (!optionsEl.children.length) {
     const p = document.createElement("p");
     p.className = "payment-empty";
-    p.textContent = friend
-      ? `No payment handles available yet. Add your PayPal.Me / Cash App in Payment Requests, or ask ${name.split(" ")[0]} to add their Venmo in TABS.`
-      : "Add your PayPal.Me / Cash App handle in Payment Requests to share a pay link. (Venmo charges need a linked friend.)";
+    p.textContent =
+      "Add at least one payment handle in Payment Requests (Profile → Account) to send a pay link.";
     optionsEl.appendChild(p);
   }
 
@@ -3082,14 +3127,18 @@ document.getElementById("sendSmsNowBtn").addEventListener("click", async () => {
     // SMS app, no carrier. If they haven't enabled notifications on any device
     // we tell the sender instead of silently doing nothing.
     const { delivered, reason } = await sendReminderPushViaFCM(friendUserId, message);
+    // Also leave an in-app notification in their TABS inbox, so they see it
+    // inside the app even if they have no push device.
+    await notifyReminderRecipient(friendUserId, message);
     if (delivered) {
       showToast(`Reminder sent to ${name}.`, "success");
       document.getElementById("smsReminderModal").style.display = "none";
     } else if (reason === "no-devices") {
       showToast(
-        `${name} hasn't turned on notifications yet, so they can't be reminded on their device.`,
-        "error"
+        `${name} was reminded in-app. (They haven't turned on device notifications yet.)`,
+        "success"
       );
+      document.getElementById("smsReminderModal").style.display = "none";
     }
     logUserAction(`Sent a reminder to ${name}`);
 
@@ -3167,17 +3216,36 @@ async function checkAutoReminders() {
     const now = Date.now();
     const DAY_MS = 24 * 60 * 60 * 1000;
 
+    // Look up the current amount owed per person from the saved list so the
+    // reminder shows the real number instead of a generic phrase.
+    const amountByName = {};
+    try {
+      const listSnap = await get(
+        ref(database, `users/${currentUser.uid}/peopleList`)
+      );
+      const peopleData = listSnap.exists() ? listSnap.val().peopleData || [] : [];
+      peopleData.forEach((p) => {
+        if (p && p.name != null) amountByName[String(p.name).trim()] = p.amount;
+      });
+    } catch (error) {
+      // No saved list yet — fall back to the generic wording.
+    }
+
     for (const [friendUserId, reminder] of Object.entries(snapshot.val())) {
       if (!reminder.enabled) continue;
       const frequencyMs = (reminder.frequencyDays || 7) * DAY_MS;
       if (now - (reminder.lastSent || 0) < frequencyMs) continue;
 
+      const owedAmount = amountByName[String(reminder.friendName).trim()];
       await addNotification(currentUser.uid, {
         type: "sms-reminder",
         message: `Reminder: time to text ${reminder.friendName} about what they owe you.`,
         friendUid: friendUserId, // lets the "Remind now" shortcut send a push
         phone: reminder.phone ?? null,
-        smsBody: buildReminderMessage(reminder.friendName, ""),
+        smsBody: buildReminderMessage(
+          reminder.friendName,
+          owedAmount != null ? String(owedAmount) : ""
+        ),
       });
       await update(
         ref(database, `users/${currentUser.uid}/autoReminders/${friendUserId}`),
