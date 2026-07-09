@@ -89,7 +89,7 @@ const sendReminderPushFn = httpsCallable(functionsClient, "sendReminderPush");
 // do, push registration is skipped (the app still works, reminders just report
 // that the friend has no device registered).
 // ---------------------------------------------------------------------------
-const FCM_VAPID_KEY = "REPLACE_WITH_YOUR_WEB_PUSH_PUBLIC_KEY";
+const FCM_VAPID_KEY = "BMMd80ylGR_MFwUAKgjg-BT-bfqJ4AYxxO4iJo9PseMaldJackXFalznsfqk9lM3j7n5UsZaB_ByKwZGIqdt-7k";
 
 let messaging = null;
 
