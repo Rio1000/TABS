@@ -393,7 +393,7 @@ button:hover {
 .sideNavA {
   top: -80px;
   position: relative;
-  color: #b6c5b9;
+  color: #000000;
   text-decoration: none;
   border-style: hidden;
   padding: 10px;
@@ -407,6 +407,7 @@ button:hover {
   transition: 1s;
   width: auto;
   text-align: left;
+  text-indent: 10px;
 }
 
 .sidenav label {
@@ -442,8 +443,8 @@ button:hover {
   z-index: 99;
   width: 20px;
   height: 20px;
-  background-color: #48ceff91;
-    box-shadow: #011d1d 0px 0px 10px 0px;
+  background-color: #37adc791;
+    box-shadow: #023030c4 0px 0px 10px 0px;
 
 }
 
@@ -1073,7 +1074,7 @@ input {
   top: -80px;
   right: -2px;
   position: relative;
-  color: #b6c5b9;
+  color: #061e22;
   text-decoration: none;
   border-style: hidden;
   padding: 10px;
@@ -1086,6 +1087,7 @@ input {
   display: flex;
   transition: 1s;
   width: 90%;
+  text-indent: 5px;
 }
 
 .modal button,
@@ -1212,7 +1214,10 @@ input {
 #markAllReadBtn,
 #clearNotificationsBtn,
 #sendSmsNowBtn,
-#interest-btn {
+#savePaymentSettings,
+#closePaymentSettings,
+#closePaymentRequest,
+#interest-btn{
   text-align: center;
   justify-content: center;
   margin-top: 10px;
@@ -1229,7 +1234,16 @@ input {
   cursor: pointer;
   max-height:50px;
 }
-
+#copy-friend-code{
+  background-color: rgba(56, 138, 147, 0.686);
+  width: auto;
+  height:auto;
+  text-align: center;
+  justify-content: center;
+  border-top-right-radius: 0px;
+  border-bottom-left-radius: 0px;
+  
+}
 .badge {
   display: inline-flex;
   align-items: center;
@@ -1316,7 +1330,8 @@ input {
 #profile-name,
 #profile-email,
 #profile-phone,
-#profile-friend-code {
+#profile-friend-code,
+#profile-payment {
   color: rgb(194, 233, 232);
   font-size: 20px;
   width: 90%;
@@ -1360,7 +1375,7 @@ input {
    it's visible without opening the menu. */
 #notificationsBtn {
   background-color: #4c98af;
-  color: #eaf6f8;
+  color: #061e22;
   align-items: center;
   justify-content: space-between;
 }
@@ -1408,6 +1423,8 @@ input {
 
 #notificationsBox,
 #notificationSettingsBox,
+#paymentSettingsBox,
+#paymentRequestBox,
 #smsReminderBox {
   display: flex;
   flex-direction: column;
@@ -1520,6 +1537,88 @@ input {
 
 .sms-remind-btn .material-icons {
   font-size: 20px;
+}
+
+/* Payment-request button on friend rows — mirrors .sms-remind-btn but is only
+   shown once the user has enabled payment requests in settings. */
+.pay-request-btn {
+  display: none;
+  margin-left: 8px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  background-color: #3d8a4f;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+}
+body.payments-enabled .pay-request-btn {
+  display: flex;
+}
+.pay-request-btn .material-icons {
+  font-size: 20px;
+}
+
+/* Payment Requests settings + per-tab request modal */
+#paymentSettingsSubtitle,
+#paymentRequestSubtitle,
+#paymentRequestHint {
+  color: #c7c7c7;
+  font-size: 14px;
+  text-align: center;
+  margin: 6px 0;
+}
+#paymentRequestHint {
+  font-size: 12px;
+  opacity: 0.8;
+}
+.payment-handle-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 90%;
+  margin-top: 12px;
+}
+.payment-handle-row label {
+  font-size: 14px;
+  color: #d7d7d7;
+}
+.payment-handle-row input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background-color: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  font-size: 16px;
+}
+#paymentRequestOptions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  width: 90%;
+  margin-top: 10px;
+}
+.payment-option-btn {
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background-color: rgba(56, 138, 147, 0.686);
+  color: rgb(194, 233, 232);
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.payment-empty {
+  color: #c7c7c7;
+  font-size: 14px;
+  text-align: center;
 }
 
 /* Make sure the AdSense <ins> inside the person-list ad box actually gets
@@ -1906,7 +2005,9 @@ input {
 }
 
 .switch input:checked ~ label::after {
-  translate: 30px 0;
+  /* Travel = label content width (70px) − dot width (20px) = 50px, so the dot
+     lands flush against the right edge instead of stopping short. */
+  translate: 50px 0;
   background: #59ba39;
 }
 
@@ -1962,6 +2063,8 @@ input {
 }
 #friend-code-section{
   display: flex;
+  align-items: center;
+  justify-content: center;
 }
 /* Floats above the scrollable person list (z-index: auto) but stays below
    every modal and the loader (z-index: 9999) and the side nav (10000), so

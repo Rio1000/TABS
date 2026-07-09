@@ -49,9 +49,13 @@ Expo-format tokens and delivers them through the **Expo push service** (which
 handles APNs/FCM for both platforms), while web tokens still go via FCM.
 
 To make mobile push work you must:
+0. Install the EAS CLI: `npm install -g eas-cli`. (The CLI ships in the
+   `eas-cli` package and its command is `eas`; running `npx eas` grabs an
+   unrelated `eas` package and fails with "could not determine executable to
+   run" — use `eas` after installing, or `npx eas-cli …`.)
 1. `cd mobile && npx expo install` (pins `react-native-webview`,
    `expo-notifications`, `expo-constants` to versions matching Expo SDK 54).
-2. `npx eas init` to create the project and write `extra.eas.projectId` into
+2. `eas init` to create the project and write `extra.eas.projectId` into
    `app.json` — Expo needs it to mint push tokens.
 3. For **iOS**, upload an **APNs key** in the Expo/EAS credentials flow
    (`eas credentials`) so Expo can deliver to Apple devices.

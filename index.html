@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="toastify.css" />
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7825788728707782"
-     crossorigin="anonymous"></script>
+        crossorigin="anonymous"></script>
 </head>
 
 <body>
@@ -35,8 +35,7 @@
         <div id="sideNavModal">
             <div id="mySidenav" class="sidenav">
                 <a class="sideNavA" href="javascript:void(0)" class="closebtn" id="closeButton"
-                    onclick="closeNav()"><img src="folder_open_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg"
-                        alt="close"></a>
+                    onclick="closeNav()">...</a>
                 <a class="sideNavA" href="javascript:void(0)" id="Login" onclick="openLogin()">Login or Signup</a>
                 <a class="sideNavA" id="Profile">Profile</a>
                 <a class="sideNavA" href="javascript:void(0)" id="FriendsTab" onclick="openFriends()">Friends</a>
@@ -57,8 +56,7 @@
         </div>
 
         <!-- Dropdown Menu -->
-        <span class="open-btn " id="openButton" onclick="openNav()"><img
-                src="folder_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg" alt="menu">
+        <span class="open-btn " id="openButton" onclick="openNav()">...
             <span id="folderNotificationBadge" class="badge" title="Unread notifications"
                 style="display: none;">0</span></span>
 
@@ -124,16 +122,17 @@
         <div id="signup-modal">
             <div id="signupPage" class="modal modal-fx" style="display: none">
                 <div class="login-content">
-                    <h2>Signup</h2>                        
+                    <h2>Signup</h2>
                     <input class="login-input" id="first-name" type="text" placeholder="First Name" required /><br />
                     <input class="login-input" id="last-name" type="text" placeholder="Last Name" required /><br />
-                    <input class="login-input" id="phonenumber" type="tel" pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" required placeholder="Phone Number" maxlength="14"/><br />
+                    <input class="login-input" id="phonenumber" type="tel" pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" required
+                        placeholder="Phone Number" maxlength="14" /><br />
                     <input class="login-input" id="signup-email" type="email" placeholder="Email" required /><br />
                     <input class="login-input" id="signup-password" type="password" placeholder="Password"
                         required /><br />
                     <div class="login-buttons">
-                    <button id="signup-btn">Sign Up</button>
-                    <button id="googleSignUpBtn"> Sign Up with Google <img id="google-icon"
+                        <button id="signup-btn">Sign Up</button>
+                        <button id="googleSignUpBtn"> Sign Up with Google <img id="google-icon"
                                 src="google-icon-logo-svgrepo-com.svg" alt="google"></button>
                     </div>
                     <button id="Back-btn2">⬅️</button>
@@ -182,7 +181,9 @@
             <div class="friend-content">
                 <div id="friendCodeBox">
                     <button id="addFriendBtn">Add</button>
-                    <button id="pendingRequestsBtn">Pending <span id="pendingCount" class="badge" title="Received requests">0</span><span id="sentCount" class="badge badge-sent" title="Sent requests">0</span></button>
+                    <button id="pendingRequestsBtn">Pending <span id="pendingCount" class="badge"
+                            title="Received requests">0</span><span id="sentCount" class="badge badge-sent"
+                            title="Sent requests">0</span></button>
                     <button id="closeFriendModal" class="close-btn" onclick="closeFriends()">Close</button>
 
                 </div>
@@ -282,7 +283,9 @@
         <div class="modal modal-fx" id="adsModal">
             <div id="adsBox">
                 <div>
-                    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7825788728707782"crossorigin="anonymous"></script>
+                    <script async
+                        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7825788728707782"
+                        crossorigin="anonymous"></script>
 
                     <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-7825788728707782"
                         data-ad-slot="8944873686" data-ad-format="auto" data-full-width-responsive="true"></ins>
@@ -322,9 +325,11 @@
                     <p id="profile-phone">Phone Number: </p>
                     <div id="friend-code-section">
                         <p id="profile-friend-code">Friend Code: </p>
-                        <button onclick="copyText()"><img src="content_copy_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg" alt="copy friend code"></button>
+                        <button id="copy-friend-code" onclick="copyText()"><img src="content_copy_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg"
+                                alt="copy friend code"></button>
                     </div>
-                    
+                    <p id="profile-payment">Payment Handles: <br> Not set up</p>
+
                 </div>
 
                 <div id="profile-stats">
@@ -342,6 +347,7 @@
                     <button id="disable-account">Disable Account</button>
                     <button id="view-account-history">View Account History</button>
                     <button id="manage-notifications">Manage Notifications</button>
+                    <button id="manage-payments">Payment Requests</button>
                     <button id="export-data">Export Data</button>
 
                 </div>
@@ -425,6 +431,46 @@
                     </div>
                 </div>
                 <button id="closeNotificationSettings">Close</button>
+            </div>
+        </div>
+
+        <!-- Payment Requests Settings Modal -->
+        <div class="modal modal-fx" id="paymentSettingsModal">
+            <div id="paymentSettingsBox">
+                <h2>Payment Requests</h2>
+                <p id="paymentSettingsSubtitle">Add at least one handle below (you don't need all three). TABS never moves money — it just opens Venmo/PayPal/Cash App.</p>
+                <div class="notification-setting-row">
+                    <span>Enable payment requests</span>
+                    <div class="switch">
+                        <input type="checkbox" id="paymentsEnabledToggle" />
+                        <label for="paymentsEnabledToggle"></label>
+                    </div>
+                </div>
+                <div class="payment-handle-row">
+                    <label for="venmoHandleInput">Venmo username</label>
+                    <input type="text" id="venmoHandleInput" placeholder="your-venmo" autocomplete="off" />
+                </div>
+                <div class="payment-handle-row">
+                    <label for="paypalHandleInput">PayPal.Me username</label>
+                    <input type="text" id="paypalHandleInput" placeholder="your-paypalme" autocomplete="off" />
+                </div>
+                <div class="payment-handle-row">
+                    <label for="cashAppHandleInput">Cash App $cashtag</label>
+                    <input type="text" id="cashAppHandleInput" placeholder="yourcashtag" autocomplete="off" />
+                </div>
+                <button id="savePaymentSettings">Save</button>
+                <button id="closePaymentSettings">Close</button>
+            </div>
+        </div>
+
+        <!-- Payment Request Modal (per person/tab) -->
+        <div class="modal modal-fx" id="paymentRequestModal">
+            <div id="paymentRequestBox">
+                <h2 id="paymentRequestTitle">Request Payment</h2>
+                <p id="paymentRequestSubtitle"></p>
+                <div id="paymentRequestOptions"></div>
+                <p id="paymentRequestHint">TABS doesn't move money — this opens the payment app.</p>
+                <button id="closePaymentRequest">Close</button>
             </div>
         </div>
 

@@ -77,15 +77,27 @@ accounts to sign and submit the result to the respective stores.
 
 ## Push setup (required for reminders to reach the phone)
 
+First install the EAS CLI (the CLI lives in the **`eas-cli`** package — the
+command is `eas`; `npx eas` fetches an unrelated package and fails):
+
+```bash
+npm install -g eas-cli
+```
+
+Then:
+
 1. `npx expo install` — pins `react-native-webview`, `expo-notifications`,
    `expo-constants` to the versions matching Expo SDK 54.
-2. `npx eas init` — creates the EAS project and writes `extra.eas.projectId`
+2. `eas init` — creates the EAS project and writes `extra.eas.projectId`
    into `app.json`. Expo needs this to mint push tokens.
 3. `eas credentials` — for iOS, upload an **APNs key** so Expo can deliver to
    Apple devices.
 4. `eas build` — remote push does **not** work in Expo Go; build a dev or
    production build to test tokens and delivery. (The WebView itself runs fine
    in Expo Go for quick UI checks.)
+
+(If you'd rather not install globally, prefix each command with the package
+name: `npx eas-cli init`, `npx eas-cli credentials`, `npx eas-cli build`.)
 
 ## Project layout
 

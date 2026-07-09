@@ -381,6 +381,7 @@ onAuthStateChanged(auth, async (user) => {
     populateFriendsList();
     loadAddWindow();
     loadNotificationPrefs();
+    loadPaymentSettings();
     subscribeToNotifications();
     checkAutoReminders();
     initPush(user); // register push, or re-prompt legacy accounts to allow it
@@ -1144,6 +1145,18 @@ function addPerson(
     smsBtn.addEventListener("click", () => openSmsReminderModal(listItem));
     extraBox.appendChild(smsBtn);
   }
+
+  // Payment request (Venmo/PayPal/Cash App) — on every row, not just friends:
+  // even for a manually-typed person you can still hand them your own
+  // PayPal.Me / Cash App link. (A Venmo *charge* additionally needs a linked
+  // friend's handle, which openPaymentRequestModal resolves when available.)
+  // Hidden unless payment requests are enabled (body.payments-enabled in CSS).
+  const payBtn = document.createElement("button");
+  payBtn.innerHTML = '<span class="material-icons">payments</span>';
+  payBtn.classList.add("pay-request-btn");
+  payBtn.title = "Request payment via Venmo / PayPal / Cash App";
+  payBtn.addEventListener("click", () => openPaymentRequestModal(listItem));
+  extraBox.appendChild(payBtn);
   nameAmountContainer.appendChild(personItem);
   nameAmountContainer.appendChild(extraBox);
 
@@ -1167,10 +1180,24 @@ function addPerson(
   return listItem;
 
 }
+// Ad network config — see ADS_SETUP.md.
+//   provider: "aads"    → Anonymous Ads. Instant, no approval, works anywhere
+//                          (including the mobile WebView). Paste your unit id.
+//             "adsense" → Google AdSense. Needs site approval and often won't
+//                          fill for small utility apps or inside a WebView.
+//             "house"   → self-promo only (also the automatic fallback when the
+//                          chosen provider isn't configured yet).
+const AD_CONFIG = {
+  provider: "aads",
+  aadsUnitId: "2447531", // from a-ads.com → your unit → "Ad code"
+  adsenseClient: "ca-pub-7825788728707782",
+  adsenseSlot: "8944873686",
+};
+
 function addAdBox() {
   // Idempotent: loadListFromFirebase can run more than once per session
   // (login, reloads), and stacking a new ad box each time both clutters the
-  // list and double-push()es slots AdSense then refuses to fill.
+  // list and double-push()es slots a network then refuses to fill.
   const existingAd = peopleList.querySelector(".ad-box");
   if (existingAd) existingAd.remove();
 
@@ -1179,20 +1206,65 @@ function addAdBox() {
   adItem.style.justifyContent = "center";
   adItem.style.background = "rgba(255, 255, 255, 0.05)"; // Subtly different background
 
-  adItem.innerHTML = `
-    <div style="text-align: center; font-size: 12px; color: #888; width: 100%;">
-      <p style="margin: 0;">ADVERTISEMENT</p>
-      <ins class="adsbygoogle"
-           style="display:block"
-           data-ad-client="ca-pub-7825788728707782"
-           data-ad-slot="8944873686"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-    </div>
-  `;
+  const inner = document.createElement("div");
+  inner.style.cssText = "text-align:center;font-size:12px;color:#888;width:100%;";
+  inner.innerHTML = '<p style="margin:0 0 4px;">ADVERTISEMENT</p>';
 
-  peopleList.appendChild(adItem);
-  pushAdWhenVisible(adItem);
+  const aadsReady =
+    AD_CONFIG.provider === "aads" && !AD_CONFIG.aadsUnitId.startsWith("YOUR_");
+  const adsenseReady =
+    AD_CONFIG.provider === "adsense" &&
+    !AD_CONFIG.adsenseClient.startsWith("YOUR_");
+
+  if (aadsReady) {
+    // A-ADS serves through a simple iframe — no script, no approval, and it
+    // renders inside WebViews where AdSense won't.
+    const iframe = document.createElement("iframe");
+    iframe.setAttribute("data-aa", AD_CONFIG.aadsUnitId);
+    // "Adaptive" lets A-ADS size the creative to the container width; a
+    // min-height keeps the iframe from collapsing to 0 before it fills.
+    iframe.src = `//acceptable.a-ads.com/${AD_CONFIG.aadsUnitId}/?size=Adaptive`;
+    iframe.setAttribute("scrolling", "no");
+    iframe.style.cssText =
+      "border:0;padding:0;width:100%;height:auto;min-height:90px;overflow:hidden;display:block;margin:auto;background:transparent;";
+    inner.appendChild(iframe);
+    adItem.appendChild(inner);
+    peopleList.appendChild(adItem);
+  } else if (adsenseReady) {
+    inner.insertAdjacentHTML(
+      "beforeend",
+      `<ins class="adsbygoogle" style="display:block"
+            data-ad-client="${AD_CONFIG.adsenseClient}"
+            data-ad-slot="${AD_CONFIG.adsenseSlot}"
+            data-ad-format="auto" data-full-width-responsive="true"></ins>`
+    );
+    adItem.appendChild(inner);
+    peopleList.appendChild(adItem);
+    pushAdWhenVisible(adItem);
+  } else {
+    // House-ad fallback — always renders, so the slot is never blank while a
+    // network is unconfigured or pending approval.
+    renderHouseAd(inner);
+    adItem.appendChild(inner);
+    peopleList.appendChild(adItem);
+  }
+}
+
+// Simple self-promo shown when no ad network is configured yet.
+function renderHouseAd(container) {
+  const ads = [
+    { text: "Enjoying TABS? Add a friend so you never forget who owes what.", cta: "Add a friend", href: "https://tabsonfriends.com" },
+    { text: "Help keep TABS free ☕", cta: "Buy us a coffee", href: "https://buymeacoffee.com/TABSonFriends" },
+  ];
+  const pick = ads[Math.floor(Math.random() * ads.length)];
+  container.insertAdjacentHTML(
+    "beforeend",
+    `<div style="padding:8px 4px;">
+       <p style="margin:0 0 6px;color:#cfe;font-size:14px;">${pick.text}</p>
+       <a href="${pick.href}" target="_blank" rel="noopener"
+          style="color:#7fd4ff;font-weight:bold;text-decoration:none;">${pick.cta} →</a>
+     </div>`
+  );
 }
 
 // The <ins> is only in the DOM after the list has rendered — unlike the ins
@@ -2641,6 +2713,194 @@ document.getElementById("closeNotificationSettings").addEventListener("click", (
 });
 
 // ---------------------------------------------------------------------------
+// Payment requests (Venmo / PayPal.Me / Cash App) — deep links only
+//
+// TABS never moves money. A tab is a ledger entry; when you want to collect,
+// this builds a link and hands off to the payment app, which manages the whole
+// transaction. Two directions:
+//   • Venmo *charge* — needs the DEBTOR's handle, so we read the friend's
+//     profile.paymentHandles.venmo (friend-scoped read rule). Opens Venmo with
+//     a prefilled request you tap to send.
+//   • PayPal.Me / Cash App — carry YOUR handle for the friend to pay, so we
+//     build them from your own handles and copy the link for you to send.
+// The whole feature is gated behind a per-user toggle (settings/payments).
+// ---------------------------------------------------------------------------
+
+let paymentSettings = { enabled: false };
+let myPaymentHandles = { venmo: "", paypal: "", cashApp: "" };
+
+const cleanHandle = (v) => String(v || "").trim().replace(/^[@$]/, "");
+const fmtAmount = (n) => Number(n).toFixed(2);
+
+function venmoChargeLink(username, amount, note) {
+  const params = new URLSearchParams({ txn: "charge" });
+  if (amount) params.set("amount", fmtAmount(amount));
+  if (note) params.set("note", note);
+  return `https://venmo.com/${encodeURIComponent(cleanHandle(username))}?${params.toString()}`;
+}
+function paypalMeLink(username, amount) {
+  return `https://paypal.me/${encodeURIComponent(cleanHandle(username))}${amount ? `/${fmtAmount(amount)}` : ""}`;
+}
+function cashAppLink(tag, amount) {
+  return `https://cash.app/$${encodeURIComponent(cleanHandle(tag))}${amount ? `/${fmtAmount(amount)}` : ""}`;
+}
+
+async function loadPaymentSettings() {
+  if (!currentUser) return;
+  try {
+    const [sSnap, hSnap] = await Promise.all([
+      get(ref(database, `users/${currentUser.uid}/settings/payments`)),
+      get(ref(database, `users/${currentUser.uid}/profile/paymentHandles`)),
+    ]);
+    if (sSnap.exists()) paymentSettings = { ...paymentSettings, ...sSnap.val() };
+    if (hSnap.exists()) myPaymentHandles = { ...myPaymentHandles, ...hSnap.val() };
+  } catch (error) {
+    console.error("Error loading payment settings:", error);
+  }
+  document.getElementById("paymentsEnabledToggle").checked = !!paymentSettings.enabled;
+  document.getElementById("venmoHandleInput").value = myPaymentHandles.venmo || "";
+  document.getElementById("paypalHandleInput").value = myPaymentHandles.paypal || "";
+  document.getElementById("cashAppHandleInput").value = myPaymentHandles.cashApp || "";
+  // The request buttons on rows show/hide via this body class, so flipping the
+  // toggle doesn't need a list rebuild.
+  document.body.classList.toggle("payments-enabled", !!paymentSettings.enabled);
+  renderProfilePaymentHandles();
+}
+
+// Read-only summary of the user's saved handles, shown on the Profile screen.
+function renderProfilePaymentHandles() {
+  const el = document.getElementById("profile-payment");
+  if (!el) return;
+  const parts = [];
+  if (myPaymentHandles.venmo) parts.push(`Venmo: @${myPaymentHandles.venmo}`);
+  if (myPaymentHandles.paypal) parts.push(`PayPal.Me /${myPaymentHandles.paypal}`);
+  if (myPaymentHandles.cashApp) parts.push(`Cash App: $${myPaymentHandles.cashApp}`);
+  el.innerHTML = parts.length
+    ? `Payment Handles: <br> ${parts.join(" · ")}`
+    : "Payment Handles: <br> Not set up";
+}
+
+async function savePaymentSettings() {
+  if (!currentUser) return;
+  const enabled = document.getElementById("paymentsEnabledToggle").checked;
+  const handles = {
+    venmo: cleanHandle(document.getElementById("venmoHandleInput").value),
+    paypal: cleanHandle(document.getElementById("paypalHandleInput").value),
+    cashApp: cleanHandle(document.getElementById("cashAppHandleInput").value),
+  };
+  // Only one handle is required — but if the feature is on, at least one must be
+  // set, otherwise there's nothing to request with.
+  if (enabled && !handles.venmo && !handles.paypal && !handles.cashApp) {
+    showToast("Add at least one payment handle (Venmo, PayPal, or Cash App).", "error");
+    return;
+  }
+  paymentSettings = { enabled };
+  myPaymentHandles = handles;
+  try {
+    await Promise.all([
+      set(ref(database, `users/${currentUser.uid}/settings/payments`), paymentSettings),
+      set(ref(database, `users/${currentUser.uid}/profile/paymentHandles`), myPaymentHandles),
+    ]);
+    document.body.classList.toggle("payments-enabled", !!paymentSettings.enabled);
+    renderProfilePaymentHandles();
+    showToast("Payment settings saved.", "success");
+    document.getElementById("paymentSettingsModal").style.display = "none";
+  } catch (error) {
+    showToast("Could not save payment settings.", "error");
+  }
+}
+
+async function copyPaymentLink(link, name) {
+  const first = name.split(" ")[0];
+  try {
+    await navigator.clipboard.writeText(link);
+    showToast(`Payment link copied — send it to ${first}.`, "success");
+  } catch (error) {
+    // Clipboard blocked (older browser / insecure context): open it so the
+    // user can copy or share it manually.
+    window.open(link, "_blank");
+  }
+  document.getElementById("paymentRequestModal").style.display = "none";
+}
+
+async function openPaymentRequestModal(listItem) {
+  const name = listItem.querySelector(".name-span").textContent.trim();
+  const amountText = listItem.querySelector(".amount-input").textContent.trim();
+  const amount = parseFloat(amountText);
+  const amountValid = !isNaN(amount) && amount > 0;
+  const amt = amountValid ? amount : null;
+
+  document.getElementById("paymentRequestTitle").textContent = `Request from ${name}`;
+  document.getElementById("paymentRequestSubtitle").textContent = amountValid
+    ? `They owe you $${amount.toFixed(2)}`
+    : "Choose how to request payment";
+
+  const optionsEl = document.getElementById("paymentRequestOptions");
+  optionsEl.innerHTML = "";
+
+  // The friend's own Venmo handle lets us open a charge (request) directly.
+  const friend = await findFriendByName(name);
+  let friendVenmo = "";
+  if (friend?.userId) {
+    try {
+      const snap = await get(
+        ref(database, `users/${friend.userId}/profile/paymentHandles`)
+      );
+      if (snap.exists()) friendVenmo = snap.val().venmo || "";
+    } catch (error) {
+      // Not a linked friend, or they haven't shared a handle — just skip Venmo.
+    }
+  }
+
+  const addOption = (label, onClick) => {
+    const btn = document.createElement("button");
+    btn.className = "payment-option-btn";
+    btn.textContent = label;
+    btn.addEventListener("click", onClick);
+    optionsEl.appendChild(btn);
+  };
+
+  if (friendVenmo) {
+    addOption("Request on Venmo", () => {
+      window.open(venmoChargeLink(friendVenmo, amt, "TABS: settle up"), "_blank");
+      document.getElementById("paymentRequestModal").style.display = "none";
+    });
+  }
+  if (myPaymentHandles.paypal) {
+    addOption("Copy my PayPal.Me link", () =>
+      copyPaymentLink(paypalMeLink(myPaymentHandles.paypal, amt), name)
+    );
+  }
+  if (myPaymentHandles.cashApp) {
+    addOption("Copy my Cash App link", () =>
+      copyPaymentLink(cashAppLink(myPaymentHandles.cashApp, amt), name)
+    );
+  }
+
+  if (!optionsEl.children.length) {
+    const p = document.createElement("p");
+    p.className = "payment-empty";
+    p.textContent = friend
+      ? `No payment handles available yet. Add your PayPal.Me / Cash App in Payment Requests, or ask ${name.split(" ")[0]} to add their Venmo in TABS.`
+      : "Add your PayPal.Me / Cash App handle in Payment Requests to share a pay link. (Venmo charges need a linked friend.)";
+    optionsEl.appendChild(p);
+  }
+
+  document.getElementById("paymentRequestModal").style.display = "flex";
+}
+
+document.getElementById("manage-payments").addEventListener("click", () => {
+  document.getElementById("paymentSettingsModal").style.display = "flex";
+});
+document.getElementById("closePaymentSettings").addEventListener("click", () => {
+  document.getElementById("paymentSettingsModal").style.display = "none";
+});
+document.getElementById("savePaymentSettings").addEventListener("click", savePaymentSettings);
+document.getElementById("closePaymentRequest").addEventListener("click", () => {
+  document.getElementById("paymentRequestModal").style.display = "none";
+});
+
+// ---------------------------------------------------------------------------
 // SMS payment reminders (friend rows only)
 //
 // "Send SMS Now" opens the phone's SMS composer via an sms: link with a
@@ -2660,11 +2920,38 @@ function openSmsComposer(phone, body) {
   window.location.href = `sms:${digits}${separator}body=${encodeURIComponent(body)}`;
 }
 
+// Witty, Duolingo-style reminder lines, loaded from reminder-messages.json so
+// they're easy to edit without touching code. Falls back to a couple of
+// built-ins if the file can't be fetched (e.g. offline).
+let reminderMessages = [
+  "Hey {name}, friendly reminder that you owe me {amount} — tracked on TABS!",
+  "{name}, your {amount} tab misses you. Reunite them? 🥹",
+];
+
+async function loadReminderMessages() {
+  try {
+    const res = await fetch("reminder-messages.json", { cache: "no-cache" });
+    const data = await res.json();
+    if (Array.isArray(data.messages) && data.messages.length) {
+      reminderMessages = data.messages;
+    }
+  } catch (error) {
+    console.debug("Using built-in reminder messages:", error?.message);
+  }
+}
+loadReminderMessages();
+
 function buildReminderMessage(name, amountText) {
   const firstName = name.split(" ")[0];
   const amount = parseFloat(amountText);
-  const owed = !isNaN(amount) ? `$${amount.toFixed(2)}` : amountText;
-  return `Hey ${firstName}, friendly reminder that you owe me ${owed} 🔫— tracked on TABS!`;
+  // Auto-reminders don't carry a dollar amount, so fall back to a phrase that
+  // still reads naturally in every template.
+  const owed = !isNaN(amount)
+    ? `$${amount.toFixed(2)}`
+    : (amountText && String(amountText).trim() ? amountText : "what you owe");
+  const template =
+    reminderMessages[Math.floor(Math.random() * reminderMessages.length)];
+  return template.replaceAll("{name}", firstName).replaceAll("{amount}", owed);
 }
 
 async function findFriendByName(fullName) {
@@ -2888,9 +3175,9 @@ async function checkAutoReminders() {
       await addNotification(currentUser.uid, {
         type: "sms-reminder",
         message: `Reminder: time to text ${reminder.friendName} about what they owe you.`,
-        friendUid: friendUserId, // lets the "Text now" shortcut send via Twilio
+        friendUid: friendUserId, // lets the "Remind now" shortcut send a push
         phone: reminder.phone ?? null,
-        smsBody: `Hey ${String(reminder.friendName).split(" ")[0]}, friendly reminder that you still owe me — check TABS!`,
+        smsBody: buildReminderMessage(reminder.friendName, ""),
       });
       await update(
         ref(database, `users/${currentUser.uid}/autoReminders/${friendUserId}`),

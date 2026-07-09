@@ -1,0 +1,27 @@
+{
+  "_comment": "Witty, Duolingo-style payment reminders sent when the user taps 'Send SMS Now'. Placeholders {name} (recipient's first name) and {amount} (e.g. $12.50) are filled in at send time. Keep them light and friendly.",
+  "messages": [
+    "Hey {name}, your {amount} tab misses you. Reunite them? 🥹",
+    "{name}, this is your {amount} speaking. I want to go home. 🏠",
+    "Knock knock. Who's there? Your {amount}. Pay up, {name}. 👀",
+    "{name}, the owl knows you owe {amount}. The owl always knows. 🦉",
+    "Friendly reminder, {name}: {amount}. Emphasis on 'friendly'… for now. 😊",
+    "{name}, {amount} isn't going to pay itself. Believe me, I asked. 💸",
+    "Roses are red, violets are blue, you owe {amount}, {name}, and it's due. 🌹",
+    "{name}! Long time no pay. It's {amount}, in case you forgot. 😌",
+    "Your {amount} tab has been waiting so patiently, {name}. Don't test its patience. ⏳",
+    "Just me, or does {amount} feel like a lot to still owe, {name}? 👉👈",
+    "{name}, settling your {amount} would really make my day. And my week. 💚",
+    "Breaking news: {name} still owes {amount}. More at 11. 📺",
+    "The people demand justice. And by justice I mean your {amount}, {name}. ⚖️",
+    "{name}, I'm not mad about the {amount}. Just disappointed. 🦉",
+    "Ding! Your {amount} reminder has arrived, {name}. No refunds on guilt. 🔔",
+    "Hey {name}, quick math: you − {amount} = us even. Let's do the math. 🧮",
+    "{name}, that {amount} could be in my account right now. Just saying. 🤲",
+    "It's been a minute, {name}. The {amount} remembers. 🕰️",
+    "Consider this your gentle nudge, {name}. The {amount} nudge. 👉",
+    "{name}, paying {amount} now unlocks the achievement: 'Good Friend'. 🏆",
+    "No pressure {name}, but {amount} and I are a package deal now. 💍",
+    "{name}, streak reminder: 0 days since you paid me {amount}. Let's fix that. 🔥"
+  ]
+}
