@@ -381,6 +381,7 @@ onAuthStateChanged(auth, async (user) => {
     populateFriendsList();
     loadAddWindow();
     loadNotificationPrefs();
+    loadPaymentSettings();
     subscribeToNotifications();
     checkAutoReminders();
     initPush(user); // register push, or re-prompt legacy accounts to allow it
@@ -1143,6 +1144,15 @@ function addPerson(
     smsBtn.title = "Send a payment reminder over SMS";
     smsBtn.addEventListener("click", () => openSmsReminderModal(listItem));
     extraBox.appendChild(smsBtn);
+
+    // Payment request (Venmo/PayPal/Cash App). Hidden unless the user has
+    // enabled payment requests (via the body.payments-enabled class in CSS).
+    const payBtn = document.createElement("button");
+    payBtn.innerHTML = '<span class="material-icons">payments</span>';
+    payBtn.classList.add("pay-request-btn");
+    payBtn.title = "Request payment via Venmo / PayPal / Cash App";
+    payBtn.addEventListener("click", () => openPaymentRequestModal(listItem));
+    extraBox.appendChild(payBtn);
   }
   nameAmountContainer.appendChild(personItem);
   nameAmountContainer.appendChild(extraBox);
@@ -2638,6 +2648,173 @@ manageNotifications.addEventListener("click", () => {
 });
 document.getElementById("closeNotificationSettings").addEventListener("click", () => {
   document.getElementById("notificationSettingsModal").style.display = "none";
+});
+
+// ---------------------------------------------------------------------------
+// Payment requests (Venmo / PayPal.Me / Cash App) — deep links only
+//
+// TABS never moves money. A tab is a ledger entry; when you want to collect,
+// this builds a link and hands off to the payment app, which manages the whole
+// transaction. Two directions:
+//   • Venmo *charge* — needs the DEBTOR's handle, so we read the friend's
+//     profile.paymentHandles.venmo (friend-scoped read rule). Opens Venmo with
+//     a prefilled request you tap to send.
+//   • PayPal.Me / Cash App — carry YOUR handle for the friend to pay, so we
+//     build them from your own handles and copy the link for you to send.
+// The whole feature is gated behind a per-user toggle (settings/payments).
+// ---------------------------------------------------------------------------
+
+let paymentSettings = { enabled: false };
+let myPaymentHandles = { venmo: "", paypal: "", cashApp: "" };
+
+const cleanHandle = (v) => String(v || "").trim().replace(/^[@$]/, "");
+const fmtAmount = (n) => Number(n).toFixed(2);
+
+function venmoChargeLink(username, amount, note) {
+  const params = new URLSearchParams({ txn: "charge" });
+  if (amount) params.set("amount", fmtAmount(amount));
+  if (note) params.set("note", note);
+  return `https://venmo.com/${encodeURIComponent(cleanHandle(username))}?${params.toString()}`;
+}
+function paypalMeLink(username, amount) {
+  return `https://paypal.me/${encodeURIComponent(cleanHandle(username))}${amount ? `/${fmtAmount(amount)}` : ""}`;
+}
+function cashAppLink(tag, amount) {
+  return `https://cash.app/$${encodeURIComponent(cleanHandle(tag))}${amount ? `/${fmtAmount(amount)}` : ""}`;
+}
+
+async function loadPaymentSettings() {
+  if (!currentUser) return;
+  try {
+    const [sSnap, hSnap] = await Promise.all([
+      get(ref(database, `users/${currentUser.uid}/settings/payments`)),
+      get(ref(database, `users/${currentUser.uid}/profile/paymentHandles`)),
+    ]);
+    if (sSnap.exists()) paymentSettings = { ...paymentSettings, ...sSnap.val() };
+    if (hSnap.exists()) myPaymentHandles = { ...myPaymentHandles, ...hSnap.val() };
+  } catch (error) {
+    console.error("Error loading payment settings:", error);
+  }
+  document.getElementById("paymentsEnabledToggle").checked = !!paymentSettings.enabled;
+  document.getElementById("venmoHandleInput").value = myPaymentHandles.venmo || "";
+  document.getElementById("paypalHandleInput").value = myPaymentHandles.paypal || "";
+  document.getElementById("cashAppHandleInput").value = myPaymentHandles.cashApp || "";
+  // The request buttons on friend rows show/hide via this body class, so
+  // flipping the toggle doesn't need a list rebuild.
+  document.body.classList.toggle("payments-enabled", !!paymentSettings.enabled);
+}
+
+async function savePaymentSettings() {
+  if (!currentUser) return;
+  paymentSettings = {
+    enabled: document.getElementById("paymentsEnabledToggle").checked,
+  };
+  myPaymentHandles = {
+    venmo: cleanHandle(document.getElementById("venmoHandleInput").value),
+    paypal: cleanHandle(document.getElementById("paypalHandleInput").value),
+    cashApp: cleanHandle(document.getElementById("cashAppHandleInput").value),
+  };
+  try {
+    await Promise.all([
+      set(ref(database, `users/${currentUser.uid}/settings/payments`), paymentSettings),
+      set(ref(database, `users/${currentUser.uid}/profile/paymentHandles`), myPaymentHandles),
+    ]);
+    document.body.classList.toggle("payments-enabled", !!paymentSettings.enabled);
+    showToast("Payment settings saved.", "success");
+    document.getElementById("paymentSettingsModal").style.display = "none";
+  } catch (error) {
+    showToast("Could not save payment settings.", "error");
+  }
+}
+
+async function copyPaymentLink(link, name) {
+  const first = name.split(" ")[0];
+  try {
+    await navigator.clipboard.writeText(link);
+    showToast(`Payment link copied — send it to ${first}.`, "success");
+  } catch (error) {
+    // Clipboard blocked (older browser / insecure context): open it so the
+    // user can copy or share it manually.
+    window.open(link, "_blank");
+  }
+  document.getElementById("paymentRequestModal").style.display = "none";
+}
+
+async function openPaymentRequestModal(listItem) {
+  const name = listItem.querySelector(".name-span").textContent.trim();
+  const amountText = listItem.querySelector(".amount-input").textContent.trim();
+  const amount = parseFloat(amountText);
+  const amountValid = !isNaN(amount) && amount > 0;
+  const amt = amountValid ? amount : null;
+
+  document.getElementById("paymentRequestTitle").textContent = `Request from ${name}`;
+  document.getElementById("paymentRequestSubtitle").textContent = amountValid
+    ? `They owe you $${amount.toFixed(2)}`
+    : "Choose how to request payment";
+
+  const optionsEl = document.getElementById("paymentRequestOptions");
+  optionsEl.innerHTML = "";
+
+  // The friend's own Venmo handle lets us open a charge (request) directly.
+  const friend = await findFriendByName(name);
+  let friendVenmo = "";
+  if (friend?.userId) {
+    try {
+      const snap = await get(
+        ref(database, `users/${friend.userId}/profile/paymentHandles`)
+      );
+      if (snap.exists()) friendVenmo = snap.val().venmo || "";
+    } catch (error) {
+      // Not a linked friend, or they haven't shared a handle — just skip Venmo.
+    }
+  }
+
+  const addOption = (label, onClick) => {
+    const btn = document.createElement("button");
+    btn.className = "payment-option-btn";
+    btn.textContent = label;
+    btn.addEventListener("click", onClick);
+    optionsEl.appendChild(btn);
+  };
+
+  if (friendVenmo) {
+    addOption("Request on Venmo", () => {
+      window.open(venmoChargeLink(friendVenmo, amt, "TABS: settle up"), "_blank");
+      document.getElementById("paymentRequestModal").style.display = "none";
+    });
+  }
+  if (myPaymentHandles.paypal) {
+    addOption("Copy my PayPal.Me link", () =>
+      copyPaymentLink(paypalMeLink(myPaymentHandles.paypal, amt), name)
+    );
+  }
+  if (myPaymentHandles.cashApp) {
+    addOption("Copy my Cash App link", () =>
+      copyPaymentLink(cashAppLink(myPaymentHandles.cashApp, amt), name)
+    );
+  }
+
+  if (!optionsEl.children.length) {
+    const p = document.createElement("p");
+    p.className = "payment-empty";
+    p.textContent = friend
+      ? `No payment handles available yet. Add your PayPal.Me / Cash App in Payment Requests, or ask ${name.split(" ")[0]} to add their Venmo in TABS.`
+      : "Add your PayPal.Me / Cash App handle in Payment Requests to share a pay link. (Venmo charges need a linked friend.)";
+    optionsEl.appendChild(p);
+  }
+
+  document.getElementById("paymentRequestModal").style.display = "flex";
+}
+
+document.getElementById("manage-payments").addEventListener("click", () => {
+  document.getElementById("paymentSettingsModal").style.display = "flex";
+});
+document.getElementById("closePaymentSettings").addEventListener("click", () => {
+  document.getElementById("paymentSettingsModal").style.display = "none";
+});
+document.getElementById("savePaymentSettings").addEventListener("click", savePaymentSettings);
+document.getElementById("closePaymentRequest").addEventListener("click", () => {
+  document.getElementById("paymentRequestModal").style.display = "none";
 });
 
 // ---------------------------------------------------------------------------
