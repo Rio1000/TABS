@@ -25,6 +25,11 @@ import {
 
 } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-auth.js";
 
+import {
+  getFunctions,
+  httpsCallable,
+} from "https://www.gstatic.com/firebasejs/10.6.0/firebase-functions.js";
+
 // Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyA93Cfu5ehpOeZMCBKtiTvw1kJZZU_EvkE",
@@ -60,6 +65,32 @@ function showToast(message, type = "success") {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 const auth = getAuth(app);
+// Callable that sends SMS through Twilio server-side (see functions/index.js).
+const functionsClient = getFunctions(app);
+const sendReminderSmsFn = httpsCallable(functionsClient, "sendReminderSms");
+
+// Sends a reminder text via the Twilio Cloud Function. Returns true on
+// success; on failure shows a toast and returns false so the caller can fall
+// back to the device's messaging app.
+async function sendReminderSmsViaTwilio(friendUid, message) {
+  if (!friendUid) return false;
+  try {
+    await sendReminderSmsFn({ friendUid, message });
+    return true;
+  } catch (error) {
+    console.error("Twilio SMS failed:", error);
+    // functions/not-found means the function isn't deployed yet.
+    const notDeployed = error?.code === "functions/not-found" ||
+      error?.code === "functions/internal";
+    showToast(
+      notDeployed
+        ? "Auto-texting isn't set up yet — opening your messaging app."
+        : error?.message || "Couldn't send the text automatically.",
+      "error"
+    );
+    return false;
+  }
+}
 
 // Reference to DOM elements
 const peopleList = document.getElementById("people-list");
@@ -2290,14 +2321,21 @@ function renderNotifications() {
     messageSpan.appendChild(timeSpan);
     li.appendChild(messageSpan);
 
-    // Payment reminders get a shortcut straight into the SMS composer.
+    // Payment reminders get a shortcut to text the friend right away —
+    // through Twilio when possible, otherwise the device's SMS composer.
     if (notif.type === "sms-reminder") {
       const textBtn = document.createElement("button");
       textBtn.classList.add("notification-action");
       textBtn.textContent = "Text now";
-      textBtn.addEventListener("click", (event) => {
+      textBtn.addEventListener("click", async (event) => {
         event.stopPropagation();
-        openSmsComposer(notif.phone, notif.smsBody || notif.message);
+        const body = notif.smsBody || notif.message;
+        const sent = await sendReminderSmsViaTwilio(notif.friendUid, body);
+        if (sent) {
+          showToast("Reminder sent.", "success");
+        } else {
+          openSmsComposer(notif.phone, body);
+        }
       });
       li.appendChild(textBtn);
     }
@@ -2529,19 +2567,36 @@ async function openSmsReminderModal(listItem) {
 document.getElementById("sendSmsNowBtn").addEventListener("click", async () => {
   if (!currentReminderTarget) return;
   const { name, amountText, phone, friendUserId } = currentReminderTarget;
-  openSmsComposer(phone, buildReminderMessage(name, amountText));
-  logUserAction(`Sent an SMS reminder to ${name}`);
+  const message = buildReminderMessage(name, amountText);
+  const btn = document.getElementById("sendSmsNowBtn");
 
-  // Sending manually also resets the auto-reminder clock.
-  if (friendUserId) {
-    try {
-      await update(
-        ref(database, `users/${currentUser.uid}/autoReminders/${friendUserId}`),
-        { lastSent: Date.now() }
-      );
-    } catch (error) {
-      // No auto reminder saved yet — nothing to update.
+  btn.disabled = true;
+  try {
+    // Try to send it straight through Twilio (no leaving the app). Falls back
+    // to the device's SMS composer if the function isn't set up or the friend
+    // has no number on file.
+    const sentAutomatically = await sendReminderSmsViaTwilio(friendUserId, message);
+    if (sentAutomatically) {
+      showToast(`Reminder texted to ${name}.`, "success");
+      document.getElementById("smsReminderModal").style.display = "none";
+    } else {
+      openSmsComposer(phone, message);
     }
+    logUserAction(`Sent an SMS reminder to ${name}`);
+
+    // Sending manually also resets the auto-reminder clock.
+    if (friendUserId) {
+      try {
+        await update(
+          ref(database, `users/${currentUser.uid}/autoReminders/${friendUserId}`),
+          { lastSent: Date.now() }
+        );
+      } catch (error) {
+        // No auto reminder saved yet — nothing to update.
+      }
+    }
+  } finally {
+    btn.disabled = false;
   }
 });
 
@@ -2611,6 +2666,7 @@ async function checkAutoReminders() {
       await addNotification(currentUser.uid, {
         type: "sms-reminder",
         message: `Reminder: time to text ${reminder.friendName} about what they owe you.`,
+        friendUid: friendUserId, // lets the "Text now" shortcut send via Twilio
         phone: reminder.phone ?? null,
         smsBody: `Hey ${String(reminder.friendName).split(" ")[0]}, friendly reminder that you still owe me — check TABS!`,
       });
