@@ -5,27 +5,19 @@
 // a browser anyway (no CORS). So the web app calls this callable function,
 // which holds the credentials as secrets and sends the SMS server-side.
 //
-// Deploy prerequisites (one-time):
-//   1. Firebase Blaze (pay-as-you-go) plan — required for outbound network.
-//   2. A Twilio account, an SMS-capable phone number, and (for US numbers)
-//      A2P 10DLC registration.
-//   3. Store the three secrets:
-//        firebase functions:secrets:set TWILIO_ACCOUNT_SID
-//        firebase functions:secrets:set TWILIO_AUTH_TOKEN
-//        firebase functions:secrets:set TWILIO_FROM_NUMBER   (e.g. +15551234567)
-//   4. firebase deploy --only functions
+// Deploy: handled by GitHub Actions (.github/workflows/deploy-functions.yml).
+// The Twilio credentials are provided as environment variables, written into
+// functions/.env by the workflow from GitHub repo Secrets at deploy time — so
+// nothing secret is ever committed and no Firebase CLI is needed locally.
+// Prerequisites: Firebase Blaze plan; a Twilio account + SMS number; and (for
+// US numbers) A2P 10DLC registration. See SETUP.md.
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const twilio = require("twilio");
 
 admin.initializeApp();
-
-const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
-const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
-const TWILIO_FROM_NUMBER = defineSecret("TWILIO_FROM_NUMBER");
 
 // Turn whatever a user typed into their profile into an E.164 number Twilio
 // accepts. Defaults to US (+1) when a bare 10-digit number is given — change
@@ -38,11 +30,15 @@ function toE164(rawPhone) {
   return `+${digits}`;
 }
 
-exports.sendReminderSms = onCall(
-  { secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER] },
-  async (request) => {
+exports.sendReminderSms = onCall(async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "You must be signed in.");
+    }
+
+    const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER } = process.env;
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_FROM_NUMBER) {
+      logger.error("Twilio env vars are not configured on this function.");
+      throw new HttpsError("failed-precondition", "SMS isn't configured yet.");
     }
 
     const callerUid = request.auth.uid;
@@ -84,13 +80,10 @@ exports.sendReminderSms = onCall(
     }
 
     try {
-      const client = twilio(
-        TWILIO_ACCOUNT_SID.value(),
-        TWILIO_AUTH_TOKEN.value()
-      );
+      const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
       const result = await client.messages.create({
         to,
-        from: TWILIO_FROM_NUMBER.value(),
+        from: TWILIO_FROM_NUMBER,
         body: message,
       });
       logger.info(`SMS sent by ${callerUid} to ${friendUid}: ${result.sid}`);
@@ -102,5 +95,4 @@ exports.sendReminderSms = onCall(
         "Could not send the text right now. Please try again later."
       );
     }
-  }
-);
+  });

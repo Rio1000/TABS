@@ -11,6 +11,7 @@ browser (no CORS).
 ### Prerequisites
 - **Firebase Blaze (pay-as-you-go) plan.** Cloud Functions that reach the
   internet (Twilio) require Blaze. The free Spark plan won't deploy them.
+  Upgrade in the Firebase Console (⚙ → Usage and billing → Modify plan).
 - A **Twilio account**, an **SMS-capable phone number**, your **Account SID**
   and **Auth Token** (Twilio Console → Account Info).
 - For texting **US** numbers, Twilio requires **A2P 10DLC registration** of
@@ -18,20 +19,41 @@ browser (no CORS).
 - Only text people who've agreed to receive messages — this is a legal
   requirement (TCPA in the US), not just a Twilio rule.
 
-### Deploy
-```bash
-# From the repo root, one-time:
-firebase login
-cd functions && npm install && cd ..
+### Deploy — via GitHub Actions (no local tools needed)
+Deployment is automated by `.github/workflows/deploy-functions.yml`. It runs
+whenever you push a change under `functions/`, or on demand from the repo's
+**Actions** tab → **Deploy Firebase Functions** → **Run workflow**. You only
+have to add secrets once:
 
-# Store the three secrets (you'll be prompted for each value):
-firebase functions:secrets:set TWILIO_ACCOUNT_SID
-firebase functions:secrets:set TWILIO_AUTH_TOKEN
-firebase functions:secrets:set TWILIO_FROM_NUMBER   # e.g. +15551234567
+**A. Create a Firebase service-account key**
+1. Firebase Console → ⚙ **Project settings** → **Service accounts**.
+2. **Generate new private key** → downloads a JSON file.
+3. In GitHub: repo **Settings → Secrets and variables → Actions → New
+   repository secret**, name it **`FIREBASE_SERVICE_ACCOUNT`**, and paste the
+   *entire contents* of that JSON file as the value.
 
-# Deploy the function (and the database rules):
-firebase deploy --only functions,database
-```
+**B. Add the Twilio secrets** (same GitHub Secrets screen), from the Twilio
+Console:
+- **`TWILIO_ACCOUNT_SID`**
+- **`TWILIO_AUTH_TOKEN`**
+- **`TWILIO_FROM_NUMBER`** — your Twilio number in E.164, e.g. `+15551234567`
+
+**C. Trigger a deploy** — either push a small change to `functions/`, or use
+Actions → Run workflow. Watch the run; a green check means the function is
+live.
+
+> If the deploy fails with a permissions error, the service account needs a
+> couple of IAM roles the Firebase Admin SDK key sometimes lacks. In the
+> **Google Cloud Console → IAM**, grant that service account **Cloud Functions
+> Admin**, **Cloud Run Admin**, **Service Account User**, and **Artifact
+> Registry Administrator**, then re-run. (Editor covers all of these if you'd
+> rather grant one role.)
+
+### Database rules
+The workflow deploys only the function. Keep publishing your `database.rules.json`
+the way you already do (Firebase Console → Realtime Database → Rules → paste →
+Publish), or add `,database` to the deploy command in the workflow if you'd
+like Actions to push rules too.
 
 ### How it stays secure
 The function only texts a **confirmed friend**: it checks that the recipient
