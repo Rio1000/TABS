@@ -1,12 +1,83 @@
-# TABS — setup for Twilio SMS & the password-reset email
+# TABS — setup for push reminders & the password-reset email
 
-## 1. Twilio SMS reminders (Cloud Function)
+## 1. Push-notification reminders (Cloud Function + FCM)
 
-The "Send SMS Now" button and the auto-reminder "Text now" shortcut send a
-text through Twilio **server-side**, via the `sendReminderSms` Cloud Function
-in `functions/`. This is required because Twilio credentials can't live in the
-browser (anyone could read them) and Twilio's API can't be called from a
-browser (no CORS).
+The **"Send SMS Now"** button and the auto-reminder **"Remind now"** shortcut
+now deliver a **real push notification** to the friend's device via **Firebase
+Cloud Messaging (FCM)** — handled by the `sendReminderPush` Cloud Function in
+`functions/`. This is **free**, involves **no carrier and no phone number**, so
+there is nothing a carrier can flag as spam, and it never opens the device's
+SMS app. It replaces the old Twilio SMS path (still in `functions/index.js` as
+`sendReminderSms` if you ever want it, but the app no longer calls it).
+
+How it works: when a friend signs in and grants notification permission, the
+app registers that device's FCM token at `users/{uid}/pushTokens`. Sending a
+reminder calls `sendReminderPush`, which verifies the two are confirmed friends
+(same check the SMS path used), reads the recipient's tokens server-side, and
+pushes the notification. Dead tokens are pruned automatically.
+
+### Prerequisites
+- **Firebase Blaze (pay-as-you-go) plan** — Cloud Functions require it. FCM
+  itself is free; only the Function needs Blaze.
+- A **Web Push (VAPID) key pair** — the single manual step to make web push
+  work (see below).
+
+### One-time setup
+
+**A. Generate the Web Push key** (for browser/web-app users)
+1. Firebase Console → ⚙ **Project settings** → **Cloud Messaging** → **Web
+   configuration** → **Web Push certificates** → **Generate key pair**.
+2. Copy the **public key** and paste it into `FCM_VAPID_KEY` near the top of
+   `firebase-setup.js` (replace `REPLACE_WITH_YOUR_WEB_PUSH_PUBLIC_KEY`).
+   Until you do this, the app skips push registration and reminders report
+   "hasn't turned on notifications."
+3. Make sure `firebase-messaging-sw.js` is served at your site **root**
+   (`https://tabsonfriends.com/firebase-messaging-sw.js`). It already lives at
+   the repo root, so Firebase Hosting serves it there automatically.
+
+**B. Create the Firebase service-account key** (for the Actions deploy) — same
+as before: Firebase Console → ⚙ **Project settings** → **Service accounts** →
+**Generate new private key**, then add its full JSON as the GitHub secret
+**`FIREBASE_SERVICE_ACCOUNT`**.
+
+**C. Mobile app push.** The Expo app in `mobile/` is now a WebView shell around
+the website (so mobile looks identical to web) that adds native push. On login
+the web app asks the shell for the device's **Expo push token**; the shell
+requests notification permission, mints the token, and injects it back, and the
+web app stores it under `users/{uid}/pushTokens`. The Cloud Function recognises
+Expo-format tokens and delivers them through the **Expo push service** (which
+handles APNs/FCM for both platforms), while web tokens still go via FCM.
+
+To make mobile push work you must:
+1. `cd mobile && npx expo install` (pins `react-native-webview`,
+   `expo-notifications`, `expo-constants` to versions matching Expo SDK 54).
+2. `npx eas init` to create the project and write `extra.eas.projectId` into
+   `app.json` — Expo needs it to mint push tokens.
+3. For **iOS**, upload an **APNs key** in the Expo/EAS credentials flow
+   (`eas credentials`) so Expo can deliver to Apple devices.
+4. Build a **dev or production build** with EAS (`eas build`). Remote push does
+   **not** work in Expo Go — the WebView does, but tokens/delivery need a real
+   build.
+
+> Note: Google sign-in via popup is blocked inside embedded WebViews by Google.
+> Email/password sign-in works in the app; if you want Google on mobile, use a
+> native auth flow or a system browser redirect.
+
+### Deploy
+Deployment is automated by `.github/workflows/deploy-functions.yml` — it runs
+on any push under `functions/`, or on demand from the **Actions** tab. No
+Twilio secrets are needed anymore; the Function uses the Firebase Admin SDK's
+built-in messaging, so there's nothing else to configure for sending.
+
+---
+
+## 1b. (Legacy) Twilio SMS reminders
+
+The original Twilio path (`sendReminderSms`) is left in `functions/index.js`
+but is **no longer used by the app**. If you ever want automated real SMS
+instead of push, note the honest trade-offs in `ROADMAP.md` (Track 1): any
+compliant SMS provider requires US **A2P 10DLC registration** and carrier fees.
+The details below are kept for reference.
 
 ### Prerequisites
 - **Firebase Blaze (pay-as-you-go) plan.** Cloud Functions that reach the

@@ -32,6 +32,14 @@
         },
         "autoReminders": { ".write": "$uid === auth.uid" },
 
+        "pushTokens": {
+          // Each user registers their own device push tokens here. The
+          // sendReminderPush Cloud Function (admin SDK, bypasses rules) reads a
+          // friend's tokens to deliver reminders; no client ever needs to read
+          // someone else's tokens.
+          ".write": "$uid === auth.uid"
+        },
+
         "friendUids": {
           // UID-keyed mirror of friendsList, maintained by the owner only and
           // used purely to authorize friends to read the phone number above.

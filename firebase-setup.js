@@ -30,6 +30,13 @@ import {
   httpsCallable,
 } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-functions.js";
 
+import {
+  getMessaging,
+  getToken,
+  onMessage,
+  isSupported as isMessagingSupported,
+} from "https://www.gstatic.com/firebasejs/10.6.0/firebase-messaging.js";
+
 // Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyA93Cfu5ehpOeZMCBKtiTvw1kJZZU_EvkE",
@@ -44,7 +51,7 @@ const firebaseConfig = {
 function showToast(message, type = "success") {
   Toastify({
     text: `${message}`, // Prepend icon to message
-    duration: 2000,
+    duration: 2500,
     close: true,
     gravity: "top",
     position: "right",
@@ -53,7 +60,7 @@ function showToast(message, type = "success") {
         ? "toastify toastify-error"
         : "toastify toastify-success", // Set class dynamically
     style: {
-      background: type === "error" ? "#ef4444" : "#50c444",
+      background: type === "error" ? "#bc3838" : "#52bc38",
       display: "flex",
       alignItems: "center",
       gap: "8px", // Space between icon & text
@@ -68,6 +75,197 @@ const auth = getAuth(app);
 // Callable that sends SMS through Twilio server-side (see functions/index.js).
 const functionsClient = getFunctions(app);
 const sendReminderSmsFn = httpsCallable(functionsClient, "sendReminderSms");
+// Callable that delivers a reminder as a real push notification to the
+// friend's device via Firebase Cloud Messaging — free, no carrier, no spam
+// flagging. This is what the reminder buttons use now instead of Twilio/SMS.
+const sendReminderPushFn = httpsCallable(functionsClient, "sendReminderPush");
+// Server-side account management (Admin SDK) — see functions/index.js. These
+// actually remove/disable the Firebase Auth record, which the browser SDK
+// can't do reliably (delete needs a recent login; disable is admin-only).
+const deleteAccountFn = httpsCallable(functionsClient, "deleteAccount");
+const disableAccountFn = httpsCallable(functionsClient, "disableAccount");
+
+// ---------------------------------------------------------------------------
+// Push notifications (Firebase Cloud Messaging)
+//
+// Web Push certificate ("VAPID" key pair). Generate it once in the Firebase
+// Console → Project settings → Cloud Messaging → Web configuration → "Web Push
+// certificates" → Generate key pair, then paste the public key here. Until you
+// do, push registration is skipped (the app still works, reminders just report
+// that the friend has no device registered).
+// ---------------------------------------------------------------------------
+const FCM_VAPID_KEY = "BMMd80ylGR_MFwUAKgjg-BT-bfqJ4AYxxO4iJo9PseMaldJackXFalznsfqk9lM3j7n5UsZaB_ByKwZGIqdt-7k";
+
+let messaging = null;
+
+// Register this browser to receive push, and store its token under the signed-
+// in user so friends' reminders can reach it. Safe to call on every login: FCM
+// returns a stable token and we just re-write the same key. Never throws.
+async function registerPushToken() {
+  try {
+    if (!currentUser) return;
+    if (FCM_VAPID_KEY.startsWith("REPLACE_WITH")) {
+      console.warn(
+        "Push disabled: set FCM_VAPID_KEY in firebase-setup.js (see SETUP.md)."
+      );
+      return;
+    }
+    if (!(await isMessagingSupported())) return; // e.g. iOS Safari < 16.4
+
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      console.log("Notification permission not granted; push skipped.");
+      return;
+    }
+
+    const registration = await navigator.serviceWorker.register(
+      "/firebase-messaging-sw.js"
+    );
+    if (!messaging) messaging = getMessaging(app);
+
+    const token = await getToken(messaging, {
+      vapidKey: FCM_VAPID_KEY,
+      serviceWorkerRegistration: registration,
+    });
+    if (!token) return;
+
+    await set(ref(database, `users/${currentUser.uid}/pushTokens/${token}`), {
+      platform: "web",
+      updatedAt: Date.now(),
+    });
+
+    // Surface reminders that arrive while the tab is focused (the service
+    // worker only fires when the tab is backgrounded/closed).
+    onMessage(messaging, (payload) => {
+      const body = payload.notification?.body || payload.data?.message || "";
+      if (body) showToast(body, "success");
+    });
+  } catch (error) {
+    console.error("Push registration failed:", error);
+  }
+}
+
+// When push shipped. Accounts created before this never got the chance to
+// grant notification permission when they signed up, so we re-prompt them once
+// (browsers only fire the native prompt reliably from a user gesture, so we
+// nudge them with a tappable banner instead of a silent auto-request).
+const PUSH_FEATURE_LAUNCH_MS = Date.parse("2026-07-09T00:00:00Z");
+
+function accountPredatesPush(user) {
+  const created = Date.parse(user?.metadata?.creationTime || "");
+  return !Number.isNaN(created) && created < PUSH_FEATURE_LAUNCH_MS;
+}
+
+// Decide how to handle push for this login:
+// - already granted → just (re)register the token silently;
+// - permission still undecided on a pre-push account → show a one-time nudge
+//   to turn notifications on (request happens on their tap);
+// - undecided on a newer account → request now, as before;
+// - denied → nothing we can do from JS (they'd have to change it in the browser).
+async function initPush(user) {
+  try {
+    // Running inside the native mobile shell (a WebView)? Ask it for the
+    // device's push token instead of doing web push — service workers / web
+    // push don't work inside an iOS WKWebView. The shell calls
+    // window.__onNativePushToken back with the token.
+    if (window.ReactNativeWebView) {
+      requestNativePushToken();
+      return;
+    }
+
+    if (FCM_VAPID_KEY.startsWith("REPLACE_WITH")) return;
+    if (typeof Notification === "undefined") return;
+    if (!(await isMessagingSupported())) return;
+
+    if (Notification.permission === "granted") {
+      registerPushToken();
+    } else if (Notification.permission === "default") {
+      if (accountPredatesPush(user) &&
+          !localStorage.getItem("tabsPushReprompt")) {
+        showEnableNotificationsPrompt();
+      } else {
+        registerPushToken();
+      }
+    }
+  } catch (error) {
+    console.error("initPush failed:", error);
+  }
+}
+
+// One-time tappable banner for legacy users. Tapping it is the user gesture
+// that lets registerPushToken() call Notification.requestPermission().
+function showEnableNotificationsPrompt() {
+  localStorage.setItem("tabsPushReprompt", "1");
+  Toastify({
+    text: "🔔 Turn on notifications to get payment reminders here — tap to enable.",
+    duration: -1, // stay until tapped or closed
+    close: true,
+    gravity: "top",
+    position: "right",
+    className: "toastify toastify-success",
+    style: {
+      background: "#50c444",
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+      cursor: "pointer",
+    },
+    onClick: () => {
+      registerPushToken();
+    },
+  }).showToast();
+}
+
+// --- Native (mobile WebView) push bridge -----------------------------------
+// Ask the native shell to grant permission and hand back this device's push
+// token. The shell listens for this message (see mobile/App.js).
+function requestNativePushToken() {
+  try {
+    window.ReactNativeWebView.postMessage(
+      JSON.stringify({ type: "requestPushToken" })
+    );
+  } catch (error) {
+    console.error("requestNativePushToken failed:", error);
+  }
+}
+
+// The native shell injects a call to this with the device's Expo push token.
+// We store it under the signed-in user just like a web token; the Cloud
+// Function recognises Expo-format tokens and delivers via the Expo push API.
+window.__onNativePushToken = async (token, platform) => {
+  try {
+    if (!currentUser || !token) return;
+    await set(ref(database, `users/${currentUser.uid}/pushTokens/${token}`), {
+      platform: platform || "mobile",
+      updatedAt: Date.now(),
+    });
+  } catch (error) {
+    console.error("Storing native push token failed:", error);
+  }
+};
+
+// Sends a reminder as a push notification via the Cloud Function. Returns
+// { delivered, reason }. delivered=false with reason "no-devices" means the
+// friend hasn't enabled notifications anywhere.
+async function sendReminderPushViaFCM(friendUid, message) {
+  if (!friendUid) return { delivered: false, reason: "no-friend" };
+  try {
+    const result = await sendReminderPushFn({ friendUid, message });
+    return result.data || { delivered: false, reason: "unknown" };
+  } catch (error) {
+    console.error("Push reminder failed:", error);
+    const notDeployed =
+      error?.code === "functions/not-found" ||
+      error?.code === "functions/internal";
+    showToast(
+      notDeployed
+        ? "Reminders aren't set up yet — try again once notifications are configured."
+        : error?.message || "Couldn't send the reminder.",
+      "error"
+    );
+    return { delivered: false, reason: "error" };
+  }
+}
 
 // Sends a reminder text via the Twilio Cloud Function. Returns true on
 // success; on failure shows a toast and returns false so the caller can fall
@@ -185,6 +383,7 @@ onAuthStateChanged(auth, async (user) => {
     loadNotificationPrefs();
     subscribeToNotifications();
     checkAutoReminders();
+    initPush(user); // register push, or re-prompt legacy accounts to allow it
 
     // Hide login/signup pages
     if (loginPage) loginPage.style.display = "none";
@@ -635,19 +834,23 @@ async function deleteAccountAndData() {
   if (!currentUser) return;
 
   try {
-    // Delete user data from Realtime Database
-    await remove(ref(database, `users/${currentUser.uid}`));
-
-    // Delete user authentication account
-    await currentUser.delete();
-
+    // Delete both the database data and the Firebase Auth record server-side.
+    // Done on the server (Admin SDK) so it doesn't hit auth/requires-recent-
+    // login and actually removes the account from the Firebase Auth console.
+    await deleteAccountFn();
     showToast("Account deleted successfully.");
+    document.getElementById("delete-account-modal").style.display = "none";
+    await signOut(auth);
   } catch (error) {
-    if (error.code === "auth/requires-recent-login") {
-      showToast("Please re-login before deleting your account.", "error");
-    } else {
-      showToast("Error deleting account: " + error.message, "error");
-    }
+    const notDeployed =
+      error?.code === "functions/not-found" ||
+      error?.code === "functions/internal";
+    showToast(
+      notDeployed
+        ? "Account deletion isn't set up yet — deploy the Cloud Functions first."
+        : "Error deleting account: " + (error?.message || error),
+      "error"
+    );
   }
 }
 disableAccount.addEventListener("click", disableUserAccount);
@@ -655,12 +858,22 @@ async function disableUserAccount() {
   if (!currentUser) return;
 
   try {
-    await update(ref(database, `users/${currentUser.uid}/profile`), {
-      accountDisabled: true,
-    });
-    showToast("Account disabled in database (soft disable).");
+    // Flips the real `disabled` flag on the Firebase Auth user (admin-only, so
+    // it runs server-side) — the old client-only version just set a database
+    // flag and never showed up on the Firebase Auth page.
+    await disableAccountFn();
+    showToast("Account disabled. You'll be signed out.");
+    await signOut(auth);
   } catch (error) {
-    showToast("Error disabling account: " + error.message, "error");
+    const notDeployed =
+      error?.code === "functions/not-found" ||
+      error?.code === "functions/internal";
+    showToast(
+      notDeployed
+        ? "Disabling isn't set up yet — deploy the Cloud Functions first."
+        : "Error disabling account: " + (error?.message || error),
+      "error"
+    );
   }
 }
 exportData.addEventListener("click", exportUserData);
@@ -2321,20 +2534,26 @@ function renderNotifications() {
     messageSpan.appendChild(timeSpan);
     li.appendChild(messageSpan);
 
-    // Payment reminders get a shortcut to text the friend right away —
-    // through Twilio when possible, otherwise the device's SMS composer.
+    // Payment reminders get a shortcut to push the friend a reminder right
+    // away — a real notification on their device via FCM, no SMS app.
     if (notif.type === "sms-reminder") {
       const textBtn = document.createElement("button");
       textBtn.classList.add("notification-action");
-      textBtn.textContent = "Text now";
+      textBtn.textContent = "Remind now";
       textBtn.addEventListener("click", async (event) => {
         event.stopPropagation();
         const body = notif.smsBody || notif.message;
-        const sent = await sendReminderSmsViaTwilio(notif.friendUid, body);
-        if (sent) {
+        const { delivered, reason } = await sendReminderPushViaFCM(
+          notif.friendUid,
+          body
+        );
+        if (delivered) {
           showToast("Reminder sent.", "success");
-        } else {
-          openSmsComposer(notif.phone, body);
+        } else if (reason === "no-devices") {
+          showToast(
+            "They haven't turned on notifications, so they can't be reminded.",
+            "error"
+          );
         }
       });
       li.appendChild(textBtn);
@@ -2572,17 +2791,20 @@ document.getElementById("sendSmsNowBtn").addEventListener("click", async () => {
 
   btn.disabled = true;
   try {
-    // Try to send it straight through Twilio (no leaving the app). Falls back
-    // to the device's SMS composer if the function isn't set up or the friend
-    // has no number on file.
-    const sentAutomatically = await sendReminderSmsViaTwilio(friendUserId, message);
-    if (sentAutomatically) {
-      showToast(`Reminder texted to ${name}.`, "success");
+    // Deliver a real push notification to the friend's device via FCM — no
+    // SMS app, no carrier. If they haven't enabled notifications on any device
+    // we tell the sender instead of silently doing nothing.
+    const { delivered, reason } = await sendReminderPushViaFCM(friendUserId, message);
+    if (delivered) {
+      showToast(`Reminder sent to ${name}.`, "success");
       document.getElementById("smsReminderModal").style.display = "none";
-    } else {
-      openSmsComposer(phone, message);
+    } else if (reason === "no-devices") {
+      showToast(
+        `${name} hasn't turned on notifications yet, so they can't be reminded on their device.`,
+        "error"
+      );
     }
-    logUserAction(`Sent an SMS reminder to ${name}`);
+    logUserAction(`Sent a reminder to ${name}`);
 
     // Sending manually also resets the auto-reminder clock.
     if (friendUserId) {

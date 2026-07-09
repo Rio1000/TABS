@@ -96,3 +96,185 @@ exports.sendReminderSms = onCall(async (request) => {
       );
     }
   });
+
+// Send a reminder as a real PUSH notification to the friend's device(s), via
+// Firebase Cloud Messaging. This is the free, carrier-free replacement for the
+// Twilio SMS path: no phone number, no 10DLC, nothing a carrier can flag. The
+// recipient just needs to have granted notification permission on the web app
+// or mobile app, which registers a token under users/{uid}/pushTokens.
+exports.sendReminderPush = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "You must be signed in.");
+  }
+
+  const callerUid = request.auth.uid;
+  const friendUid = String(request.data?.friendUid || "").trim();
+  const title = String(request.data?.title || "TABS reminder").slice(0, 100);
+  const body = String(request.data?.message || "").slice(0, 320);
+
+  if (!friendUid) {
+    throw new HttpsError("invalid-argument", "Missing friendUid.");
+  }
+  if (!body) {
+    throw new HttpsError("invalid-argument", "Missing message.");
+  }
+
+  const db = admin.database();
+
+  // Same guard as the SMS path: only a CONFIRMED friend (verified from the
+  // recipient's own friendUids index, which only they can write) can be
+  // notified — you can't push to an arbitrary UID you happen to know.
+  const friendshipSnap = await db
+    .ref(`users/${friendUid}/friendUids/${callerUid}`)
+    .get();
+  if (!friendshipSnap.exists()) {
+    throw new HttpsError(
+      "permission-denied",
+      "You can only remind a confirmed friend."
+    );
+  }
+
+  const tokensSnap = await db.ref(`users/${friendUid}/pushTokens`).get();
+  const tokens = tokensSnap.exists() ? Object.keys(tokensSnap.val()) : [];
+  if (tokens.length === 0) {
+    // Not an error — the friend just hasn't enabled notifications on any
+    // device. The client uses this to show a helpful message.
+    return { delivered: false, reason: "no-devices", successCount: 0 };
+  }
+
+  // Web browsers register raw FCM tokens; the mobile app (Expo) registers
+  // Expo push tokens ("ExponentPushToken[...]"). They go out through different
+  // services, so split them and deliver to each.
+  const isExpo = (t) =>
+    t.startsWith("ExponentPushToken[") || t.startsWith("ExpoPushToken[");
+  const expoTokens = tokens.filter(isExpo);
+  const fcmTokens = tokens.filter((t) => !isExpo(t));
+
+  const linkUrl = "https://tabsonfriends.com";
+  let successCount = 0;
+  const stale = [];
+
+  // --- Web / FCM ---
+  if (fcmTokens.length > 0) {
+    try {
+      const resp = await admin.messaging().sendEachForMulticast({
+        tokens: fcmTokens,
+        notification: { title, body },
+        data: { type: "sms-reminder", fromUid: callerUid },
+        webpush: {
+          notification: { title, body, icon: "/logo.png" },
+          fcmOptions: { link: linkUrl },
+        },
+      });
+      successCount += resp.successCount;
+      resp.responses.forEach((r, i) => {
+        const code = r.error?.code;
+        if (
+          code === "messaging/registration-token-not-registered" ||
+          code === "messaging/invalid-registration-token" ||
+          code === "messaging/invalid-argument"
+        ) {
+          stale.push(fcmTokens[i]);
+        }
+      });
+    } catch (err) {
+      logger.error("FCM send failed:", err);
+    }
+  }
+
+  // --- Mobile / Expo ---
+  if (expoTokens.length > 0) {
+    try {
+      const expoRes = await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(
+          expoTokens.map((to) => ({
+            to,
+            title,
+            body,
+            sound: "default",
+            data: { type: "sms-reminder", fromUid: callerUid },
+          }))
+        ),
+      });
+      const json = await expoRes.json();
+      const receipts = Array.isArray(json?.data) ? json.data : [];
+      receipts.forEach((receipt, i) => {
+        if (receipt?.status === "ok") {
+          successCount += 1;
+        } else if (receipt?.details?.error === "DeviceNotRegistered") {
+          stale.push(expoTokens[i]);
+        }
+      });
+    } catch (err) {
+      logger.error("Expo push send failed:", err);
+    }
+  }
+
+  // Prune tokens both services reported as dead.
+  await Promise.all(
+    stale.map((t) =>
+      db.ref(`users/${friendUid}/pushTokens/${t}`).remove().catch(() => {})
+    )
+  );
+
+  logger.info(
+    `Push by ${callerUid} to ${friendUid}: ${successCount}/${tokens.length} delivered ` +
+      `(${fcmTokens.length} web, ${expoTokens.length} mobile)`
+  );
+  return {
+    delivered: successCount > 0,
+    successCount,
+    reason: successCount > 0 ? null : "all-failed",
+  };
+});
+
+// Delete the caller's own account — both their database data AND their Firebase
+// Auth record — server-side. Doing it here with the Admin SDK avoids the
+// client-side `auth/requires-recent-login` error that used to leave the Auth
+// user behind (visible in the Firebase Auth console) after the data was already
+// gone. A user can only ever delete themselves: the uid comes from their auth
+// token, never from client input.
+exports.deleteAccount = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "You must be signed in.");
+  }
+  const uid = request.auth.uid;
+  try {
+    await admin.database().ref(`users/${uid}`).remove();
+    await admin.auth().deleteUser(uid);
+    logger.info(`Account deleted: ${uid}`);
+    return { success: true };
+  } catch (err) {
+    logger.error("Account delete failed:", err);
+    throw new HttpsError("internal", "Could not delete the account.");
+  }
+});
+
+// Disable the caller's own account. Disabling a Firebase Auth user is an
+// Admin-only operation — the browser SDK can't do it, which is why the old
+// client-side "disable" only set a database flag and never showed up on the
+// Firebase Auth page. This flips the real `disabled` flag so the account can no
+// longer sign in, and mirrors it into the profile for the app's own checks.
+exports.disableAccount = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "You must be signed in.");
+  }
+  const uid = request.auth.uid;
+  try {
+    await admin.auth().updateUser(uid, { disabled: true });
+    await admin
+      .database()
+      .ref(`users/${uid}/profile/accountDisabled`)
+      .set(true);
+    logger.info(`Account disabled: ${uid}`);
+    return { success: true };
+  } catch (err) {
+    logger.error("Account disable failed:", err);
+    throw new HttpsError("internal", "Could not disable the account.");
+  }
+});
