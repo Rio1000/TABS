@@ -54,5 +54,7 @@ jobs:
         run: |
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa-key.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa-key.json"
-          firebase deploy --only functions --project tabs-4a0eb --non-interactive
+          # --force auto-accepts the Artifact Registry cleanup-policy prompt;
+          # without it the CLI exits non-zero even after a successful deploy.
+          firebase deploy --only functions --project tabs-4a0eb --force --non-interactive
           rm -f "$RUNNER_TEMP/sa-key.json"
