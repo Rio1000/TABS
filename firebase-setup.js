@@ -79,6 +79,11 @@ const sendReminderSmsFn = httpsCallable(functionsClient, "sendReminderSms");
 // friend's device via Firebase Cloud Messaging — free, no carrier, no spam
 // flagging. This is what the reminder buttons use now instead of Twilio/SMS.
 const sendReminderPushFn = httpsCallable(functionsClient, "sendReminderPush");
+// Server-side account management (Admin SDK) — see functions/index.js. These
+// actually remove/disable the Firebase Auth record, which the browser SDK
+// can't do reliably (delete needs a recent login; disable is admin-only).
+const deleteAccountFn = httpsCallable(functionsClient, "deleteAccount");
+const disableAccountFn = httpsCallable(functionsClient, "disableAccount");
 
 // ---------------------------------------------------------------------------
 // Push notifications (Firebase Cloud Messaging)
@@ -139,6 +144,105 @@ async function registerPushToken() {
     console.error("Push registration failed:", error);
   }
 }
+
+// When push shipped. Accounts created before this never got the chance to
+// grant notification permission when they signed up, so we re-prompt them once
+// (browsers only fire the native prompt reliably from a user gesture, so we
+// nudge them with a tappable banner instead of a silent auto-request).
+const PUSH_FEATURE_LAUNCH_MS = Date.parse("2026-07-09T00:00:00Z");
+
+function accountPredatesPush(user) {
+  const created = Date.parse(user?.metadata?.creationTime || "");
+  return !Number.isNaN(created) && created < PUSH_FEATURE_LAUNCH_MS;
+}
+
+// Decide how to handle push for this login:
+// - already granted → just (re)register the token silently;
+// - permission still undecided on a pre-push account → show a one-time nudge
+//   to turn notifications on (request happens on their tap);
+// - undecided on a newer account → request now, as before;
+// - denied → nothing we can do from JS (they'd have to change it in the browser).
+async function initPush(user) {
+  try {
+    // Running inside the native mobile shell (a WebView)? Ask it for the
+    // device's push token instead of doing web push — service workers / web
+    // push don't work inside an iOS WKWebView. The shell calls
+    // window.__onNativePushToken back with the token.
+    if (window.ReactNativeWebView) {
+      requestNativePushToken();
+      return;
+    }
+
+    if (FCM_VAPID_KEY.startsWith("REPLACE_WITH")) return;
+    if (typeof Notification === "undefined") return;
+    if (!(await isMessagingSupported())) return;
+
+    if (Notification.permission === "granted") {
+      registerPushToken();
+    } else if (Notification.permission === "default") {
+      if (accountPredatesPush(user) &&
+          !localStorage.getItem("tabsPushReprompt")) {
+        showEnableNotificationsPrompt();
+      } else {
+        registerPushToken();
+      }
+    }
+  } catch (error) {
+    console.error("initPush failed:", error);
+  }
+}
+
+// One-time tappable banner for legacy users. Tapping it is the user gesture
+// that lets registerPushToken() call Notification.requestPermission().
+function showEnableNotificationsPrompt() {
+  localStorage.setItem("tabsPushReprompt", "1");
+  Toastify({
+    text: "🔔 Turn on notifications to get payment reminders here — tap to enable.",
+    duration: -1, // stay until tapped or closed
+    close: true,
+    gravity: "top",
+    position: "right",
+    className: "toastify toastify-success",
+    style: {
+      background: "#50c444",
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+      cursor: "pointer",
+    },
+    onClick: () => {
+      registerPushToken();
+    },
+  }).showToast();
+}
+
+// --- Native (mobile WebView) push bridge -----------------------------------
+// Ask the native shell to grant permission and hand back this device's push
+// token. The shell listens for this message (see mobile/App.js).
+function requestNativePushToken() {
+  try {
+    window.ReactNativeWebView.postMessage(
+      JSON.stringify({ type: "requestPushToken" })
+    );
+  } catch (error) {
+    console.error("requestNativePushToken failed:", error);
+  }
+}
+
+// The native shell injects a call to this with the device's Expo push token.
+// We store it under the signed-in user just like a web token; the Cloud
+// Function recognises Expo-format tokens and delivers via the Expo push API.
+window.__onNativePushToken = async (token, platform) => {
+  try {
+    if (!currentUser || !token) return;
+    await set(ref(database, `users/${currentUser.uid}/pushTokens/${token}`), {
+      platform: platform || "mobile",
+      updatedAt: Date.now(),
+    });
+  } catch (error) {
+    console.error("Storing native push token failed:", error);
+  }
+};
 
 // Sends a reminder as a push notification via the Cloud Function. Returns
 // { delivered, reason }. delivered=false with reason "no-devices" means the
@@ -279,7 +383,7 @@ onAuthStateChanged(auth, async (user) => {
     loadNotificationPrefs();
     subscribeToNotifications();
     checkAutoReminders();
-    registerPushToken(); // ask for notification permission & store this device's token
+    initPush(user); // register push, or re-prompt legacy accounts to allow it
 
     // Hide login/signup pages
     if (loginPage) loginPage.style.display = "none";
@@ -730,19 +834,23 @@ async function deleteAccountAndData() {
   if (!currentUser) return;
 
   try {
-    // Delete user data from Realtime Database
-    await remove(ref(database, `users/${currentUser.uid}`));
-
-    // Delete user authentication account
-    await currentUser.delete();
-
+    // Delete both the database data and the Firebase Auth record server-side.
+    // Done on the server (Admin SDK) so it doesn't hit auth/requires-recent-
+    // login and actually removes the account from the Firebase Auth console.
+    await deleteAccountFn();
     showToast("Account deleted successfully.");
+    document.getElementById("delete-account-modal").style.display = "none";
+    await signOut(auth);
   } catch (error) {
-    if (error.code === "auth/requires-recent-login") {
-      showToast("Please re-login before deleting your account.", "error");
-    } else {
-      showToast("Error deleting account: " + error.message, "error");
-    }
+    const notDeployed =
+      error?.code === "functions/not-found" ||
+      error?.code === "functions/internal";
+    showToast(
+      notDeployed
+        ? "Account deletion isn't set up yet — deploy the Cloud Functions first."
+        : "Error deleting account: " + (error?.message || error),
+      "error"
+    );
   }
 }
 disableAccount.addEventListener("click", disableUserAccount);
@@ -750,12 +858,22 @@ async function disableUserAccount() {
   if (!currentUser) return;
 
   try {
-    await update(ref(database, `users/${currentUser.uid}/profile`), {
-      accountDisabled: true,
-    });
-    showToast("Account disabled in database (soft disable).");
+    // Flips the real `disabled` flag on the Firebase Auth user (admin-only, so
+    // it runs server-side) — the old client-only version just set a database
+    // flag and never showed up on the Firebase Auth page.
+    await disableAccountFn();
+    showToast("Account disabled. You'll be signed out.");
+    await signOut(auth);
   } catch (error) {
-    showToast("Error disabling account: " + error.message, "error");
+    const notDeployed =
+      error?.code === "functions/not-found" ||
+      error?.code === "functions/internal";
+    showToast(
+      notDeployed
+        ? "Disabling isn't set up yet — deploy the Cloud Functions first."
+        : "Error disabling account: " + (error?.message || error),
+      "error"
+    );
   }
 }
 exportData.addEventListener("click", exportUserData);

@@ -40,7 +40,9 @@
 }
 
 .toastify-error::before {
-  background-image: url("error_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg");
+  /* Bold solid exclamation, same weight/color as the success check (the old
+     Material "error" icon was a thin outlined ring and read much smaller). */
+  background-image: url("error_exclaim_white.svg");
 }
 
 

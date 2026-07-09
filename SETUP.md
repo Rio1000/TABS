@@ -40,12 +40,28 @@ as before: Firebase Console → ⚙ **Project settings** → **Service accounts*
 **Generate new private key**, then add its full JSON as the GitHub secret
 **`FIREBASE_SERVICE_ACCOUNT`**.
 
-**C. (Optional) Mobile app push.** The Expo app in `mobile/` doesn't register
-for push yet. To have reminders reach mobile users, add `expo-notifications`,
-call `getDevicePushTokenAsync()` after sign-in, and write the native token to
-the same `users/{uid}/pushTokens` node. Android tokens work with the existing
-Function as-is; iOS additionally needs an **APNs auth key** uploaded in Firebase
-Console → Cloud Messaging → Apple app configuration.
+**C. Mobile app push.** The Expo app in `mobile/` is now a WebView shell around
+the website (so mobile looks identical to web) that adds native push. On login
+the web app asks the shell for the device's **Expo push token**; the shell
+requests notification permission, mints the token, and injects it back, and the
+web app stores it under `users/{uid}/pushTokens`. The Cloud Function recognises
+Expo-format tokens and delivers them through the **Expo push service** (which
+handles APNs/FCM for both platforms), while web tokens still go via FCM.
+
+To make mobile push work you must:
+1. `cd mobile && npx expo install` (pins `react-native-webview`,
+   `expo-notifications`, `expo-constants` to versions matching Expo SDK 54).
+2. `npx eas init` to create the project and write `extra.eas.projectId` into
+   `app.json` — Expo needs it to mint push tokens.
+3. For **iOS**, upload an **APNs key** in the Expo/EAS credentials flow
+   (`eas credentials`) so Expo can deliver to Apple devices.
+4. Build a **dev or production build** with EAS (`eas build`). Remote push does
+   **not** work in Expo Go — the WebView does, but tokens/delivery need a real
+   build.
+
+> Note: Google sign-in via popup is blocked inside embedded WebViews by Google.
+> Email/password sign-in works in the app; if you want Google on mobile, use a
+> native auth flow or a system browser redirect.
 
 ### Deploy
 Deployment is automated by `.github/workflows/deploy-functions.yml` — it runs

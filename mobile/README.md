@@ -1,33 +1,37 @@
 # TABS Mobile
 
-A native iOS/Android port of the TABS web app, built with Expo + React
-Native. It talks to the **same Firebase project** as the web app (same
-Realtime Database, same user accounts), so a person you add or a friend
-request you send in the app shows up on the web app too, and vice versa.
+A thin **WebView shell** around the TABS web app, built with Expo + React
+Native. Instead of re-implementing every screen natively, the app loads the
+live website (`https://tabsonfriends.com`) in a full-screen WebView, so the
+mobile app looks and behaves **identically** to the web version and there is
+only one UI to maintain. It talks to the same Firebase project because it *is*
+the same web app.
 
-## What's implemented
+## What the native shell adds
 
-- Email/password login, signup, and password reset
-- "Continue as Guest" (local-only, nothing persisted — same promise as the web app)
-- Home tab: add/remove a person, I Owe / They Owe status, add/remove money,
-  edit name/item, extra info notes, interest (rate + compounding period),
-  currency display (USD/EUR/GBP/JPY), clear list
-- Friends tab: add by friend code, accept/reject/cancel requests, remove a
-  friend, live pending-request badge
-- Profile tab: profile info, spending/earning stats, friend code (copy to
-  clipboard), logout, reset password, view/clear account history, export
-  data (via native share sheet), delete account
+The only thing the shell layers on top of the website is what a browser can't
+do:
 
-The friends system here was written with the same-class bugs already fixed
-(see the web app's fix history): removing a friend always targets the
-friend that was actually tapped (tracked in React state per selection,
-never a single reused handler), and canceling/rejecting a request cleans
-up both sides so nobody sees a stale pending request.
+- **Native push notifications.** On login the web app posts a
+  `requestPushToken` message to the shell; the shell requests notification
+  permission, mints this device's **Expo push token**, and injects it back into
+  the page, which stores it under `users/{uid}/pushTokens`. The
+  `sendReminderPush` Cloud Function then delivers reminders to the phone through
+  the Expo push service. (Web browsers register FCM tokens instead; the function
+  handles both.)
+- **Android hardware back button** navigates the site's history.
+- **Pull-to-refresh** and a dark loading screen that matches the site so there's
+  no white flash.
 
-**Not included in this pass:** Google Sign-In (the web app uses a browser
-popup flow that doesn't translate directly to native — would need
-`expo-auth-session` or `@react-native-google-signin/google-signin` and a
-Google Cloud OAuth client set up per-platform), and ads.
+Everything else — the people list, friends, profile, interest, ads, the
+reminder buttons — is the web app itself, unchanged.
+
+> **Google sign-in:** Google blocks its OAuth popup inside embedded WebViews, so
+> use email/password in the app. Adding native Google auth would need
+> `expo-auth-session` and a per-platform OAuth client.
+
+The previous fully-native screens (`src/screens`, `src/navigation`, etc.) are
+kept in the repo for reference but are no longer wired into `App.js`.
 
 ## Requirements
 
@@ -71,26 +75,26 @@ That's a hosted build service — it doesn't require a local Xcode/Android
 Studio install, but you will need Apple Developer / Google Play developer
 accounts to sign and submit the result to the respective stores.
 
+## Push setup (required for reminders to reach the phone)
+
+1. `npx expo install` — pins `react-native-webview`, `expo-notifications`,
+   `expo-constants` to the versions matching Expo SDK 54.
+2. `npx eas init` — creates the EAS project and writes `extra.eas.projectId`
+   into `app.json`. Expo needs this to mint push tokens.
+3. `eas credentials` — for iOS, upload an **APNs key** so Expo can deliver to
+   Apple devices.
+4. `eas build` — remote push does **not** work in Expo Go; build a dev or
+   production build to test tokens and delivery. (The WebView itself runs fine
+   in Expo Go for quick UI checks.)
+
 ## Project layout
 
 ```
 mobile/
-  App.js                     entry point: providers + navigator
-  src/
-    firebaseConfig.js        same Firebase project as the web app
-    theme.js                 shared colors/spacing (matches the web app's dark theme)
-    context/
-      AuthContext.js         current user + profile
-      ToastContext.js        lightweight toast notifications
-    lib/
-      usePeopleList.js       Realtime DB-backed people list state
-      friends.js             friend requests/list (bug-fixed cleanup logic)
-      account.js             stats, history, export, delete account
-      interest.js            compound interest calculation
-    components/               reusable Button/TextField/Modal/PersonRow/etc.
-    screens/                  AuthScreen, HomeScreen, FriendsScreen, ProfileScreen
-    navigation/
-      RootNavigator.js        auth gate + bottom tab navigator
+  App.js                     WebView shell + native push bridge (the whole app)
+  app.json                   Expo config (expo-notifications plugin, EAS projectId)
+  src/                       legacy fully-native screens — kept for reference,
+                             no longer imported by App.js
 ```
 
 ## Notes

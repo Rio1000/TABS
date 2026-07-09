@@ -1,17 +1,20 @@
 name: Deploy Firebase Functions
 
-# Deploys the Twilio SMS Cloud Function. Runs when anything under functions/
-# changes on the branches below, or on demand from the Actions tab
-# ("Run workflow"). No local Firebase CLI needed — everything runs here.
+# Deploys the Cloud Functions AND the Realtime Database rules. Runs when
+# anything under functions/ or database.rules.json changes on the branches
+# below, or on demand from the Actions tab ("Run workflow"). No local Firebase
+# CLI needed — everything runs here.
 
 on:
   push:
     branches:
       - main
       - claude/notifications-ui-fixes-8tsm89
+      - claude/twilio-alternative-ads-medk8f
     paths:
       - "functions/**"
       - "firebase.json"
+      - "database.rules.json"
       - ".github/workflows/deploy-functions.yml"
   workflow_dispatch:
 
@@ -48,7 +51,7 @@ jobs:
             printf 'TWILIO_FROM_NUMBER=%s\n' "$TWILIO_FROM_NUMBER"
           } > functions/.env
 
-      - name: Deploy the function
+      - name: Deploy the functions and database rules
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
@@ -56,5 +59,7 @@ jobs:
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa-key.json"
           # --force auto-accepts the Artifact Registry cleanup-policy prompt;
           # without it the CLI exits non-zero even after a successful deploy.
-          firebase deploy --only functions --project tabs-4a0eb --force --non-interactive
+          # database publishes database.rules.json so the pushTokens rule (and
+          # any future rule change) goes live with the function.
+          firebase deploy --only functions,database --project tabs-4a0eb --force --non-interactive
           rm -f "$RUNNER_TEMP/sa-key.json"
