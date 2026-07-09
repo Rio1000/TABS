@@ -1189,7 +1189,7 @@ function addPerson(
 //                          chosen provider isn't configured yet).
 const AD_CONFIG = {
   provider: "aads",
-  aadsUnitId: "YOUR_A-ADS_UNIT_ID", // from a-ads.com → your unit → "Ad code"
+  aadsUnitId: "2447531", // from a-ads.com → your unit → "Ad code"
   adsenseClient: "ca-pub-7825788728707782",
   adsenseSlot: "8944873686",
 };
@@ -1220,10 +1220,13 @@ function addAdBox() {
     // A-ADS serves through a simple iframe — no script, no approval, and it
     // renders inside WebViews where AdSense won't.
     const iframe = document.createElement("iframe");
-    iframe.src = `//acceptable.a-ads.com/${AD_CONFIG.aadsUnitId}`;
+    iframe.setAttribute("data-aa", AD_CONFIG.aadsUnitId);
+    // "Adaptive" lets A-ADS size the creative to the container width; a
+    // min-height keeps the iframe from collapsing to 0 before it fills.
+    iframe.src = `//acceptable.a-ads.com/${AD_CONFIG.aadsUnitId}/?size=Adaptive`;
     iframe.setAttribute("scrolling", "no");
     iframe.style.cssText =
-      "border:0;padding:0;width:100%;height:90px;overflow:hidden;background:transparent;";
+      "border:0;padding:0;width:100%;height:auto;min-height:90px;overflow:hidden;display:block;margin:auto;background:transparent;";
     inner.appendChild(iframe);
     adItem.appendChild(inner);
     peopleList.appendChild(adItem);
@@ -2779,14 +2782,20 @@ function renderProfilePaymentHandles() {
 
 async function savePaymentSettings() {
   if (!currentUser) return;
-  paymentSettings = {
-    enabled: document.getElementById("paymentsEnabledToggle").checked,
-  };
-  myPaymentHandles = {
+  const enabled = document.getElementById("paymentsEnabledToggle").checked;
+  const handles = {
     venmo: cleanHandle(document.getElementById("venmoHandleInput").value),
     paypal: cleanHandle(document.getElementById("paypalHandleInput").value),
     cashApp: cleanHandle(document.getElementById("cashAppHandleInput").value),
   };
+  // Only one handle is required — but if the feature is on, at least one must be
+  // set, otherwise there's nothing to request with.
+  if (enabled && !handles.venmo && !handles.paypal && !handles.cashApp) {
+    showToast("Add at least one payment handle (Venmo, PayPal, or Cash App).", "error");
+    return;
+  }
+  paymentSettings = { enabled };
+  myPaymentHandles = handles;
   try {
     await Promise.all([
       set(ref(database, `users/${currentUser.uid}/settings/payments`), paymentSettings),
@@ -2911,11 +2920,38 @@ function openSmsComposer(phone, body) {
   window.location.href = `sms:${digits}${separator}body=${encodeURIComponent(body)}`;
 }
 
+// Witty, Duolingo-style reminder lines, loaded from reminder-messages.json so
+// they're easy to edit without touching code. Falls back to a couple of
+// built-ins if the file can't be fetched (e.g. offline).
+let reminderMessages = [
+  "Hey {name}, friendly reminder that you owe me {amount} — tracked on TABS!",
+  "{name}, your {amount} tab misses you. Reunite them? 🥹",
+];
+
+async function loadReminderMessages() {
+  try {
+    const res = await fetch("reminder-messages.json", { cache: "no-cache" });
+    const data = await res.json();
+    if (Array.isArray(data.messages) && data.messages.length) {
+      reminderMessages = data.messages;
+    }
+  } catch (error) {
+    console.debug("Using built-in reminder messages:", error?.message);
+  }
+}
+loadReminderMessages();
+
 function buildReminderMessage(name, amountText) {
   const firstName = name.split(" ")[0];
   const amount = parseFloat(amountText);
-  const owed = !isNaN(amount) ? `$${amount.toFixed(2)}` : amountText;
-  return `Hey ${firstName}, friendly reminder that you owe me ${owed} 🔫— tracked on TABS!`;
+  // Auto-reminders don't carry a dollar amount, so fall back to a phrase that
+  // still reads naturally in every template.
+  const owed = !isNaN(amount)
+    ? `$${amount.toFixed(2)}`
+    : (amountText && String(amountText).trim() ? amountText : "what you owe");
+  const template =
+    reminderMessages[Math.floor(Math.random() * reminderMessages.length)];
+  return template.replaceAll("{name}", firstName).replaceAll("{amount}", owed);
 }
 
 async function findFriendByName(fullName) {
@@ -3139,9 +3175,9 @@ async function checkAutoReminders() {
       await addNotification(currentUser.uid, {
         type: "sms-reminder",
         message: `Reminder: time to text ${reminder.friendName} about what they owe you.`,
-        friendUid: friendUserId, // lets the "Text now" shortcut send via Twilio
+        friendUid: friendUserId, // lets the "Remind now" shortcut send a push
         phone: reminder.phone ?? null,
-        smsBody: `Hey ${String(reminder.friendName).split(" ")[0]}, friendly reminder that you still owe me — check TABS!`,
+        smsBody: buildReminderMessage(reminder.friendName, ""),
       });
       await update(
         ref(database, `users/${currentUser.uid}/autoReminders/${friendUserId}`),
