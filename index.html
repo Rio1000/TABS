@@ -346,6 +346,7 @@
                     <button id="disable-account">Disable Account</button>
                     <button id="view-account-history">View Account History</button>
                     <button id="manage-notifications">Manage Notifications</button>
+                    <button id="manage-payments">Payment Requests</button>
                     <button id="export-data">Export Data</button>
 
                 </div>
@@ -429,6 +430,46 @@
                     </div>
                 </div>
                 <button id="closeNotificationSettings">Close</button>
+            </div>
+        </div>
+
+        <!-- Payment Requests Settings Modal -->
+        <div class="modal modal-fx" id="paymentSettingsModal">
+            <div id="paymentSettingsBox">
+                <h2>Payment Requests</h2>
+                <p id="paymentSettingsSubtitle">Link your payment handles so friends can settle up. TABS never moves money — it just opens Venmo/PayPal/Cash App.</p>
+                <div class="notification-setting-row">
+                    <span>Enable payment requests</span>
+                    <div class="switch">
+                        <input type="checkbox" id="paymentsEnabledToggle" />
+                        <label for="paymentsEnabledToggle"></label>
+                    </div>
+                </div>
+                <div class="payment-handle-row">
+                    <label for="venmoHandleInput">Venmo username</label>
+                    <input type="text" id="venmoHandleInput" placeholder="your-venmo" autocomplete="off" />
+                </div>
+                <div class="payment-handle-row">
+                    <label for="paypalHandleInput">PayPal.Me username</label>
+                    <input type="text" id="paypalHandleInput" placeholder="your-paypalme" autocomplete="off" />
+                </div>
+                <div class="payment-handle-row">
+                    <label for="cashAppHandleInput">Cash App $cashtag</label>
+                    <input type="text" id="cashAppHandleInput" placeholder="yourcashtag" autocomplete="off" />
+                </div>
+                <button id="savePaymentSettings">Save</button>
+                <button id="closePaymentSettings">Close</button>
+            </div>
+        </div>
+
+        <!-- Payment Request Modal (per person/tab) -->
+        <div class="modal modal-fx" id="paymentRequestModal">
+            <div id="paymentRequestBox">
+                <h2 id="paymentRequestTitle">Request Payment</h2>
+                <p id="paymentRequestSubtitle"></p>
+                <div id="paymentRequestOptions"></div>
+                <p id="paymentRequestHint">TABS doesn't move money — this opens the payment app.</p>
+                <button id="closePaymentRequest">Close</button>
             </div>
         </div>
 

@@ -1214,6 +1214,9 @@ input {
 #markAllReadBtn,
 #clearNotificationsBtn,
 #sendSmsNowBtn,
+#savePaymentSettings,
+#closePaymentSettings,
+#closePaymentRequest,
 #interest-btn {
   text-align: center;
   justify-content: center;
@@ -1410,6 +1413,8 @@ input {
 
 #notificationsBox,
 #notificationSettingsBox,
+#paymentSettingsBox,
+#paymentRequestBox,
 #smsReminderBox {
   display: flex;
   flex-direction: column;
@@ -1522,6 +1527,88 @@ input {
 
 .sms-remind-btn .material-icons {
   font-size: 20px;
+}
+
+/* Payment-request button on friend rows — mirrors .sms-remind-btn but is only
+   shown once the user has enabled payment requests in settings. */
+.pay-request-btn {
+  display: none;
+  margin-left: 8px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  background-color: #3d8a4f;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+}
+body.payments-enabled .pay-request-btn {
+  display: flex;
+}
+.pay-request-btn .material-icons {
+  font-size: 20px;
+}
+
+/* Payment Requests settings + per-tab request modal */
+#paymentSettingsSubtitle,
+#paymentRequestSubtitle,
+#paymentRequestHint {
+  color: #c7c7c7;
+  font-size: 14px;
+  text-align: center;
+  margin: 6px 0;
+}
+#paymentRequestHint {
+  font-size: 12px;
+  opacity: 0.8;
+}
+.payment-handle-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 90%;
+  margin-top: 12px;
+}
+.payment-handle-row label {
+  font-size: 14px;
+  color: #d7d7d7;
+}
+.payment-handle-row input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background-color: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  font-size: 16px;
+}
+#paymentRequestOptions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  width: 90%;
+  margin-top: 10px;
+}
+.payment-option-btn {
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background-color: rgba(56, 138, 147, 0.686);
+  color: rgb(194, 233, 232);
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.payment-empty {
+  color: #c7c7c7;
+  font-size: 14px;
+  text-align: center;
 }
 
 /* Make sure the AdSense <ins> inside the person-list ad box actually gets

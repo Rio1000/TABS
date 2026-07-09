@@ -13,6 +13,14 @@
             // write), so a caller can't grant themselves access — the
             // friendship has to be one the owner actually recorded.
             ".read": "auth.uid === $uid || root.child('users').child($uid).child('friendUids').child(auth.uid).exists()"
+          },
+
+          "paymentHandles": {
+            // A confirmed friend may read these (Venmo/PayPal/Cash App handles)
+            // to build a payment-request link — same friend-scoped rule as
+            // phoneNumber above. TABS never moves money; the handle just seeds a
+            // deep link the friend opens in their payment app.
+            ".read": "auth.uid === $uid || root.child('users').child($uid).child('friendUids').child(auth.uid).exists()"
           }
         },
 
