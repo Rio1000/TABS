@@ -190,3 +190,49 @@ exports.sendReminderPush = onCall(async (request) => {
     );
   }
 });
+
+// Delete the caller's own account — both their database data AND their Firebase
+// Auth record — server-side. Doing it here with the Admin SDK avoids the
+// client-side `auth/requires-recent-login` error that used to leave the Auth
+// user behind (visible in the Firebase Auth console) after the data was already
+// gone. A user can only ever delete themselves: the uid comes from their auth
+// token, never from client input.
+exports.deleteAccount = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "You must be signed in.");
+  }
+  const uid = request.auth.uid;
+  try {
+    await admin.database().ref(`users/${uid}`).remove();
+    await admin.auth().deleteUser(uid);
+    logger.info(`Account deleted: ${uid}`);
+    return { success: true };
+  } catch (err) {
+    logger.error("Account delete failed:", err);
+    throw new HttpsError("internal", "Could not delete the account.");
+  }
+});
+
+// Disable the caller's own account. Disabling a Firebase Auth user is an
+// Admin-only operation — the browser SDK can't do it, which is why the old
+// client-side "disable" only set a database flag and never showed up on the
+// Firebase Auth page. This flips the real `disabled` flag so the account can no
+// longer sign in, and mirrors it into the profile for the app's own checks.
+exports.disableAccount = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "You must be signed in.");
+  }
+  const uid = request.auth.uid;
+  try {
+    await admin.auth().updateUser(uid, { disabled: true });
+    await admin
+      .database()
+      .ref(`users/${uid}/profile/accountDisabled`)
+      .set(true);
+    logger.info(`Account disabled: ${uid}`);
+    return { success: true };
+  } catch (err) {
+    logger.error("Account disable failed:", err);
+    throw new HttpsError("internal", "Could not disable the account.");
+  }
+});
