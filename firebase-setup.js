@@ -1144,16 +1144,19 @@ function addPerson(
     smsBtn.title = "Send a payment reminder over SMS";
     smsBtn.addEventListener("click", () => openSmsReminderModal(listItem));
     extraBox.appendChild(smsBtn);
-
-    // Payment request (Venmo/PayPal/Cash App). Hidden unless the user has
-    // enabled payment requests (via the body.payments-enabled class in CSS).
-    const payBtn = document.createElement("button");
-    payBtn.innerHTML = '<span class="material-icons">payments</span>';
-    payBtn.classList.add("pay-request-btn");
-    payBtn.title = "Request payment via Venmo / PayPal / Cash App";
-    payBtn.addEventListener("click", () => openPaymentRequestModal(listItem));
-    extraBox.appendChild(payBtn);
   }
+
+  // Payment request (Venmo/PayPal/Cash App) — on every row, not just friends:
+  // even for a manually-typed person you can still hand them your own
+  // PayPal.Me / Cash App link. (A Venmo *charge* additionally needs a linked
+  // friend's handle, which openPaymentRequestModal resolves when available.)
+  // Hidden unless payment requests are enabled (body.payments-enabled in CSS).
+  const payBtn = document.createElement("button");
+  payBtn.innerHTML = '<span class="material-icons">payments</span>';
+  payBtn.classList.add("pay-request-btn");
+  payBtn.title = "Request payment via Venmo / PayPal / Cash App";
+  payBtn.addEventListener("click", () => openPaymentRequestModal(listItem));
+  extraBox.appendChild(payBtn);
   nameAmountContainer.appendChild(personItem);
   nameAmountContainer.appendChild(extraBox);
 
@@ -1177,10 +1180,24 @@ function addPerson(
   return listItem;
 
 }
+// Ad network config — see ADS_SETUP.md.
+//   provider: "aads"    → Anonymous Ads. Instant, no approval, works anywhere
+//                          (including the mobile WebView). Paste your unit id.
+//             "adsense" → Google AdSense. Needs site approval and often won't
+//                          fill for small utility apps or inside a WebView.
+//             "house"   → self-promo only (also the automatic fallback when the
+//                          chosen provider isn't configured yet).
+const AD_CONFIG = {
+  provider: "aads",
+  aadsUnitId: "YOUR_A-ADS_UNIT_ID", // from a-ads.com → your unit → "Ad code"
+  adsenseClient: "ca-pub-7825788728707782",
+  adsenseSlot: "8944873686",
+};
+
 function addAdBox() {
   // Idempotent: loadListFromFirebase can run more than once per session
   // (login, reloads), and stacking a new ad box each time both clutters the
-  // list and double-push()es slots AdSense then refuses to fill.
+  // list and double-push()es slots a network then refuses to fill.
   const existingAd = peopleList.querySelector(".ad-box");
   if (existingAd) existingAd.remove();
 
@@ -1189,20 +1206,62 @@ function addAdBox() {
   adItem.style.justifyContent = "center";
   adItem.style.background = "rgba(255, 255, 255, 0.05)"; // Subtly different background
 
-  adItem.innerHTML = `
-    <div style="text-align: center; font-size: 12px; color: #888; width: 100%;">
-      <p style="margin: 0;">ADVERTISEMENT</p>
-      <ins class="adsbygoogle"
-           style="display:block"
-           data-ad-client="ca-pub-7825788728707782"
-           data-ad-slot="8944873686"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-    </div>
-  `;
+  const inner = document.createElement("div");
+  inner.style.cssText = "text-align:center;font-size:12px;color:#888;width:100%;";
+  inner.innerHTML = '<p style="margin:0 0 4px;">ADVERTISEMENT</p>';
 
-  peopleList.appendChild(adItem);
-  pushAdWhenVisible(adItem);
+  const aadsReady =
+    AD_CONFIG.provider === "aads" && !AD_CONFIG.aadsUnitId.startsWith("YOUR_");
+  const adsenseReady =
+    AD_CONFIG.provider === "adsense" &&
+    !AD_CONFIG.adsenseClient.startsWith("YOUR_");
+
+  if (aadsReady) {
+    // A-ADS serves through a simple iframe — no script, no approval, and it
+    // renders inside WebViews where AdSense won't.
+    const iframe = document.createElement("iframe");
+    iframe.src = `//acceptable.a-ads.com/${AD_CONFIG.aadsUnitId}`;
+    iframe.setAttribute("scrolling", "no");
+    iframe.style.cssText =
+      "border:0;padding:0;width:100%;height:90px;overflow:hidden;background:transparent;";
+    inner.appendChild(iframe);
+    adItem.appendChild(inner);
+    peopleList.appendChild(adItem);
+  } else if (adsenseReady) {
+    inner.insertAdjacentHTML(
+      "beforeend",
+      `<ins class="adsbygoogle" style="display:block"
+            data-ad-client="${AD_CONFIG.adsenseClient}"
+            data-ad-slot="${AD_CONFIG.adsenseSlot}"
+            data-ad-format="auto" data-full-width-responsive="true"></ins>`
+    );
+    adItem.appendChild(inner);
+    peopleList.appendChild(adItem);
+    pushAdWhenVisible(adItem);
+  } else {
+    // House-ad fallback — always renders, so the slot is never blank while a
+    // network is unconfigured or pending approval.
+    renderHouseAd(inner);
+    adItem.appendChild(inner);
+    peopleList.appendChild(adItem);
+  }
+}
+
+// Simple self-promo shown when no ad network is configured yet.
+function renderHouseAd(container) {
+  const ads = [
+    { text: "Enjoying TABS? Add a friend so you never forget who owes what.", cta: "Add a friend", href: "https://tabsonfriends.com" },
+    { text: "Help keep TABS free ☕", cta: "Buy us a coffee", href: "https://buymeacoffee.com/TABSonFriends" },
+  ];
+  const pick = ads[Math.floor(Math.random() * ads.length)];
+  container.insertAdjacentHTML(
+    "beforeend",
+    `<div style="padding:8px 4px;">
+       <p style="margin:0 0 6px;color:#cfe;font-size:14px;">${pick.text}</p>
+       <a href="${pick.href}" target="_blank" rel="noopener"
+          style="color:#7fd4ff;font-weight:bold;text-decoration:none;">${pick.cta} →</a>
+     </div>`
+  );
 }
 
 // The <ins> is only in the DOM after the list has rendered — unlike the ins
@@ -2699,9 +2758,23 @@ async function loadPaymentSettings() {
   document.getElementById("venmoHandleInput").value = myPaymentHandles.venmo || "";
   document.getElementById("paypalHandleInput").value = myPaymentHandles.paypal || "";
   document.getElementById("cashAppHandleInput").value = myPaymentHandles.cashApp || "";
-  // The request buttons on friend rows show/hide via this body class, so
-  // flipping the toggle doesn't need a list rebuild.
+  // The request buttons on rows show/hide via this body class, so flipping the
+  // toggle doesn't need a list rebuild.
   document.body.classList.toggle("payments-enabled", !!paymentSettings.enabled);
+  renderProfilePaymentHandles();
+}
+
+// Read-only summary of the user's saved handles, shown on the Profile screen.
+function renderProfilePaymentHandles() {
+  const el = document.getElementById("profile-payment");
+  if (!el) return;
+  const parts = [];
+  if (myPaymentHandles.venmo) parts.push(`Venmo @${myPaymentHandles.venmo}`);
+  if (myPaymentHandles.paypal) parts.push(`PayPal.Me /${myPaymentHandles.paypal}`);
+  if (myPaymentHandles.cashApp) parts.push(`Cash App $${myPaymentHandles.cashApp}`);
+  el.innerHTML = parts.length
+    ? `Payment Handles: <br> ${parts.join(" · ")}`
+    : "Payment Handles: <br> Not set up";
 }
 
 async function savePaymentSettings() {
@@ -2720,6 +2793,7 @@ async function savePaymentSettings() {
       set(ref(database, `users/${currentUser.uid}/profile/paymentHandles`), myPaymentHandles),
     ]);
     document.body.classList.toggle("payments-enabled", !!paymentSettings.enabled);
+    renderProfilePaymentHandles();
     showToast("Payment settings saved.", "success");
     document.getElementById("paymentSettingsModal").style.display = "none";
   } catch (error) {
