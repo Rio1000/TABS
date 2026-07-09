@@ -2769,9 +2769,9 @@ function renderProfilePaymentHandles() {
   const el = document.getElementById("profile-payment");
   if (!el) return;
   const parts = [];
-  if (myPaymentHandles.venmo) parts.push(`Venmo @${myPaymentHandles.venmo}`);
+  if (myPaymentHandles.venmo) parts.push(`Venmo: @${myPaymentHandles.venmo}`);
   if (myPaymentHandles.paypal) parts.push(`PayPal.Me /${myPaymentHandles.paypal}`);
-  if (myPaymentHandles.cashApp) parts.push(`Cash App $${myPaymentHandles.cashApp}`);
+  if (myPaymentHandles.cashApp) parts.push(`Cash App: $${myPaymentHandles.cashApp}`);
   el.innerHTML = parts.length
     ? `Payment Handles: <br> ${parts.join(" · ")}`
     : "Payment Handles: <br> Not set up";
