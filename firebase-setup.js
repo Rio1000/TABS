@@ -3167,17 +3167,36 @@ async function checkAutoReminders() {
     const now = Date.now();
     const DAY_MS = 24 * 60 * 60 * 1000;
 
+    // Look up the current amount owed per person from the saved list so the
+    // reminder shows the real number instead of a generic phrase.
+    const amountByName = {};
+    try {
+      const listSnap = await get(
+        ref(database, `users/${currentUser.uid}/peopleList`)
+      );
+      const peopleData = listSnap.exists() ? listSnap.val().peopleData || [] : [];
+      peopleData.forEach((p) => {
+        if (p && p.name != null) amountByName[String(p.name).trim()] = p.amount;
+      });
+    } catch (error) {
+      // No saved list yet — fall back to the generic wording.
+    }
+
     for (const [friendUserId, reminder] of Object.entries(snapshot.val())) {
       if (!reminder.enabled) continue;
       const frequencyMs = (reminder.frequencyDays || 7) * DAY_MS;
       if (now - (reminder.lastSent || 0) < frequencyMs) continue;
 
+      const owedAmount = amountByName[String(reminder.friendName).trim()];
       await addNotification(currentUser.uid, {
         type: "sms-reminder",
         message: `Reminder: time to text ${reminder.friendName} about what they owe you.`,
         friendUid: friendUserId, // lets the "Remind now" shortcut send a push
         phone: reminder.phone ?? null,
-        smsBody: buildReminderMessage(reminder.friendName, ""),
+        smsBody: buildReminderMessage(
+          reminder.friendName,
+          owedAmount != null ? String(owedAmount) : ""
+        ),
       });
       await update(
         ref(database, `users/${currentUser.uid}/autoReminders/${friendUserId}`),

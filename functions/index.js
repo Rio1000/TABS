@@ -109,7 +109,6 @@ exports.sendReminderPush = onCall(async (request) => {
 
   const callerUid = request.auth.uid;
   const friendUid = String(request.data?.friendUid || "").trim();
-  const title = String(request.data?.title || "TABS reminder").slice(0, 100);
   const body = String(request.data?.message || "").slice(0, 320);
 
   if (!friendUid) {
@@ -133,6 +132,15 @@ exports.sendReminderPush = onCall(async (request) => {
       "You can only remind a confirmed friend."
     );
   }
+
+  // Put the requester's name on the notification so the recipient knows who's
+  // asking (the message body says "you owe me…" — this makes "me" concrete).
+  const callerProfileSnap = await db.ref(`users/${callerUid}/profile`).get();
+  const cp = callerProfileSnap.val() || {};
+  const callerName = [cp.firstName, cp.lastName].filter(Boolean).join(" ").trim();
+  const title = (
+    callerName ? `Reminder from ${callerName}` : String(request.data?.title || "TABS reminder")
+  ).slice(0, 100);
 
   const tokensSnap = await db.ref(`users/${friendUid}/pushTokens`).get();
   const tokens = tokensSnap.exists() ? Object.keys(tokensSnap.val()) : [];
