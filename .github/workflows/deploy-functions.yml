@@ -1,0 +1,60 @@
+name: Deploy Firebase Functions
+
+# Deploys the Twilio SMS Cloud Function. Runs when anything under functions/
+# changes on the branches below, or on demand from the Actions tab
+# ("Run workflow"). No local Firebase CLI needed — everything runs here.
+
+on:
+  push:
+    branches:
+      - main
+      - claude/notifications-ui-fixes-8tsm89
+    paths:
+      - "functions/**"
+      - "firebase.json"
+      - ".github/workflows/deploy-functions.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install function dependencies
+        run: npm --prefix functions install
+
+      - name: Install the Firebase CLI
+        run: npm install -g firebase-tools
+
+      # Twilio creds come from GitHub repo Secrets and are written into
+      # functions/.env (gitignored) only inside this runner. Firebase applies
+      # .env values as the deployed function's environment variables.
+      - name: Write Twilio env file
+        env:
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
+        run: |
+          {
+            printf 'TWILIO_ACCOUNT_SID=%s\n' "$TWILIO_ACCOUNT_SID"
+            printf 'TWILIO_AUTH_TOKEN=%s\n'  "$TWILIO_AUTH_TOKEN"
+            printf 'TWILIO_FROM_NUMBER=%s\n' "$TWILIO_FROM_NUMBER"
+          } > functions/.env
+
+      - name: Deploy the function
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa-key.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa-key.json"
+          # --force auto-accepts the Artifact Registry cleanup-policy prompt;
+          # without it the CLI exits non-zero even after a successful deploy.
+          firebase deploy --only functions --project tabs-4a0eb --force --non-interactive
+          rm -f "$RUNNER_TEMP/sa-key.json"

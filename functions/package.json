@@ -1,0 +1,14 @@
+{
+  "name": "functions",
+  "description": "Cloud Functions for TABS (Twilio SMS reminders)",
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^5.1.0",
+    "twilio": "^5.3.0"
+  },
+  "private": true
+}
