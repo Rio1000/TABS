@@ -51,7 +51,7 @@ const firebaseConfig = {
 function showToast(message, type = "success") {
   Toastify({
     text: `${message}`, // Prepend icon to message
-    duration: 2000,
+    duration: 2500,
     close: true,
     gravity: "top",
     position: "right",
@@ -60,7 +60,7 @@ function showToast(message, type = "success") {
         ? "toastify toastify-error"
         : "toastify toastify-success", // Set class dynamically
     style: {
-      background: type === "error" ? "#ef4444" : "#50c444",
+      background: type === "error" ? "#bc3838" : "#52bc38",
       display: "flex",
       alignItems: "center",
       gap: "8px", // Space between icon & text

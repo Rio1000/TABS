@@ -1,7 +1,7 @@
 .toastify {
   font-size: 16px;
   position: fixed;
-  width: auto;
+  width: 85%;
   border-radius: 12px;
   padding: 12px 20px;
   color: #fff;
@@ -64,6 +64,11 @@
   margin-right: auto;
   left: 0;
   right: 0;
+}
+.Toastify__toast--error .Toastify__toast-icon {
+  content: "✖" !important; /* Replaces exclamation point with an X */
+  font-size: 1.2rem;
+  color: white;
 }
 @media only screen and (max-width: 360px) {
   .toastify-left,
