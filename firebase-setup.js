@@ -497,6 +497,9 @@ onAuthStateChanged(auth, async (user) => {
       document.getElementById('profile-email').innerHTML = `Email: <br> ${profileData.email}`;
       document.getElementById('profile-phone').innerHTML = `Phone Number: <br> ${profileData.phoneNumber}`;
       document.getElementById('profile-friend-code').innerHTML = `Friend Code: <br> ${profileData.friendCode || 'N/A'}`;
+      // Expose the current user's friend code so the "Invite to TABS" button
+      // (and anything else) can read it without another Firebase round-trip.
+      window.userFriendCode = profileData.friendCode || null;
     });
 
 
@@ -2531,6 +2534,71 @@ document
 document.getElementById("addFriendBtn2").addEventListener("click", () => {
   addFriend();
 });
+
+// "Invite to TABS" — opens the device's default messaging app with a
+// prefilled invite that includes the user's friend code and step-by-step
+// instructions for adding them as a friend. Falls back gracefully on
+// desktops where SMS deep links / the Web Share API aren't available.
+async function inviteToTabs() {
+  if (!currentUser) {
+    showToast("Please log in first.", "error");
+    return;
+  }
+
+  // Prefer the globally cached code; fall back to a fresh profile read in
+  // case the invite is triggered before the profile finished loading.
+  let friendCode = window.userFriendCode;
+  if (!friendCode) {
+    try {
+      const snap = await get(ref(database, `users/${currentUser.uid}/profile`));
+      friendCode = snap.exists() ? snap.val().friendCode : null;
+      if (friendCode) window.userFriendCode = friendCode;
+    } catch (error) {
+      console.error("Couldn't read friend code for invite:", error);
+    }
+  }
+
+  if (!friendCode) {
+    showToast("Couldn't find your friend code. Try again in a moment.", "error");
+    return;
+  }
+
+  const appUrl = window.location.origin + window.location.pathname;
+  const message =
+    `Join me on TABS! 💸\n\n` +
+    `TABS is an app that keeps track of who owes who between friends.\n\n` +
+    `My friend code is: ${friendCode}\n\n` +
+    `To add me as a friend:\n` +
+    `1. Sign up or log in at ${appUrl}\n` +
+    `2. Open the Friends tab\n` +
+    `3. Tap "Add" and enter my friend code: ${friendCode}\n\n` +
+    `See you on TABS!`;
+
+  // The Web Share API opens the native share sheet (Messages, WhatsApp, etc.)
+  // with the text prefilled — the nicest experience on modern mobile.
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "Join me on TABS", text: message });
+      return;
+    } catch (error) {
+      // AbortError just means the user dismissed the share sheet — don't fall
+      // through to the SMS link in that case.
+      if (error && error.name === "AbortError") return;
+    }
+  }
+
+  // Fall back to an SMS deep link, which opens the default messaging app with
+  // the body prefilled. iOS and Android disagree on the separator before
+  // "body", so pick based on the platform.
+  const isIOS =
+    /iP(hone|od|ad)/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const smsUrl = `sms:${isIOS ? "&" : "?"}body=${encodeURIComponent(message)}`;
+  window.location.href = smsUrl;
+}
+
+document.getElementById("inviteToTabsBtn").addEventListener("click", inviteToTabs);
+
 closeAddFriend();
 
 const closeWindow = document.getElementsByClassName("close-btn");
