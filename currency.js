@@ -9,10 +9,39 @@
 // which keeps the conversion "dynamic" (tracks real-world rate movement)
 // without hammering the endpoint.
 
-const RATES_API_URL = "https://open.er-api.com/v6/latest/USD";
 const RATES_CACHE_KEY = "tabs_exchange_rates_v1";
 const SELECTED_CURRENCY_KEY = "tabs_selected_currency";
 const REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+// Live exchange-rate sources, tried in order. Both are free, no-API-key,
+// CORS-enabled, and USD-based. Using more than one means a single provider
+// being down / rate-limited / blocked no longer breaks conversion (which
+// previously left every amount showing its raw USD figure under a different
+// currency symbol — i.e. "the amount didn't convert"). Each source's parse()
+// normalizes the provider's shape into { base, rates: { CODE: number } }.
+const RATES_SOURCES = [
+  {
+    url: "https://open.er-api.com/v6/latest/USD",
+    parse: (data) => {
+      if (!data || data.result !== "success" || !data.rates) return null;
+      return { base: data.base_code || "USD", rates: data.rates };
+    },
+  },
+  {
+    // fawazahmed0 currency-api, served from the jsDelivr CDN. Shape is
+    // { date, usd: { eur: 0.92, ... } } with lowercase codes.
+    url: "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.min.json",
+    parse: (data) => {
+      const table = data && data.usd;
+      if (!table || typeof table !== "object") return null;
+      const rates = {};
+      for (const [code, value] of Object.entries(table)) {
+        rates[code.toUpperCase()] = value;
+      }
+      return { base: "USD", rates };
+    },
+  },
+];
 
 // Curated list of world currencies with display names + symbols. Any
 // currency code the rates API returns can still be converted even if it
@@ -111,6 +140,24 @@ export function getRates() {
   return cachedState?.rates || null;
 }
 
+// Tries each live source in order and returns the first that yields a
+// usable rate table ({ base, rates }), or null if they all fail.
+async function fetchRatesFromSources() {
+  for (const source of RATES_SOURCES) {
+    try {
+      const response = await fetch(source.url);
+      if (!response.ok) continue;
+      const parsed = source.parse(await response.json());
+      if (parsed && parsed.rates && Object.keys(parsed.rates).length) {
+        return parsed;
+      }
+    } catch (error) {
+      console.warn(`⚠️ Rate source failed (${source.url}):`, error);
+    }
+  }
+  return null;
+}
+
 // Fetches live rates if the cache is missing/stale, otherwise resolves
 // immediately with the cached rates. Safe to call as often as needed —
 // concurrent callers share one in-flight request.
@@ -127,17 +174,11 @@ export async function fetchExchangeRates() {
 
   inFlightFetch = (async () => {
     try {
-      const response = await fetch(RATES_API_URL);
-      if (!response.ok) throw new Error(`Rates request failed: ${response.status}`);
-      const data = await response.json();
-      if (data.result !== "success" || !data.rates) {
-        throw new Error("Rates response missing data");
-      }
-      cachedState = {
-        base: data.base_code || "USD",
-        rates: data.rates,
-        fetchedAt: Date.now(),
-      };
+      const fetched = await fetchRatesFromSources();
+      if (!fetched) throw new Error("All rate sources failed");
+      // USD is the base, so it must always be 1 even if a source omits it.
+      if (fetched.rates.USD == null) fetched.rates.USD = 1;
+      cachedState = { ...fetched, fetchedAt: Date.now() };
       writeCache(cachedState);
       return cachedState.rates;
     } catch (error) {
