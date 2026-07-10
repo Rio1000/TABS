@@ -2286,6 +2286,9 @@ export async function sendFriendRequest(friendUserId, friendData) {
   addNotification(friendUserId, {
     type: "friend-request",
     message: `${myProfile.firstName} ${myProfile.lastName} sent you a friend request`,
+    // Carried so the recipient can accept straight from the notification —
+    // it points at users/{recipient}/pendingRequests/{fromUserId}.
+    fromUserId: currentUserId,
   });
   updatePendingCount();
 }
@@ -2793,6 +2796,46 @@ function renderNotifications() {
       li.appendChild(textBtn);
     }
 
+    // Friend requests get Accept / Decline buttons so the request can be
+    // handled right from the notification, without opening Friends → Pending.
+    // Hidden once resolved (notif.accepted / notif.declined) so they don't
+    // linger.
+    if (notif.type === "friend-request" && !notif.accepted && !notif.declined) {
+      const acceptBtn = document.createElement("button");
+      acceptBtn.classList.add("notification-action", "accept");
+      acceptBtn.textContent = "Accept";
+
+      const declineBtn = document.createElement("button");
+      declineBtn.classList.add("notification-action", "decline");
+      declineBtn.textContent = "Decline";
+
+      acceptBtn.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        acceptBtn.disabled = true;
+        declineBtn.disabled = true;
+        const ok = await acceptFriendRequestFromNotification(key, notif);
+        // On failure, re-enable so the user can retry (on success the list
+        // re-renders without these buttons anyway).
+        if (!ok) {
+          acceptBtn.disabled = false;
+          declineBtn.disabled = false;
+        }
+      });
+      declineBtn.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        acceptBtn.disabled = true;
+        declineBtn.disabled = true;
+        const ok = await declineFriendRequestFromNotification(key, notif);
+        if (!ok) {
+          acceptBtn.disabled = false;
+          declineBtn.disabled = false;
+        }
+      });
+
+      li.appendChild(acceptBtn);
+      li.appendChild(declineBtn);
+    }
+
     li.addEventListener("click", () => {
       if (!notif.read) {
         update(ref(database, `users/${currentUser.uid}/notifications/${key}`), {
@@ -2803,6 +2846,137 @@ function renderNotifications() {
 
     list.appendChild(li);
   });
+}
+
+// Accept a friend request straight from its notification. Resolves the still-
+// pending request (by the sender uid the notification carries, or — for older
+// notifications that predate that field — by matching the sender's name in the
+// message), reuses the normal approveFriendRequest flow, then marks the
+// notification accepted so its button disappears.
+async function acceptFriendRequestFromNotification(notifKey, notif) {
+  if (!currentUser) return;
+  try {
+    const pendingSnap = await get(
+      ref(database, `users/${currentUser.uid}/pendingRequests`)
+    );
+    const pending = pendingSnap.exists() ? pendingSnap.val() : {};
+
+    let senderUid = null;
+    if (
+      notif.fromUserId &&
+      pending[notif.fromUserId] &&
+      pending[notif.fromUserId].type !== "accepted"
+    ) {
+      senderUid = notif.fromUserId;
+    } else {
+      const match = Object.entries(pending).find(
+        ([, r]) =>
+          r.type !== "accepted" &&
+          notif.message &&
+          notif.message.includes(`${r.firstName} ${r.lastName}`)
+      );
+      if (match) senderUid = match[0];
+    }
+
+    const request = senderUid ? pending[senderUid] : null;
+    if (!request) {
+      // Already accepted/rejected elsewhere, or withdrawn — nothing to do but
+      // tidy up the notification so its button goes away.
+      showToast("This friend request is no longer pending.", "info");
+      await update(
+        ref(database, `users/${currentUser.uid}/notifications/${notifKey}`),
+        { read: true, accepted: true }
+      );
+      return true;
+    }
+
+    // requestId is the pendingRequests key = the sender's uid, matching how
+    // the Pending list calls approveFriendRequest.
+    await approveFriendRequest(senderUid, request);
+
+    await update(
+      ref(database, `users/${currentUser.uid}/notifications/${notifKey}`),
+      {
+        read: true,
+        accepted: true,
+        message: `You are now friends with ${request.firstName} ${request.lastName}`,
+      }
+    );
+    return true;
+  } catch (error) {
+    console.error("❌ Error accepting request from notification:", error);
+    showToast("Could not accept the request.", "error");
+    return false;
+  }
+}
+
+// Decline a friend request straight from its notification. Resolves the still-
+// pending request the same way as accept, removes it from both sides (our
+// pendingRequests and the sender's sentRequests, mirroring the Pending list's
+// reject), then marks the notification declined so its buttons disappear.
+async function declineFriendRequestFromNotification(notifKey, notif) {
+  if (!currentUser) return false;
+  try {
+    const pendingSnap = await get(
+      ref(database, `users/${currentUser.uid}/pendingRequests`)
+    );
+    const pending = pendingSnap.exists() ? pendingSnap.val() : {};
+
+    let senderUid = null;
+    if (
+      notif.fromUserId &&
+      pending[notif.fromUserId] &&
+      pending[notif.fromUserId].type !== "accepted"
+    ) {
+      senderUid = notif.fromUserId;
+    } else {
+      const match = Object.entries(pending).find(
+        ([, r]) =>
+          r.type !== "accepted" &&
+          notif.message &&
+          notif.message.includes(`${r.firstName} ${r.lastName}`)
+      );
+      if (match) senderUid = match[0];
+    }
+
+    const request = senderUid ? pending[senderUid] : null;
+    if (!request) {
+      showToast("This friend request is no longer pending.", "info");
+      await update(
+        ref(database, `users/${currentUser.uid}/notifications/${notifKey}`),
+        { read: true, declined: true }
+      );
+      return true;
+    }
+
+    await Promise.all([
+      remove(
+        ref(database, `users/${currentUser.uid}/pendingRequests/${senderUid}`)
+      ),
+      // Also clear it from the sender's sentRequests, otherwise they'd see
+      // "request sent" forever with no way to know it was declined.
+      remove(ref(database, `users/${senderUid}/sentRequests/${currentUser.uid}`)),
+    ]);
+
+    await update(
+      ref(database, `users/${currentUser.uid}/notifications/${notifKey}`),
+      {
+        read: true,
+        declined: true,
+        message: `You declined ${request.firstName} ${request.lastName}'s friend request`,
+      }
+    );
+
+    showToast("Request declined.", "info");
+    // Keep the Pending list / counts in step if they're open.
+    loadFriendRequests();
+    updatePendingCount();
+    return true;
+  } catch (error) {
+    console.error("❌ Error declining request from notification:", error);
+    showToast("Could not decline the request.", "error");
+    return false;
+  }
 }
 
 document.getElementById("notificationsBtn").addEventListener("click", () => {
