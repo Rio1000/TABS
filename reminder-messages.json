@@ -1,27 +1,34 @@
 {
   "_comment": "Witty, Duolingo-style payment reminders sent when the user taps 'Send SMS Now'. Placeholders {name} (recipient's first name) and {amount} (e.g. $12.50) are filled in at send time. Keep them light and friendly.",
   "messages": [
-    "Hey {name}, your {amount} tab misses you. Reunite them? 🥹",
+    "Hey {name}, your {amount} tab misses you. Pay It? Now? 🥹",
     "{name}, this is your {amount} speaking. I want to go home. 🏠",
-    "Knock knock. Who's there? Your {amount}. Pay up, {name}. 👀",
-    "{name}, the owl knows you owe {amount}. The owl always knows. 🦉",
+    "Knock knock. Who's there? Your {amount} debt. Pay up {name}, Or else . 👀",
+    "{name}, I know you owe {amount}. Don't make me blow you up 💣",
     "Friendly reminder, {name}: {amount}. Emphasis on 'friendly'… for now. 😊",
     "{name}, {amount} isn't going to pay itself. Believe me, I asked. 💸",
-    "Roses are red, violets are blue, you owe {amount}, {name}, and it's due. 🌹",
-    "{name}! Long time no pay. It's {amount}, in case you forgot. 😌",
+    "GIVE ME MY {amount}, {name}, PLEASE. 🌹",
     "Your {amount} tab has been waiting so patiently, {name}. Don't test its patience. ⏳",
-    "Just me, or does {amount} feel like a lot to still owe, {name}? 👉👈",
+    "Is it just me, or does {amount} feel like a lot to still owe, {name}? 👉👈",
     "{name}, settling your {amount} would really make my day. And my week. 💚",
     "Breaking news: {name} still owes {amount}. More at 11. 📺",
     "The people demand justice. And by justice I mean your {amount}, {name}. ⚖️",
-    "{name}, I'm not mad about the {amount}. Just disappointed. 🦉",
-    "Ding! Your {amount} reminder has arrived, {name}. No refunds on guilt. 🔔",
+    "{name}, I'm not mad about the {amount}. Just disappointed. 😔",
+    "Hey. {amount} please {name}. Before they bring out the pitchforks. 🔱",
     "Hey {name}, quick math: you − {amount} = us even. Let's do the math. 🧮",
     "{name}, that {amount} could be in my account right now. Just saying. 🤲",
     "It's been a minute, {name}. The {amount} remembers. 🕰️",
-    "Consider this your gentle nudge, {name}. The {amount} nudge. 👉",
-    "{name}, paying {amount} now unlocks the achievement: 'Good Friend'. 🏆",
-    "No pressure {name}, but {amount} and I are a package deal now. 💍",
-    "{name}, streak reminder: 0 days since you paid me {amount}. Let's fix that. 🔥"
+    "{name}, paying {amount} now unlocks the achievement: 'Not A Freeloader'. 🏆",
+    "No pressure {name}, but {amount} and I are a package deal now and I would like him back. 💍",
+    "Hey {name}, I want hotdogs and that {amount} would be great. 🏡",
+    "Hey {name}, Im not a detective but it looks like {amount} might be missing from my account. Could I have it back? 🥺",
+    "Hey {name}, {amount} would be great. 🙏",
+    "Ok {name} empty the piggy bank, I want my {amount} 🐷",
+    "What happened to the good times me, you, and {amount} had together? I miss those days. 🥲",
+    "Remember how we did that one thing that one time {name}? Yeah, that was fun. Haha. I need my {amount} back. Now. 😅",
+    "Hey {name} could I get the time? Maybe also my {amount} back? ⏰",
+    ""
+
   ]
 }
+

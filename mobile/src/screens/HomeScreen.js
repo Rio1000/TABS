@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -10,6 +11,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { usePeopleList } from "../lib/usePeopleList";
+import { CURRENCIES, useCurrency } from "../lib/currency";
 import PersonRow from "../components/PersonRow";
 import PersonActionModal from "../components/PersonActionModal";
 import ModalCard from "../components/ModalCard";
@@ -17,15 +19,13 @@ import Button from "../components/Button";
 import TextField from "../components/TextField";
 import { colors, spacing } from "../theme";
 
-const CURRENCIES = { USD: "$", EUR: "€", GBP: "£", JPY: "¥" };
-
 export default function HomeScreen() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const { people, loading, addPerson, removePerson, updatePerson, clearAll } =
     usePeopleList(user?.uid);
 
-  const [currency, setCurrency] = useState("USD");
+  const { currency, setCurrency, symbol, toDisplay, toUsd } = useCurrency();
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [addVisible, setAddVisible] = useState(false);
   const [clearVisible, setClearVisible] = useState(false);
@@ -43,7 +43,12 @@ export default function HomeScreen() {
       showToast("Amount cannot be empty", "error");
       return;
     }
-    addPerson(name.trim(), amount.trim());
+    // amount was typed in the currently selected display currency —
+    // usePeopleList/Firebase stores everything in USD, so convert it here.
+    const trimmed = amount.trim();
+    const numeric = parseFloat(trimmed);
+    const canonicalAmount = isNaN(numeric) ? trimmed : toUsd(numeric);
+    addPerson(name.trim(), canonicalAmount);
     setName("");
     setAmount("");
     setAddVisible(false);
@@ -57,8 +62,12 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.currencyRow}>
-        {Object.keys(CURRENCIES).map((code) => (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.currencyRow}
+      >
+        {CURRENCIES.map(({ code }) => (
           <TouchableOpacity
             key={code}
             onPress={() => setCurrency(code)}
@@ -69,7 +78,7 @@ export default function HomeScreen() {
             </Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       {loading ? (
         <ActivityIndicator style={{ marginTop: spacing.lg }} color={colors.accent} />
@@ -81,7 +90,8 @@ export default function HomeScreen() {
           renderItem={({ item, index }) => (
             <PersonRow
               person={item}
-              currencySymbol={CURRENCIES[currency]}
+              currencySymbol={symbol}
+              toDisplay={toDisplay}
               onPress={() => setSelectedIndex(index)}
             />
           )}
@@ -104,6 +114,9 @@ export default function HomeScreen() {
       <PersonActionModal
         visible={selectedIndex !== null}
         person={selectedPerson}
+        currencySymbol={symbol}
+        toDisplay={toDisplay}
+        toUsd={toUsd}
         onClose={() => setSelectedIndex(null)}
         onUpdate={(updates) => updatePerson(selectedIndex, updates)}
         onRemove={() => {
@@ -114,7 +127,11 @@ export default function HomeScreen() {
 
       <ModalCard visible={addVisible} onRequestClose={() => setAddVisible(false)} title="Add Person">
         <TextField placeholder="Name" value={name} onChangeText={setName} autoFocus />
-        <TextField placeholder="Amount/Item" value={amount} onChangeText={setAmount} />
+        <TextField
+          placeholder={`Amount (${symbol})/Item`}
+          value={amount}
+          onChangeText={setAmount}
+        />
         <Button title="Add" onPress={submitAdd} />
         <Button
           title="Cancel"
