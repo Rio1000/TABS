@@ -36,6 +36,8 @@ body {
   font-size: 50px;
   z-index: 901;
   transition: 0.3s;
+  text-decoration: underline;
+  color: #a0e8f3;
 }
 
 /* Container Styles */
@@ -123,7 +125,7 @@ body {
   align-items: flex-start;
   width: 85%;
   padding: 10px;
-  margin: 10px;
+  margin: auto;
   background-color: transparent;
 }
 
@@ -193,9 +195,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #3c94e7;
+  background-color: #3c94e74f;
+  border-color: #3c94e7 !important;
+  border-width: 1px !important;
   color: #fff;
-  border: none;
+  border: solid;
   border-radius: 10px;
   font-size: 16px;
   cursor: pointer;
@@ -357,6 +361,19 @@ button:hover {
   text-align: center;
   justify-content: center;
 }
+#add-person-btn{
+  border-right-style:solid !important;
+  border-right-width: 1px !important;
+  border-right-color: rgba(80, 202, 211, 0.22) !important;
+}
+#clear-list-btn{
+  border-left-style:solid !important;
+  border-left-width: 1px !important;
+  border-left-color: rgba(80, 202, 211, 0.22) !important;
+}
+
+
+
 
 .sidenav {
   margin-top: 10px;
@@ -425,11 +442,10 @@ button:hover {
   justify-content: center;
   text-align: center;
   color: #e6e6e6;
-  border-style: hidden;
+  border-style: solid;
   border-top-left-radius: 10px;
   border-bottom-left-radius: 10px;
   font-weight: bold;
-  border: 18px;
   opacity: 0.8;
   padding: 20px;
   top: 18px;
@@ -440,8 +456,10 @@ button:hover {
   z-index: 99;
   width: 20px;
   height: 20px;
-  background-color: #37adc791;
-    box-shadow: #023030c4 0px 0px 10px 0px;
+  background-color: #009eb663;
+  border-color: #2ea5b8 !important;
+  border-width: 1px;
+  box-shadow: #023030c4 0px 0px 10px 0px;
 
 }
 
@@ -541,15 +559,18 @@ button:hover {
 }
 
 #feedback {
-  border: 1px solid #33852572;
-  background-color: #286418b0;
+  border: 1px solid #47813d72;
+  background-color: #486241b0;
   color: #bfecbb;
 }
 #inviteToTabsBtn{
   border: 1px solid #cfaf9372;
   background-color: #917558b0;
   color: #eccebb;
-  width: 90.5%;
+  width: 226px;
+  overflow-x: hidden;
+  text-wrap: none;
+  height: 49px;
 }
 #notificationsBtn {
   border: 1px solid #7a92ff72;
@@ -633,15 +654,17 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #6da765;
-  color: #fff;
-  border: none;
+  border-color: #6da765 !important;
+  background-color: #6da7654d;
+  border: solid;
   border-radius: 10px;
+  border-width: 1px;
   font-size: 16px;
   cursor: pointer;
   text-decoration: none;
   font-weight: bold;
   padding: 0;
+  margin-top: 5px;
 }
 
 #more-btn {
@@ -725,6 +748,7 @@ input {
   align-self: flex-end; /* Push the box itself to the right */
   gap: 8px;
   position: relative;
+  padding: 2px;
 }
 .extra-info-box > button,
 .extra-info-box > a {
@@ -1557,13 +1581,15 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #2faea1;
+  border-color: #50c9bd !important;
+  background-color: #2faea159;
   color: #fff;
-  border: none;
+  border: solid;
   border-radius: 10px;
   font-size: 16px;
   cursor: pointer;
   padding: 0;
+  border-width: 1px;
 }
 
 .sms-remind-btn .material-icons {
@@ -1578,9 +1604,11 @@ input {
   height: 30px;
   align-items: center;
   justify-content: center;
-  background-color: #3d8a4f;
+  background-color: #3d8a4f63;
+  border-color: #3d8a4f !important;
   color: #fff;
-  border: none;
+  border: solid;
+  border-width: 1px;
   border-radius: 10px;
   font-size: 16px;
   cursor: pointer;
