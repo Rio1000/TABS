@@ -89,8 +89,9 @@ body {
 }
 
 #Ads {
-  background-color: salmon;
-  color: #2b2b2b;
+  border: 1px solid #ff808072;
+  background-color: #775152b0;
+  color: #e4dcbf;
 }
 
 .login-input {
@@ -126,7 +127,7 @@ body {
   align-items: flex-start;
   width: 85%;
   padding: 10px;
-  margin: 10px;
+  margin: auto;
   background-color: transparent;
 }
 
@@ -520,29 +521,40 @@ button:hover {
 }
 
 #Login {
-  background-color: #1f4a5a;
+  border-color: #1f4a5a;
+
   color: #7fbac5;
 }
 
 #logout-btn {
-  background-color: #1f4a5a;
+  border-color: #1f4a5a;
   color: #7fbac5;
 }
 
 
 #Profile {
-  background-color: #7fbac5;
-  color: #1f4a5a;
+  border: 1px solid #5bc5c772;
+  background-color: #1F5C61b0;
+  color: #bbebec;
+
 }
 
 #FriendsTab {
-  background-color: #a8a39d;
-  color: #2b2b2b;
+  border: 1px solid #fff7b172;
+  background-color: #7B7A69b0;
+  color: #e4dcbf;
 }
 
 #feedback {
-  background-color: #5d9450;
-  color: #172022;
+  border: 1px solid #33852572;
+  background-color: #286418b0;
+  color: #bfecbb;
+}
+#inviteToTabsBtn{
+  border: 1px solid #cfaf9372;
+  background-color: #917558b0;
+  color: #eccebb;
+  width: 90.5%;
 }
 
 #closeButton {
@@ -1090,17 +1102,18 @@ input {
   transition: 1s;
   width: 90%;
   text-indent: 5px;
+  
 }
 
 .modal button,
 #currency-select {
   margin: 10px;
   padding: 10px;
-  border: none;
   border-radius: 5px;
   cursor: pointer;
-  background-color: #4c7faf;
-}
+  border: 1px solid #8968ba72;
+  background-color: #7c5ea74d;
+  color: #d5bbec;}
 
 .button-container {
   display: flex;
@@ -1208,7 +1221,6 @@ input {
 #anotherSurprize,
 #addFriendBtn,
 #addFriendBtn2,
-#inviteToTabsBtn,
 #pendingRequestsBtn,
 #close-delete-account,
 #PayMyTuition,
@@ -1377,10 +1389,9 @@ input {
    Friends/Login styling; the folder open button carries the unread count so
    it's visible without opening the menu. */
 #notificationsBtn {
-  background-color: #4c98af;
-  color: #061e22;
-  align-items: center;
-  justify-content: space-between;
+  border: 1px solid #7a92ff72;
+  background-color: #534F7Eb0;
+  color: #bfc5e4;
 }
 
 /* Count badge sitting on the folder button itself. Anchored to the top-LEFT
