@@ -531,18 +531,28 @@ button:hover {
 
 
 #Profile {
-  background-color: #7fbac5;
-  color: #1f4a5a;
+  border: 1px solid #5bc5c772;
+  background-color: #1F5C61b0;
+  color: #bbebec;
+
 }
 
 #FriendsTab {
-  background-color: #a8a39d;
-  color: #2b2b2b;
+  border: 1px solid #fff7b172;
+  background-color: #7B7A69b0;
+  color: #e4dcbf;
 }
 
 #feedback {
-  background-color: #5d9450;
-  color: #172022;
+  border: 1px solid #33852572;
+  background-color: #286418b0;
+  color: #bfecbb;
+}
+#inviteToTabsBtn{
+  border: 1px solid #cfaf9372;
+  background-color: #917558b0;
+  color: #eccebb;
+  width: 90.5%;
 }
 
 #closeButton {
@@ -1208,7 +1218,6 @@ input {
 #anotherSurprize,
 #addFriendBtn,
 #addFriendBtn2,
-#inviteToTabsBtn,
 #pendingRequestsBtn,
 #close-delete-account,
 #PayMyTuition,
