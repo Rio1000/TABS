@@ -837,31 +837,33 @@ input {
 @keyframes modalCardIn {
   from {
     opacity: 0;
-    transform: translateY(26px) scale(0.94);
+    transform: translateY(120px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
 @keyframes modalCardOut {
   from {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
   to {
     opacity: 0;
-    transform: translateY(18px) scale(0.94);
+    transform: translateY(120px);
   }
 }
 
+/* Each modal card slides up from the bottom (bottom-sheet feel) as the
+   blurred backdrop fades in behind it. */
 .modal-fx > * {
-  animation: modalCardIn 0.28s cubic-bezier(0.22, 1.1, 0.36, 1);
+  animation: modalCardIn 0.34s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .modal-fx.modal-fx-closing > * {
-  animation: modalCardOut 0.18s ease forwards;
+  animation: modalCardOut 0.22s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
 /* Swapping directly from one modal to another (login → signup, tab modal →
@@ -2846,3 +2848,238 @@ body.payments-enabled .pay-request-btn {
   letter-spacing: 0.2px;
   color: rgb(226, 245, 246);
 }
+
+
+/* =====================================================================
+   Bottom action dock — Add / Clear as Google-style tabs
+   -------------------------------------------------------------------
+   A persistent bar pinned to the bottom. Pressing Add or Clear slides a
+   teal sheet up out of the bar to reveal that tab's content (add-person
+   inputs, or the clear confirmation) plus a close button, and dims/blurs
+   the app behind it. The two act like tabs: pressing one while the
+   other's sheet is open switches panes and slides the indicator across.
+   ===================================================================== */
+
+/* Blurred dim behind the sheet while it's open. */
+#action-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 30, 34, 0.45);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 850;
+}
+body.action-open #action-backdrop {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* The dock spans the bottom but only its bar/sheet capture clicks, so the
+   list stays interactive around them. */
+#action-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+#action-dock > * {
+  pointer-events: auto;
+}
+
+/* Collapsible sheet — grows upward out of the bar. */
+#action-sheet {
+  position: relative;
+  width: min(520px, 94vw);
+  box-sizing: border-box;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  padding: 0 22px;
+  background: linear-gradient(150deg, #05434c 0%, #022a30 100%);
+  border: 1px solid rgba(80, 202, 211, 0.22);
+  border-bottom: none;
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
+  transition: max-height 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.24s ease, padding 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+#action-sheet[data-open="add"],
+#action-sheet[data-open="clear"] {
+  max-height: 72vh;
+  opacity: 1;
+  padding: 48px 22px 22px;
+  overflow-y: auto;
+}
+
+#action-sheet-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(80, 202, 211, 0.16);
+  color: #cfeff2;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+#action-sheet-close:hover {
+  background: rgba(80, 202, 211, 0.32);
+}
+
+/* Panes — only the active one shows, with a small enter animation. */
+.action-pane {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+#action-sheet[data-open="add"] #action-pane-add,
+#action-sheet[data-open="clear"] #action-pane-clear {
+  display: flex;
+  animation: actionPaneIn 0.28s ease;
+}
+@keyframes actionPaneIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#action-pane-add input {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(80, 202, 211, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f1f1f1;
+  font-size: 16px;
+}
+#action-pane-add input::placeholder { color: #9fc2c6; }
+#action-pane-add #add {
+  width: 100%;
+  margin: 4px 0 0;
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid rgba(80, 202, 211, 0.7);
+  background: rgba(80, 202, 211, 0.18);
+  color: #dff6f7;
+  font-weight: 700;
+  font-size: 17px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+#action-pane-add #add:hover { background: rgba(80, 202, 211, 0.32); }
+
+#action-pane-clear {
+  align-items: center;
+  text-align: center;
+}
+#action-pane-clear #clear-list-prompt {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 600;
+}
+#action-pane-clear #clearListBtn {
+  width: 100%;
+  margin: 0;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: #c0504d;
+  color: #fff;
+  font-weight: 700;
+  font-size: 17px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+#action-pane-clear #clearListBtn:hover { background: #a83f3c; }
+
+/* The tab bar itself. Overrides the earlier mobile/desktop #buttons rules
+   (appended later ⇒ wins). */
+#action-dock #buttons {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  width: min(520px, 94vw);
+  box-sizing: border-box;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  background: linear-gradient(150deg, #05434c 0%, #022a30 100%);
+  border: 1px solid rgba(80, 202, 211, 0.22);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  transition: border-radius 0.2s ease;
+}
+#action-dock #buttons.sheet-open {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top: none;
+}
+#action-dock #add-person-btn,
+#action-dock #clear-list-btn {
+  flex: 1 1 50%;
+  width: auto;
+  min-height: 56px;
+  margin: 0;
+  padding: 16px 10px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: #bfe0e4;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+#action-dock #add-person-btn:hover,
+#action-dock #clear-list-btn:hover {
+  background: rgba(80, 202, 211, 0.08);
+}
+#buttons.active-add #add-person-btn,
+#buttons.active-clear #clear-list-btn {
+  color: #ffffff;
+  background: rgba(80, 202, 211, 0.14);
+}
+
+/* Sliding Google-style active indicator. */
+#tab-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  height: 3px;
+  background: #50cad3;
+  border-radius: 3px 3px 0 0;
+  opacity: 0;
+  transform: translateX(0);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  pointer-events: none;
+}
+#buttons.active-add #tab-indicator { opacity: 1; transform: translateX(0); }
+#buttons.active-clear #tab-indicator { opacity: 1; transform: translateX(100%); }
+
+/* Keep the last list rows clear of the pinned bar. */
+.personlist { padding-bottom: 96px; }
