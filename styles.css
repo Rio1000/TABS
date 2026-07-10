@@ -545,6 +545,15 @@ button:hover {
 }
 
 
+#currency-select {
+  margin: 10px;
+  padding: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  border: 1px solid #8968ba72;
+  background-color: #7c5ea74d;
+  color: #d5bbec;}
+
 #Profile {
   border: 1px solid #5bc5c772;
   background-color: #1F5C61b0;
@@ -553,35 +562,31 @@ button:hover {
 }
 
 #FriendsTab {
-  border: 1px solid #5bc5c772;
-  background-color: #1F5C61b0;
-  color: #bbebec;
+  border: 1px solid #fff7b172;
+  background-color: #7B7A69b0;
+  color: #e4dcbf;
 }
 
 #feedback {
-  border: 1px solid #5bc5c772;
-  background-color: #1F5C61b0;
-  color: #bbebec;
+  border: 1px solid #5a795472;
+  background-color: #416836b0;
+  color: #bfecbb;
 }
 #inviteToTabsBtn{
-  border: 1px solid #5bc5c772;
-  background-color: #1F5C61b0;
-  color: #bbebec;
-  width: 226px;
-  overflow-x: hidden;
-  text-wrap: none;
-  height: 49px;
+  border: 1px solid #cfaf9372;
+  background-color: #917558b0;
+  color: #eccebb;
+  width: 90.5%;
 }
 #notificationsBtn {
-  border: 1px solid #5bc5c772;
-  background-color: #1F5C61b0;
-  color: #bbebec;
+  border: 1px solid #7a92ff72;
+  background-color: #534F7Eb0;
+  color: #bfc5e4;
 }
-
 #Ads {
-  border: 1px solid #5bc5c772;
-  background-color: #1F5C61b0;
-  color: #bbebec;
+  border: 1px solid #ff808072;
+  background-color: #775152b0;
+  color: #e4dcbf;
 }
 #closeButton {
   margin-top: 30px;
@@ -598,7 +603,7 @@ button:hover {
   z-index: 96 !important;
   display: flex;
   transition: 1s;
-  background-color: #1F5C61b0;
+  background-color: #611f1fb0;
   width: 90%;
   border-top-left-radius: 10px;
   border-bottom-left-radius: 10px;
@@ -2970,7 +2975,7 @@ body.action-open #action-backdrop {
   margin: 0;
   padding: 0;
   border: none;
-  border-radius: 50%;
+  border-radius: 8px;
   background: rgba(224, 90, 86, 0.9);
   color: #fff4f3;
   font-size: 15px;
