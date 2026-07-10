@@ -3086,41 +3086,98 @@ body.action-open #action-backdrop {
 
 
 /* =====================================================================
-   Unified translucent button styling
+   Unified translucent button styling  (pastel-by-position edition)
    -------------------------------------------------------------------
-   Every button now wears the desktop "Add person" look — a translucent
-   teal fill with a teal outline and light-teal text — at ALL screen
-   sizes. The small card icon buttons (✓ / ⋯ / pay / sms), the Add/Clear
-   dock tabs, the sidenav invite, and the round/emoji icon buttons keep
-   their own design (they're not text buttons). Destructive actions
-   (Clear / Delete / Decline) and the positive Accept action get
-   translucent red / green variants so they still read correctly while
-   matching the look. Excluded buttons aren't matched by the neutral rule
-   below, so there's no specificity tug-of-war. */
-button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(.accept):not(.decline),
+   Every text button AND link (the Profile tabs, the Close link, etc.) —
+   everything except the sidenav — wears the desktop "Add person" look: a
+   translucent fill, a matching outline, and light text. The exact hue is
+   driven by two CSS custom properties, --btn-accent (an "R, G, B" triplet)
+   and --btn-text, which CASCADE. :root sets the default teal; each modal /
+   screen below re-declares --btn-accent to a different pastel, so buttons
+   are tinted by WHERE they live while sharing one translucent language —
+   the profile screen reads indigo, the person sheet peach, the edit
+   dialogs butter, and so on, but they're all obviously the same family.
+
+   Negative / destructive actions (Delete, Remove, Clear) ignore the
+   positional pastel and always use the red --btn-danger hue so "this is
+   dangerous" reads the same everywhere; the positive Accept action stays
+   green. The small card icon buttons (✓ / ⋯ / pay / sms), the Add/Clear
+   dock tabs, the emoji back arrows, and the sidenav keep their own designs
+   (they're icons/tab bars, not text buttons) — they're excluded from the
+   neutral rule below so there's no specificity tug-of-war, and they already
+   sit on the shared teal. */
+:root {
+  --btn-accent: 80, 202, 211;        /* teal — the default / anchor hue   */
+  --btn-text: 194, 233, 232;         /* light text that sits on the fill  */
+  --btn-danger: 224, 90, 86;         /* red — destructive, position-proof */
+  --btn-danger-text: 246, 205, 203;
+  --btn-positive: 120, 190, 110;     /* green — Accept                    */
+  --btn-positive-text: 208, 236, 202;
+}
+
+/* Pastel accents by position. --btn-accent inherits, so declaring it on a
+   container automatically tints every neutral button and link inside it. */
+#Loginpage              { --btn-accent: 122, 162, 247; --btn-text: 214, 224, 252; } /* periwinkle */
+#signupPage             { --btn-accent: 183, 148, 244; --btn-text: 228, 216, 251; } /* lavender   */
+#customModal            { --btn-accent: 240, 172, 120; --btn-text: 250, 226, 208; } /* peach      */
+#friendModal,
+#addFriendModal,
+#pendingRequestsModal,
+#RFModal                { --btn-accent: 116, 196, 224; --btn-text: 210, 236, 246; } /* sky        */
+#editMoneyModal,
+#editNameModal,
+#editItemModal,
+#add-extra-info-modal,
+#editExtraInfoModal      { --btn-accent: 224, 196, 120; --btn-text: 247, 236, 206; } /* butter     */
+#ProfileModal,
+#delete-account-modal,
+#AccountHistoryModal,
+#clearAccountHistoryModal { --btn-accent: 150, 166, 236; --btn-text: 222, 226, 250; } /* indigo   */
+#notificationsModal,
+#notificationSettingsModal { --btn-accent: 196, 158, 232; --btn-text: 234, 221, 247; } /* lilac  */
+#paymentSettingsModal,
+#paymentRequestModal,
+#smsReminderModal        { --btn-accent: 110, 204, 196; --btn-text: 206, 241, 236; } /* aqua-mint */
+#adsModal                { --btn-accent: 232, 158, 180; --btn-text: 248, 222, 230; } /* rose      */
+
+button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(#confirmClearHistory):not(.accept):not(.decline),
+#profileInfo,
+#profileStats,
+#profileAccount,
+#closeProfile,
 .btn {
-  background-color: rgba(80, 202, 211, 0.16) !important;
-  border: 2px solid rgba(80, 202, 211, 0.7) !important;
-  color: rgb(194, 233, 232) !important;
+  background-color: rgba(var(--btn-accent), 0.16) !important;
+  border: 2px solid rgba(var(--btn-accent), 0.7) !important;
+  color: rgb(var(--btn-text)) !important;
   border-radius: 12px !important;
   transition: background-color 0.2s ease, transform 0.15s ease,
     box-shadow 0.2s ease, border-color 0.2s ease !important;
 }
-button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(.accept):not(.decline):hover,
+button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(#confirmClearHistory):not(.accept):not(.decline):hover,
+#profileInfo:hover,
+#profileStats:hover,
+#profileAccount:hover,
+#closeProfile:hover,
 .btn:hover {
-  background-color: rgba(80, 202, 211, 0.3) !important;
+  background-color: rgba(var(--btn-accent), 0.3) !important;
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
-/* Destructive actions — same translucent treatment, red hue. */
+/* Destructive / negative actions — same translucent treatment, red hue,
+   regardless of which positional pastel they sit in. */
 #clearListBtn,
 #delete-account,
 #delete-account-btn,
+#remove-money-btn,
+#removeFriendBtn,
+#clearNotificationsBtn,
+#clearAccountHistory,
+#confirmClearHistory,
 .notification-action.decline {
-  background-color: rgba(192, 80, 77, 0.2) !important;
-  border: 2px solid rgba(224, 90, 86, 0.78) !important;
-  color: rgb(246, 205, 203) !important;
+  background-color: rgba(var(--btn-danger), 0.2) !important;
+  border: 2px solid rgba(var(--btn-danger), 0.85) !important;
+  color: rgb(var(--btn-danger-text)) !important;
   border-radius: 12px !important;
   transition: background-color 0.2s ease, transform 0.15s ease,
     box-shadow 0.2s ease !important;
@@ -3128,23 +3185,28 @@ button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request
 #clearListBtn:hover,
 #delete-account:hover,
 #delete-account-btn:hover,
+#remove-money-btn:hover,
+#removeFriendBtn:hover,
+#clearNotificationsBtn:hover,
+#clearAccountHistory:hover,
+#confirmClearHistory:hover,
 .notification-action.decline:hover {
-  background-color: rgba(192, 80, 77, 0.36) !important;
+  background-color: rgba(var(--btn-danger), 0.36) !important;
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
 /* Positive action (Accept a friend request) — translucent green. */
 .notification-action.accept {
-  background-color: rgba(109, 167, 101, 0.22) !important;
-  border: 2px solid rgba(120, 190, 110, 0.82) !important;
-  color: rgb(208, 236, 202) !important;
+  background-color: rgba(var(--btn-positive), 0.22) !important;
+  border: 2px solid rgba(var(--btn-positive), 0.82) !important;
+  color: rgb(var(--btn-positive-text)) !important;
   border-radius: 12px !important;
   transition: background-color 0.2s ease, transform 0.15s ease,
     box-shadow 0.2s ease !important;
 }
 .notification-action.accept:hover {
-  background-color: rgba(109, 167, 101, 0.38) !important;
+  background-color: rgba(var(--btn-positive), 0.38) !important;
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
