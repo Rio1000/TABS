@@ -2747,3 +2747,102 @@ body.payments-enabled .pay-request-btn {
     min-height: 50px;
   }
 }
+
+
+/* =====================================================================
+   Unified modal / popup skin
+   -------------------------------------------------------------------
+   Every pop-up card now wears the same look as the person-list items:
+   a dark-teal gradient, a cyan hairline border, rounded corners and a
+   soft shadow — so every little screen in the app feels like one system.
+   Each modal keeps its own layout (flex/grid, sizing, positioning); this
+   only restyles the surface. Appended last so it wins by source order;
+   !important is used because the boxes set their backgrounds at a mix of
+   specificities and we want one consistent surface across all of them.
+   ===================================================================== */
+#loginorsignupbox,
+.login-content,
+#add-person-box,
+.modal-content,
+#AccountHistoryBox,
+#clearAccountHistoryBox,
+#delete-account-box,
+#clear-list-box,
+#notificationsBox,
+#notificationSettingsBox,
+#paymentSettingsBox,
+#paymentRequestBox,
+#smsReminderBox,
+.friend-content,
+#ProfileBox,
+#addFriendBox,
+#pendingRequestsBox,
+#editinffoBox,
+#adsBox,
+#editMoneyAdd,
+#editMoneyRemove,
+#add-extra-info-box,
+#editNameBox,
+#interest-container,
+#friendInputBox {
+  background: linear-gradient(150deg, #05434c 0%, #022a30 100%) !important;
+  border: 1px solid rgba(80, 202, 211, 0.22) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* These confirm/entry dialogs previously had no card of their own (they
+   were bare wrappers over the blurred backdrop). Now that they carry the
+   shared surface, give them consistent dialog sizing and padding so they
+   read as proper cards like the rest. */
+#delete-account-box,
+#clear-list-box,
+#addFriendBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 26px 24px;
+  width: min(360px, 88vw);
+  box-sizing: border-box;
+}
+#pendingRequestsBox,
+#editinffoBox,
+#adsBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 26px 24px;
+  width: min(460px, 92vw);
+  box-sizing: border-box;
+}
+/* Their inner content should span the card width so inputs/lists/buttons
+   don't collapse to their intrinsic size inside the newly-sized card. */
+#delete-account-box > div,
+#clear-list-box > div,
+#addFriendBox > div,
+#addFriendBox input,
+#editinffoBox textarea,
+#pendingRequestsBox ul {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Consistent modal headings across every pop-up, so the type feels like
+   one family too. */
+.login-content h2,
+#ProfileBox h2,
+#AccountHistoryBox h2,
+#notificationsBox h2,
+#notificationSettingsBox h2,
+#paymentSettingsBox h2,
+#paymentRequestBox h2,
+#smsReminderBox h2,
+#editinffoBox h2 {
+  margin-top: 0;
+  margin-bottom: 4px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: rgb(226, 245, 246);
+}
