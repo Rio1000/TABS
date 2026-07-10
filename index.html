@@ -89,35 +89,24 @@
             </div>
         </div>
 
-        <!-- Bottom action dock: the Add / Clear tab bar, plus a sheet that
-             slides up out of the bar to reveal the active tab's content
-             (the add-person inputs, or the clear-list confirmation). A
-             blurred backdrop dims the app behind the sheet while it's open.
-             Add / Clear behave like Google-style tabs — pressing one while
-             the other's sheet is open switches to it. -->
-        <div id="action-backdrop"></div>
-        <div id="action-dock" class="hidden">
-            <div id="action-sheet" data-open="none">
-                <button id="action-sheet-close" title="Close" aria-label="Close">✕</button>
-
-                <div class="action-pane" id="action-pane-add">
-                    <input id="name-input" type="text" placeholder="Name" required />
-                    <input id="money-input" type="text" inputmode="decimal" placeholder="Amount ($)" />
-                    <input id="item-input" type="text" placeholder="Item (optional)" />
+        <!-- Kept as a direct child of .container (not .personlist): .personlist's
+             mask-image creates its own stacking context, which trapped this modal
+             below sibling elements like #buttons regardless of its z-index. -->
+        <div id="add-person-box-modal" class="modal-fx">
+            <div id="add-person-box">
+                <input id="name-input" type="text" placeholder="Name" required />
+                <input id="money-input" type="text" inputmode="decimal" placeholder="Amount ($)" />
+                <input id="item-input" type="text" placeholder="Item (optional)" />
+                <div>
                     <button id="add">Add</button>
-                </div>
-
-                <div class="action-pane" id="action-pane-clear">
-                    <p id="clear-list-prompt">Clear the whole list?</p>
-                    <button id="clearListBtn">Clear the list</button>
+                    <button id="cancel">Cancel</button>
                 </div>
             </div>
+        </div>
 
-            <div id="buttons" class="hidden">
-                <button id="add-person-btn">Add</button>
-                <button id="clear-list-btn">Clear</button>
-                <span id="tab-indicator" aria-hidden="true"></span>
-            </div>
+        <div id="buttons" class="hidden">
+            <button id="add-person-btn">Add</button>
+            <button id="clear-list-btn">Clear</button>
         </div>
 
 
@@ -402,6 +391,15 @@
                 <div id="clearAccountHistoryButtons">
                     <button id="cancelClearHistory">No</button>
                     <button id="confirmClearHistory">Yes</button>
+                </div>
+            </div>
+        </div>
+        <div class="modal modal-fx" id="clear-list-modal">
+            <div id="clear-list-box">
+                <div>
+                    <p id="clear-list-prompt">Are you sure you want to clear the list?</p>
+                    <button id="clearListBtn">Clear</button>
+                    <button id="clear-list-cancel">Cancel</button>
                 </div>
             </div>
         </div>
