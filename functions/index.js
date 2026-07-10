@@ -13,7 +13,6 @@
 // US numbers) A2P 10DLC registration. See SETUP.md.
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { onValueCreated } = require("firebase-functions/v2/database");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const twilio = require("twilio");
@@ -312,62 +311,94 @@ exports.disableAccount = onCall(async (request) => {
   }
 });
 
-// Push notifications for friend requests — both directions — driven off the
-// database instead of the client, so they fire even when the recipient's app
-// is closed (a client can't push to someone who isn't looking at the app).
+// Push notifications for friend requests — both directions. Implemented as a
+// callable the client invokes right after it writes the request / acceptance,
+// rather than a database trigger: a trigger would be this project's first
+// event-driven function and needs Eventarc/Pub-Sub/Run IAM bindings the CI
+// deploy service account can't grant, whereas callables need none of that.
 //
-// Both events are writes into a user's pendingRequests, so one create-trigger
-// covers both:
-//   • A brand-new incoming request  -> users/{recipient}/pendingRequests/{sender}
-//     (written by sendFriendRequest) — notify the recipient.
-//   • An acceptance marker          -> users/{sender}/pendingRequests/{accepter}
-//     with type:"accepted" (written by approveFriendRequest) — notify the
-//     original sender that their request was accepted.
-//
-// The node key is the OTHER user's uid and the value carries their name, so no
-// extra profile reads are needed. The in-app notification is still written
+// The person taking the action (sending or accepting) is by definition online,
+// so they can make this call — and it reaches the OTHER user's devices even
+// when that user is offline. The in-app notification is still written
 // client-side (addNotification); this only adds the device push on top.
-exports.onFriendRequestPush = onValueCreated(
-  "/users/{uid}/pendingRequests/{fromUid}",
-  async (event) => {
-    const targetUid = event.params.uid; // whose pendingRequests received this
-    const req = event.data.val();
-    if (!req || typeof req !== "object") return;
-
-    const db = admin.database();
-
-    // Respect the recipient's notification preferences (Manage Notifications →
-    // master switch + "Friend activity"). Defaults match the client: on.
-    const prefsSnap = await db
-      .ref(`users/${targetUid}/settings/notifications`)
-      .get();
-    const prefs = prefsSnap.val() || {};
-    if (prefs.enabled === false || prefs.friends === false) return;
-
-    const name =
-      [req.firstName, req.lastName].filter(Boolean).join(" ").trim() ||
-      "Someone";
-
-    let type, title, body;
-    if (req.type === "accepted") {
-      type = "friend-accept";
-      title = "Friend request accepted";
-      body = `${name} accepted your friend request!`;
-    } else {
-      type = "friend-request";
-      title = "New friend request";
-      body = `${name} sent you a friend request`;
-    }
-
-    const result = await deliverPushToUser(db, targetUid, {
-      title,
-      body,
-      data: { type, fromUid: req.fromUserId || event.params.fromUid },
-    });
-
-    logger.info(
-      `Friend push (${type}) to ${targetUid}: ` +
-        `${result.successCount}/${result.totalTokens} delivered`
-    );
+//
+// kind:
+//   "request" -> caller sent a friend request; notify the recipient (toUid).
+//   "accept"  -> caller accepted toUid's request; notify the original sender.
+// Each is verified against the DB the caller just wrote, so a caller can't push
+// to an arbitrary uid they happen to know.
+exports.sendFriendEventPush = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "You must be signed in.");
   }
-);
+  const callerUid = request.auth.uid;
+  const toUid = String(request.data?.toUid || "").trim();
+  const kind = String(request.data?.kind || "").trim();
+  if (!toUid) {
+    throw new HttpsError("invalid-argument", "Missing toUid.");
+  }
+  if (kind !== "request" && kind !== "accept") {
+    throw new HttpsError("invalid-argument", "Invalid kind.");
+  }
+
+  const db = admin.database();
+
+  // Verify the caller actually performed the action they're notifying about.
+  if (kind === "request") {
+    // The request the caller sent lives in the recipient's pendingRequests.
+    const snap = await db
+      .ref(`users/${toUid}/pendingRequests/${callerUid}`)
+      .get();
+    if (!snap.exists() || snap.val()?.type === "accepted") {
+      throw new HttpsError("permission-denied", "No matching friend request.");
+    }
+  } else {
+    // The caller accepted toUid's request, so they're now friends on the
+    // caller's own side (an index only the caller can write).
+    const snap = await db
+      .ref(`users/${callerUid}/friendUids/${toUid}`)
+      .get();
+    if (!snap.exists()) {
+      throw new HttpsError("permission-denied", "Not friends with that user.");
+    }
+  }
+
+  // Respect the recipient's notification preferences (Manage Notifications →
+  // master switch + "Friend activity"). Defaults match the client: on.
+  const prefsSnap = await db.ref(`users/${toUid}/settings/notifications`).get();
+  const prefs = prefsSnap.val() || {};
+  if (prefs.enabled === false || prefs.friends === false) {
+    return { delivered: false, reason: "muted", successCount: 0 };
+  }
+
+  const cpSnap = await db.ref(`users/${callerUid}/profile`).get();
+  const cp = cpSnap.val() || {};
+  const name =
+    [cp.firstName, cp.lastName].filter(Boolean).join(" ").trim() || "Someone";
+
+  const title =
+    kind === "request" ? "New friend request" : "Friend request accepted";
+  const body =
+    kind === "request"
+      ? `${name} sent you a friend request`
+      : `${name} accepted your friend request!`;
+
+  const result = await deliverPushToUser(db, toUid, {
+    title,
+    body,
+    data: {
+      type: kind === "request" ? "friend-request" : "friend-accept",
+      fromUid: callerUid,
+    },
+  });
+
+  logger.info(
+    `Friend push (${kind}) ${callerUid} -> ${toUid}: ` +
+      `${result.successCount}/${result.totalTokens} delivered`
+  );
+  return {
+    delivered: result.delivered,
+    successCount: result.successCount,
+    reason: result.reason,
+  };
+});

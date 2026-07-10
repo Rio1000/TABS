@@ -89,6 +89,21 @@ const sendReminderSmsFn = httpsCallable(functionsClient, "sendReminderSms");
 // friend's device via Firebase Cloud Messaging — free, no carrier, no spam
 // flagging. This is what the reminder buttons use now instead of Twilio/SMS.
 const sendReminderPushFn = httpsCallable(functionsClient, "sendReminderPush");
+// Callable that pushes a friend-request / request-accepted notification to the
+// other user's devices (see functions/index.js). Called right after the
+// request/acceptance is written; best-effort, so a failure never blocks the
+// action (the in-app notification still lands regardless).
+const sendFriendEventPushFn = httpsCallable(functionsClient, "sendFriendEventPush");
+async function pushFriendEvent(toUid, kind) {
+  if (!toUid) return;
+  try {
+    await sendFriendEventPushFn({ toUid, kind });
+  } catch (error) {
+    // Not deployed yet, muted, or a transient error — the in-app notification
+    // already covers the user, so just log and move on.
+    console.warn(`Friend-event push (${kind}) skipped:`, error?.code || error);
+  }
+}
 // Server-side account management (Admin SDK) — see functions/index.js. These
 // actually remove/disable the Firebase Auth record, which the browser SDK
 // can't do reliably (delete needs a recent login; disable is admin-only).
@@ -2290,6 +2305,8 @@ export async function sendFriendRequest(friendUserId, friendData) {
     // it points at users/{recipient}/pendingRequests/{fromUserId}.
     fromUserId: currentUserId,
   });
+  // Also push it to their device(s), so they see it even with the app closed.
+  pushFriendEvent(friendUserId, "request");
   updatePendingCount();
 }
 
@@ -2439,6 +2456,9 @@ async function approveFriendRequest(requestId, request) {
       type: "friend-accept",
       message: `${currentProfile.firstName} ${currentProfile.lastName} accepted your friend request!`,
     });
+    // And push it to their device(s) — reaches them even with the app closed.
+    // (friendUids was written above, which the callable verifies.)
+    pushFriendEvent(request.fromUserId, "accept");
 
     showToast(
       `${request.firstName} has been added to your friends list!`,
