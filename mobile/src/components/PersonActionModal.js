@@ -8,7 +8,16 @@ import { useToast } from "../context/ToastContext";
 
 const PERIODS = ["weekly", "monthly", "quarterly", "yearly"];
 
-export default function PersonActionModal({ visible, person, onClose, onUpdate, onRemove }) {
+export default function PersonActionModal({
+  visible,
+  person,
+  currencySymbol = "$",
+  toDisplay = (v) => v,
+  toUsd = (v) => v,
+  onClose,
+  onUpdate,
+  onRemove,
+}) {
   const { showToast } = useToast();
   const [subModal, setSubModal] = useState(null); // 'addMoney' | 'removeMoney' | 'editName' | 'editItem' | 'addInfo' | 'interest' | null
   const [inputValue, setInputValue] = useState("");
@@ -37,9 +46,11 @@ export default function PersonActionModal({ visible, person, onClose, onUpdate, 
       showToast("Please enter a valid amount.", "error");
       return;
     }
+    // amount was typed in the currently selected display currency — convert
+    // it to USD before combining with the canonical (USD) stored amount.
     const current = typeof person.amount === "number" ? person.amount : 0;
-    onUpdate({ amount: current + amount });
-    showToast(`Added $${amount.toFixed(2)} to ${person.name}.`);
+    onUpdate({ amount: current + toUsd(amount) });
+    showToast(`Added ${currencySymbol}${amount.toFixed(2)} to ${person.name}.`);
     closeSub();
   };
 
@@ -49,9 +60,11 @@ export default function PersonActionModal({ visible, person, onClose, onUpdate, 
       showToast("Please enter a valid amount.", "error");
       return;
     }
+    // amount was typed in the currently selected display currency — convert
+    // it to USD before combining with the canonical (USD) stored amount.
     const current = typeof person.amount === "number" ? person.amount : 0;
-    onUpdate({ amount: Math.max(0, current - amount) });
-    showToast(`Removed $${amount.toFixed(2)} from ${person.name}.`);
+    onUpdate({ amount: Math.max(0, current - toUsd(amount)) });
+    showToast(`Removed ${currencySymbol}${amount.toFixed(2)} from ${person.name}.`);
     closeSub();
   };
 

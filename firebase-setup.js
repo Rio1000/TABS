@@ -37,6 +37,16 @@ import {
   isSupported as isMessagingSupported,
 } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-messaging.js";
 
+import {
+  CURRENCIES,
+  getSymbol,
+  getSelectedCurrency,
+  setSelectedCurrency,
+  fetchExchangeRates,
+  usdToDisplay,
+  displayToUsd,
+} from "./currency.js";
+
 // Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyA93Cfu5ehpOeZMCBKtiTvw1kJZZU_EvkE",
@@ -322,24 +332,97 @@ const closePrompt = document.getElementById("close-prompt");
 const removeMoneyBtn = document.getElementById("remove-money-btn");
 const RFModal2 = document.getElementById("RFModal");
 
-// Currency handling — a single delegated listener updates every rendered
-// row instead of each person-row registering its own "change" listener
-// (which used to leak a new listener per person on every add/reload).
-const currencySymbols = {
-  USD: "$",
-  EUR: "€",
-  GBP: "£",
-  JPY: "¥",
-};
+// Currency handling — amounts are always stored in Firebase in USD (the
+// app's base currency); everything below converts that canonical amount to
+// whichever currency is selected here for display, using live exchange
+// rates (see currency.js). A single delegated listener updates every
+// rendered row instead of each person-row registering its own "change"
+// listener (which used to leak a new listener per person on every add/reload).
 const currencySelectEl = document.getElementById("currency-select");
-currencySelectEl.addEventListener("change", () => {
-  const symbol = currencySymbols[currencySelectEl.value];
+
+function populateCurrencySelect() {
+  currencySelectEl.innerHTML = "";
+  CURRENCIES.forEach(({ code, name }) => {
+    const option = document.createElement("option");
+    option.value = code;
+    option.textContent = `${code} - ${name}`;
+    currencySelectEl.appendChild(option);
+  });
+  currencySelectEl.value = getSelectedCurrency();
+}
+populateCurrencySelect();
+
+// Re-derives the displayed text of one amount span from its canonical USD
+// value (amountSpan.value) in the currently selected currency. Non-numeric
+// spans (an "item" description typed in instead of a dollar figure) are
+// left untouched — there's nothing to convert.
+function renderAmountDisplay(amountSpan) {
+  const numeric = parseFloat(amountSpan.value);
+  if (isNaN(numeric)) {
+    amountSpan.textContent = amountSpan.value;
+  } else {
+    amountSpan.textContent = usdToDisplay(numeric).toFixed(2);
+  }
+}
+
+// Latest snapshot of people data, kept up to date by the peopleList
+// onValue listener below — re-used here so switching currency can
+// recompute the totals without another Firebase read.
+let latestPeopleData = [];
+
+function renderTotals() {
+  const totalSpendingEl = document.getElementById("total-spending");
+  const amountSpentEl = document.getElementById("amount-spent");
+  const amountEarnedEl = document.getElementById("amount-earned");
+  const symbol = getSymbol(getSelectedCurrency());
+
+  let amountSpent = 0;
+  let amountEarned = 0;
+  latestPeopleData.forEach((person) => {
+    if (person.status === "iOwe" && typeof person.amount === "number") {
+      amountSpent += person.amount;
+    } else if (person.status === "owesMe" && typeof person.amount === "number") {
+      amountEarned += person.amount;
+    }
+  });
+
+  if (totalSpendingEl) {
+    totalSpendingEl.innerText = `Total Spent: ${symbol}${usdToDisplay(amountSpent + amountEarned).toFixed(2)}`;
+  }
+  if (amountSpentEl) {
+    amountSpentEl.innerText = `Amount Spent: ${symbol}${usdToDisplay(amountSpent).toFixed(2)}`;
+  }
+  if (amountEarnedEl) {
+    amountEarnedEl.innerText = `Amount Earned: ${symbol}${usdToDisplay(amountEarned).toFixed(2)}`;
+  }
+}
+
+// Called on init (once rates first load) and every time the user picks a
+// new currency — updates every symbol/label on screen and actually
+// recomputes every displayed amount, instead of just swapping the symbol.
+function refreshCurrencyDisplay() {
+  const symbol = getSymbol(getSelectedCurrency());
   document.querySelectorAll(".dollar-sign").forEach((el) => {
     el.textContent = symbol;
   });
   addMoreMoneyBtn.innerHTML = `+ ${symbol}`;
   removeMoneyBtn.innerHTML = `- ${symbol}`;
+  const moneyInput = document.getElementById("money-input");
+  if (moneyInput) moneyInput.placeholder = `Amount (${symbol})`;
+  document.querySelectorAll(".amount-input").forEach(renderAmountDisplay);
+  renderTotals();
+}
+
+currencySelectEl.addEventListener("change", () => {
+  setSelectedCurrency(currencySelectEl.value);
+  refreshCurrencyDisplay();
 });
+
+// Fetch live rates as soon as the page loads (independent of auth) so
+// they're ready by the time anything renders; also keeps them fresh if the
+// tab is left open across the refresh interval.
+fetchExchangeRates().then(() => refreshCurrencyDisplay());
+
 // Function to show the modal
 
 // Auth State Listener
@@ -362,6 +445,11 @@ onAuthStateChanged(auth, async (user) => {
 
     logoutButton.style.display = "block";
     loginSignup.style.display = "none";
+
+    // Make sure live exchange rates are loaded before anything renders —
+    // otherwise the first paint would show raw USD amounts under whatever
+    // currency symbol is selected, then jump once rates arrive.
+    await fetchExchangeRates();
 
     // Settle accrued interest before rendering the list, so the amounts
     // shown on load already reflect it instead of needing a second refresh.
@@ -412,9 +500,6 @@ onAuthStateChanged(auth, async (user) => {
     });
 
 
-    const totalSpendingEl = document.getElementById("total-spending");
-    const amountSpentEl = document.getElementById("amount-spent");
-    const amountEarnedEl = document.getElementById("amount-earned");
     const totalFriendsEl = document.getElementById("total-friends");
     const lastLoginEl = document.getElementById("last-login");
     const createdEl = document.getElementById("account-created");
@@ -422,27 +507,8 @@ onAuthStateChanged(auth, async (user) => {
     const peopleListRef = ref(database, `users/${user.uid}/peopleList`);
     if (peopleListUnsub) peopleListUnsub();
     peopleListUnsub = onValue(peopleListRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const peopleData = snapshot.val().peopleData || [];
-        let amountSpent = 0;
-        let amountEarned = 0;
-
-        peopleData.forEach((person) => {
-          if (person.status === "iOwe" && typeof person.amount === 'number') {
-            amountSpent += person.amount;
-          } else if (person.status === "owesMe" && typeof person.amount === 'number') {
-            amountEarned += person.amount;
-          }
-        });
-
-        if (totalSpendingEl) totalSpendingEl.innerText = `Total Spent: $${(amountSpent + amountEarned).toFixed(2)}`;
-        if (amountSpentEl) amountSpentEl.innerText = `Amount Spent: $${amountSpent.toFixed(2)}`;
-        if (amountEarnedEl) amountEarnedEl.innerText = `Amount Earned: $${amountEarned.toFixed(2)}`;
-      } else {
-        if (totalSpendingEl) totalSpendingEl.innerText = `Total Spent: $0.00`;
-        if (amountSpentEl) amountSpentEl.innerText = `Amount Spent: $0.00`;
-        if (amountEarnedEl) amountEarnedEl.innerText = `Amount Earned: $0.00`;
-      }
+      latestPeopleData = snapshot.exists() ? snapshot.val().peopleData || [] : [];
+      renderTotals();
     });
 
     const friendsRef = ref(database, `users/${user.uid}/friendsList`);
@@ -740,7 +806,10 @@ async function saveListToFirebase() {
       return;
     }
     const name = item.querySelector(".name-span").textContent;
-    const rawAmount = item.querySelector(".amount-input").textContent.trim();
+    // .value (not .textContent) holds the canonical USD amount — .textContent
+    // is just its converted display in whatever currency is selected.
+    const amountValue = item.querySelector(".amount-input").value;
+    const rawAmount = typeof amountValue === "string" ? amountValue.trim() : amountValue;
     const amount = isNaN(rawAmount) || rawAmount === "" ? rawAmount : parseFloat(rawAmount);
     const status = item.getAttribute("data-status") || "neutral"; // Get status
     const interest = JSON.parse(item.dataset.interest);
@@ -1056,14 +1125,17 @@ function addPerson(
   amountContainer.classList.add("amount-container");
 
   const dollarSpan = document.createElement("span");
-  dollarSpan.textContent = currencySymbols[document.getElementById("currency-select").value];
+  dollarSpan.textContent = getSymbol(getSelectedCurrency());
   dollarSpan.classList.add("dollar-sign");
 
   const amountSpan = document.createElement("span");
   amountSpan.classList.add("amount-input");
   amountSpan.style.color = "rgb(73, 255, 97)";
+  // amount (and amountSpan.value) is always the canonical USD figure —
+  // what's shown in .textContent is that value converted to the currently
+  // selected display currency.
   if (!isNaN(amount)) {
-    amountSpan.textContent = parseFloat(amount).toFixed(2);
+    amountSpan.textContent = usdToDisplay(parseFloat(amount)).toFixed(2);
     amountContainer.appendChild(dollarSpan);
   } else {
     amountSpan.textContent = amount;
@@ -1494,8 +1566,8 @@ function updateInterest() {
   if (!isNaN(currentAmount)) {
     const settled = computeAccruedAmount(currentAmount, oldInterest);
     if (settled.amount !== currentAmount) {
-      amountSpan.textContent = settled.amount.toFixed(2);
-      amountSpan.value = settled.amount.toFixed(2);
+      amountSpan.textContent = usdToDisplay(settled.amount).toFixed(2);
+      amountSpan.value = settled.amount;
     }
   }
 
@@ -1608,18 +1680,21 @@ document
       return;
     }
 
+    // amountToAdd was typed in the currently selected display currency —
+    // convert it to USD before combining with the canonical amount.
     const amountSpan = currentListItem.querySelector(".amount-input");
     const currentAmount = parseFloat(amountSpan.value) || 0;
-    const newAmount = currentAmount + amountToAdd;
+    const newAmount = currentAmount + displayToUsd(amountToAdd);
+    const symbol = getSymbol(getSelectedCurrency());
 
-    amountSpan.value = newAmount.toFixed(2);
-    amountSpan.innerHTML = newAmount.toFixed(2);
+    amountSpan.value = newAmount;
+    amountSpan.innerHTML = usdToDisplay(newAmount).toFixed(2);
     saveListToFirebase();
     showToast(
-      `Added $${amountToAdd.toFixed(2)} to ${currentListItem.querySelector(".name-span").textContent
+      `Added ${symbol}${amountToAdd.toFixed(2)} to ${currentListItem.querySelector(".name-span").textContent
       }.`
     );
-    logUserAction(`Added $${amountToAdd.toFixed(2)} to ${currentListItem.querySelector(".name-span").textContent}`);
+    logUserAction(`Added ${symbol}${amountToAdd.toFixed(2)} to ${currentListItem.querySelector(".name-span").textContent}`);
 
     closeEditMoneyModal();
   });
@@ -1637,18 +1712,21 @@ document
       return;
     }
 
+    // amountToRemove was typed in the currently selected display currency —
+    // convert it to USD before combining with the canonical amount.
     const amountSpan = currentListItem.querySelector(".amount-input");
     const currentAmount = parseFloat(amountSpan.value) || 0;
-    const newAmount = Math.max(0, currentAmount - amountToRemove);
+    const newAmount = Math.max(0, currentAmount - displayToUsd(amountToRemove));
+    const symbol = getSymbol(getSelectedCurrency());
 
-    amountSpan.value = newAmount.toFixed(2);
-    amountSpan.innerHTML = newAmount.toFixed(2);
+    amountSpan.value = newAmount;
+    amountSpan.innerHTML = usdToDisplay(newAmount).toFixed(2);
     saveListToFirebase();
     showToast(
-      `Removed $${amountToRemove.toFixed(2)} from ${currentListItem.querySelector(".name-span").textContent
+      `Removed ${symbol}${amountToRemove.toFixed(2)} from ${currentListItem.querySelector(".name-span").textContent
       }.`
     );
-    logUserAction(`Removed $${amountToRemove.toFixed(2)} from ${currentListItem.querySelector(".name-span").textContent}`);
+    logUserAction(`Removed ${symbol}${amountToRemove.toFixed(2)} from ${currentListItem.querySelector(".name-span").textContent}`);
 
     closeEditMoneyModal();
   });
@@ -1891,7 +1969,9 @@ document.getElementById("add").addEventListener("click", () => {
   //  - money only  -> amount shows normally (with the currency sign)
   //  - item only   -> the item text takes the amount slot, as before
   //  - both         -> money shows as the amount, item goes in as an info row
-  const amount = hasMoney ? parseFloat(moneyRaw) : itemRaw;
+  // moneyRaw was typed in the currently selected display currency —
+  // addPerson expects a canonical USD amount, so convert it here.
+  const amount = hasMoney ? displayToUsd(parseFloat(moneyRaw)) : itemRaw;
   const extraInfo = hasMoney && itemRaw ? [{ text: itemRaw }] : [];
 
   addPerson(name, amount, extraInfo, undefined, false, true);
@@ -2866,7 +2946,7 @@ async function openPaymentRequestModal(listItem) {
 
   document.getElementById("paymentRequestTitle").textContent = `Request from ${name}`;
   document.getElementById("paymentRequestSubtitle").textContent = amountValid
-    ? `They owe you $${amount.toFixed(2)}`
+    ? `They owe you ${getSymbol(getSelectedCurrency())}${amount.toFixed(2)}`
     : "Choose how to request payment";
 
   const optionsEl = document.getElementById("paymentRequestOptions");
@@ -2992,7 +3072,7 @@ function buildReminderMessage(name, amountText) {
   // Auto-reminders don't carry a dollar amount, so fall back to a phrase that
   // still reads naturally in every template.
   const owed = !isNaN(amount)
-    ? `$${amount.toFixed(2)}`
+    ? `${getSymbol(getSelectedCurrency())}${amount.toFixed(2)}`
     : (amountText && String(amountText).trim() ? amountText : "what you owe");
   const template =
     reminderMessages[Math.floor(Math.random() * reminderMessages.length)];
@@ -3080,7 +3160,7 @@ async function openSmsReminderModal(listItem) {
 
   document.getElementById("smsReminderTitle").textContent = `Remind ${name}`;
   document.getElementById("smsReminderSubtitle").textContent = !isNaN(parseFloat(amountText))
-    ? `They owe you $${parseFloat(amountText).toFixed(2)}`
+    ? `They owe you ${getSymbol(getSelectedCurrency())}${parseFloat(amountText).toFixed(2)}`
     : `They owe you: ${amountText}`;
 
   currentReminderTarget = { name, amountText, friendUserId: null, phone: null };
@@ -3244,7 +3324,7 @@ async function checkAutoReminders() {
         phone: reminder.phone ?? null,
         smsBody: buildReminderMessage(
           reminder.friendName,
-          owedAmount != null ? String(owedAmount) : ""
+          owedAmount != null ? String(usdToDisplay(owedAmount)) : ""
         ),
       });
       await update(

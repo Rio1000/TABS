@@ -7,9 +7,10 @@ const STATUS_COLOR = {
   iOwe: colors.iOwe,
 };
 
-export default function PersonRow({ person, currencySymbol, onPress }) {
+export default function PersonRow({ person, currencySymbol, toDisplay, onPress }) {
   const amountIsNumber = typeof person.amount === "number" && !isNaN(person.amount);
   const amountColor = STATUS_COLOR[person.status] || colors.text;
+  const displayAmount = amountIsNumber ? toDisplay(person.amount) : person.amount;
 
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
@@ -18,7 +19,7 @@ export default function PersonRow({ person, currencySymbol, onPress }) {
           {person.name}
         </Text>
         <Text style={[styles.amount, { color: amountColor }]} numberOfLines={1}>
-          {amountIsNumber ? `${currencySymbol}${person.amount.toFixed(2)}` : String(person.amount)}
+          {amountIsNumber ? `${currencySymbol}${displayAmount.toFixed(2)}` : String(person.amount)}
         </Text>
       </View>
 
