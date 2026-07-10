@@ -1116,7 +1116,9 @@ input {
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  background-color: #4c7faf;
+  border: 1px solid #8968ba72;
+  background-color: #7c5ea74d;
+  color: #d5bbec;
 }
 
 .button-container {
