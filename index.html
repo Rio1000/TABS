@@ -89,24 +89,32 @@
             </div>
         </div>
 
-        <!-- Kept as a direct child of .container (not .personlist): .personlist's
-             mask-image creates its own stacking context, which trapped this modal
-             below sibling elements like #buttons regardless of its z-index. -->
-        <div id="add-person-box-modal" class="modal-fx">
-            <div id="add-person-box">
-                <input id="name-input" type="text" placeholder="Name" required />
-                <input id="money-input" type="text" inputmode="decimal" placeholder="Amount ($)" />
-                <input id="item-input" type="text" placeholder="Item (optional)" />
-                <div>
-                    <button id="add">Add</button>
-                    <button id="cancel">Cancel</button>
-                </div>
-            </div>
-        </div>
-
+        <!-- Add/Clear action bar. The Add and Clear buttons behave like
+             Google Material tabs: pressing one slides the bar up to reveal that
+             panel's contents plus a Close button; pressing the other while the
+             bar is open switches panels (with a sliding indicator) instead of
+             opening a separate modal. -->
         <div id="buttons" class="hidden">
-            <button id="add-person-btn">Add</button>
-            <button id="clear-list-btn">Clear</button>
+            <div id="action-panel">
+                <div id="action-panes">
+                    <div id="add-pane" class="action-pane">
+                        <input id="name-input" type="text" placeholder="Name" required />
+                        <input id="money-input" type="text" inputmode="decimal" placeholder="Amount ($)" />
+                        <input id="item-input" type="text" placeholder="Item (optional)" />
+                        <button id="add">Add</button>
+                    </div>
+                    <div id="clear-pane" class="action-pane">
+                        <p id="clear-list-prompt">Are you sure you want to clear the list?</p>
+                        <button id="clearListBtn">Clear</button>
+                    </div>
+                </div>
+                <button id="action-close">Close</button>
+            </div>
+            <div id="action-tabs">
+                <button id="add-person-btn">Add</button>
+                <button id="clear-list-btn">Clear</button>
+                <span id="action-tab-indicator"></span>
+            </div>
         </div>
 
 
@@ -391,15 +399,6 @@
                 <div id="clearAccountHistoryButtons">
                     <button id="cancelClearHistory">No</button>
                     <button id="confirmClearHistory">Yes</button>
-                </div>
-            </div>
-        </div>
-        <div class="modal modal-fx" id="clear-list-modal">
-            <div id="clear-list-box">
-                <div>
-                    <p id="clear-list-prompt">Are you sure you want to clear the list?</p>
-                    <button id="clearListBtn">Clear</button>
-                    <button id="clear-list-cancel">Cancel</button>
                 </div>
             </div>
         </div>

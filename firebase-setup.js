@@ -1955,9 +1955,8 @@ document.getElementById("closeEditinffo").addEventListener("click", () => {
   extraInfoElement = null; // clear reference after editing});
 });
 
-addPersonBtn.addEventListener("click", () => {
-  document.getElementById("add-person-box-modal").style.display = "flex";
-});
+// The Add button now acts as a tab that expands the inline action panel
+// (wired up in script.js), so it no longer opens a separate modal here.
 document.getElementById("add").addEventListener("click", () => {
   const nameInput = document.getElementById("name-input");
   const moneyInput = document.getElementById("money-input");
@@ -2001,25 +2000,15 @@ document.getElementById("add").addEventListener("click", () => {
   itemInput.value = "";
   logUserAction(`Added a tab for: ${name}`);
 
-  document.getElementById("add-person-box-modal").style.display = "none";
-});
-
-document.getElementById("cancel").addEventListener("click", () => {
-  document.getElementById("add-person-box-modal").style.display = "none";
+  // Collapse the inline action panel now that the tab was added.
+  if (window.closeActionPanel) window.closeActionPanel();
 });
 
 // Load list when page loads
 document.addEventListener("DOMContentLoaded", loadListFromFirebase);
 
-document.getElementById("clear-list-btn").addEventListener("click", () => {
-  document.getElementById("clear-list-modal").style.display = "flex";
-});
-
-
-document.getElementById("clear-list-cancel").addEventListener("click", () => {
-  document.getElementById("clear-list-modal").style.display = "none";
-})
-
+// The Clear button is likewise a tab that expands the inline action panel
+// (see script.js); its confirm button (#clearListBtn) still does the work.
 
 const clearListBtn = document.getElementById("clearListBtn");
 clearListBtn.addEventListener("click", async () => {
@@ -2031,7 +2020,7 @@ clearListBtn.addEventListener("click", async () => {
     saveListToFirebase();
     await logUserAction("Cleared people list");
     showToast("People list cleared successfully.", "success");
-    document.getElementById("clear-list-modal").style.display = "none";
+    if (window.closeActionPanel) window.closeActionPanel();
 
   }
 });

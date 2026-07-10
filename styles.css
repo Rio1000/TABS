@@ -1,3 +1,13 @@
+:root {
+  /* Shared translucent "glass" button finish. Mirrors the airy, see-through
+     look the modal action buttons had at >600px, but now used everywhere and
+     at every screen size. Teal for normal/affirmative actions, red for
+     destructive/close actions. */
+  --glass-teal: rgba(80, 202, 211, 0.42);
+  --glass-teal-strong: rgba(80, 202, 211, 0.62);
+  --glass-red: rgba(211, 80, 80, 0.5);
+}
+
 html,
 body {
   scroll-behavior: smooth;
@@ -319,6 +329,10 @@ button,
   transition: 0.3s;
   margin-left: auto;
   margin-right: auto;
+  /* Shared glass finish so translucent teal/red buttons frost whatever sits
+     behind them, matching the airy look the modal buttons had at >600px. */
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
 }
 
 button:active,
@@ -837,7 +851,9 @@ input {
 @keyframes modalCardIn {
   from {
     opacity: 0;
-    transform: translateY(26px) scale(0.94);
+    /* Slide the card up from well below so every modal reads as a sheet
+       rising from the bottom of the screen. */
+    transform: translateY(90px) scale(0.98);
   }
   to {
     opacity: 1;
@@ -852,12 +868,12 @@ input {
   }
   to {
     opacity: 0;
-    transform: translateY(18px) scale(0.94);
+    transform: translateY(70px) scale(0.98);
   }
 }
 
 .modal-fx > * {
-  animation: modalCardIn 0.28s cubic-bezier(0.22, 1.1, 0.36, 1);
+  animation: modalCardIn 0.34s cubic-bezier(0.22, 1.1, 0.36, 1);
 }
 
 .modal-fx.modal-fx-closing > * {
@@ -1097,7 +1113,9 @@ input {
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  background-color: #4c7faf;
+  background-color: var(--glass-teal);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
 }
 
 .button-container {
@@ -1177,7 +1195,7 @@ input {
 #closeNotificationSettings,
 #closeSmsReminder,
 #close-interest {
-  background-color: rgba(211, 80, 80, 0.8);
+  background-color: var(--glass-red);
   border: 2px solid transparent;
   color: rgb(194, 233, 232);
   font-size: 20px;
@@ -1186,8 +1204,10 @@ input {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   cursor: pointer;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   max-height: 50px;
-  
+
 }
 
 #add-more-money-btn,
@@ -1221,7 +1241,7 @@ input {
   text-align: center;
   justify-content: center;
   margin-top: 10px;
-  background-color: rgba(56, 138, 147, 0.686);
+  background-color: var(--glass-teal);
   color: rgb(194, 233, 232);
   font-size: 20px;
   width: 93%;
@@ -1229,13 +1249,15 @@ input {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   cursor: pointer;
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   cursor: pointer;
   max-height:50px;
 }
 #copy-friend-code{
-  background-color: rgba(56, 138, 147, 0.686);
+  background-color: var(--glass-teal);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   width: auto;
   height:auto;
   text-align: center;
@@ -1304,7 +1326,9 @@ input {
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  background-color: #4c98afde;
+  background-color: var(--glass-teal);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   width: 100%;
   font-size: 15px;
   color: white;
@@ -1317,7 +1341,9 @@ input {
 #signupbutton,
 #ContinueasGuest {
   margin-top: 10px;
-  background-color: rgba(80, 202, 211, 0.8);
+  background-color: var(--glass-teal-strong);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   border: 2px solid transparent;
   color: rgb(194, 233, 232);
   font-size: 20px;
@@ -1609,7 +1635,9 @@ body.payments-enabled .pay-request-btn {
   padding: 12px;
   border: none;
   border-radius: 10px;
-  background-color: rgba(56, 138, 147, 0.686);
+  background-color: var(--glass-teal);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   color: rgb(194, 233, 232);
   font-size: 18px;
   font-weight: bold;
@@ -1630,7 +1658,9 @@ body.payments-enabled .pay-request-btn {
 }
 
 #close-prompt {
-  background-color: rgba(175, 53, 44, 0.8);
+  background-color: var(--glass-red);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   border: 2px;
   color: rgb(216, 216, 216);
   font-size: 20px;
@@ -1639,7 +1669,7 @@ body.payments-enabled .pay-request-btn {
   font-size: 20px;
   border-radius: 8px;
   width: 50%;
-  
+
 }
 
 
@@ -1810,7 +1840,9 @@ body.payments-enabled .pay-request-btn {
 }
 
 #profile-Accounts>button {
-  background-color: rgba(71, 149, 153, 0.8);
+  background-color: var(--glass-teal);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   color: rgb(194, 233, 232);
   padding: 5px;
   width: 93%;
@@ -1846,12 +1878,12 @@ body.payments-enabled .pay-request-btn {
 }
 
 #closeFriendModal {
-  background-color: rgba(175, 53, 44, 0.8);
+  background-color: var(--glass-red);
   font-size: 20px;
   border-radius: 8px;
   width: 50%;
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
 }
 
 #editMoneyModal {
@@ -2073,32 +2105,143 @@ body.payments-enabled .pay-request-btn {
 #buttons {
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 93%;
+  max-width: 520px;
+  box-sizing: border-box;
 }
 
-@media screen and (max-width: 1000px) {
+/* Collapsible panel that slides up above the Add/Clear tabs. Collapsed by
+   default (max-height 0); the .panel-open class on #buttons expands it. */
+#action-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  padding: 0 6px;
+  transition: max-height 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.28s ease, padding 0.38s ease;
+}
 
-  #buttons {
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
-    width: 93%;
-    height: 150px;
-    justify-content: center;
-    padding-left: 10px;
-    padding-right: 10px;
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-    justify-content: space-between;
-    border-top-left-radius: 5px;
-    border-top-right-radius: 5px;
-    border-left-style: solid;
-    border-right-style: solid;
-    border-top-style: solid;
-    border-width: 1px;
-    transition: 0.3s;
-    box-shadow: 0px 0px 50px 0px #033238;
-    background-color: #033238;
-  }
+#buttons.panel-open #action-panel {
+  max-height: 360px;
+  opacity: 1;
+  padding: 10px 6px 4px;
+}
+
+/* Horizontal track holding the two panes side by side; translateX swaps which
+   one is visible (Google Material tab switch). */
+#action-panes {
+  display: flex;
+  width: 200%;
+  transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#buttons[data-tab="clear"] #action-panes {
+  transform: translateX(-50%);
+}
+
+.action-pane {
+  width: 50%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+}
+
+.action-pane input {
+  width: 90%;
+  max-width: 300px;
+  box-sizing: border-box;
+}
+
+#clear-pane #clear-list-prompt {
+  color: rgb(194, 233, 232);
+  font-size: 18px;
+  font-weight: bold;
+  margin: 6px 0;
+}
+
+/* Tab row (Add | Clear) with the sliding underline indicator. */
+#action-tabs {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  justify-content: space-between;
+  align-items: stretch;
+}
+
+#action-tabs #add-person-btn,
+#action-tabs #clear-list-btn {
+  flex: 1 1 0;
+  width: auto;
+  margin: 6px 0 0;
+  border-radius: 8px 8px 0 0;
+}
+
+#action-tab-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: calc(50% - 5px);
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: rgb(194, 233, 232);
+  opacity: 0;
+  transform: translateX(0);
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  pointer-events: none;
+}
+
+#buttons.panel-open #action-tab-indicator {
+  opacity: 1;
+}
+
+#buttons.panel-open[data-tab="clear"] #action-tab-indicator {
+  transform: translateX(calc(100% + 10px));
+}
+
+#action-close {
+  background-color: var(--glass-red);
+  border: 2px solid transparent;
+  color: rgb(194, 233, 232);
+  font-size: 18px;
+  width: 60%;
+  align-self: center;
+  font-weight: bold;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  max-height: 46px;
+}
+
+#clear-pane #clearListBtn {
+  background-color: var(--glass-red);
+}
+
+/* Persistent teal bar look for the whole control (both when collapsed and
+   expanded), at every screen size. */
+#buttons {
+  padding: 6px 10px 10px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  border-left: 1px solid #3671857a;
+  border-right: 1px solid #3671857a;
+  border-top: 1px solid #3671857a;
+  box-shadow: 0px 0px 50px 0px #03323880;
+  background-color: rgba(3, 50, 56, 0.55);
+  transition: max-height 0.38s ease, background-color 0.3s ease;
 }
 
 @media (max-width: 768px) {
@@ -2254,7 +2397,9 @@ body.payments-enabled .pay-request-btn {
   #remove-money-btn,
   #edit-name-btn {
     margin: 15px;
-    background-color: rgba(80, 202, 211, 0.8);
+    background-color: var(--glass-teal-strong);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
     border: 2px solid transparent;
     color: rgb(194, 233, 232);
     font-size: 1.5rem;

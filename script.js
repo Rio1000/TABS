@@ -444,7 +444,7 @@ function copyText() {
 
   const modals = Array.from(
     document.querySelectorAll(
-      ".modal, #customModal, #editMoneyModal, #friendModal, #add-person-box-modal, " +
+      ".modal, #customModal, #editMoneyModal, #friendModal, " +
         "#editNameModal, #add-extra-info-modal, #ProfileModal, #editItemModal, #RFModal, " +
         "#loader, #loginorsignupmodal, #adsModal, #editExtraInfoModal, #addFriendModal, " +
         "#pendingRequestsModal, #delete-account-modal, #AccountHistoryModal, #interestModal, " +
@@ -583,4 +583,54 @@ function copyText() {
 
     observer.observe(el, { attributes: true, attributeFilter: ["style"] });
   });
+})();
+
+// Add/Clear action bar controller.
+//
+// The Add and Clear buttons are Google-style tabs. Pressing one slides the
+// bar up (#action-panel expands) to reveal that tab's contents plus a Close
+// button. Pressing the other tab while the bar is already open switches the
+// visible panel — the panes slide sideways and the underline indicator slides
+// across — rather than opening/closing. Pressing the active tab again, or the
+// Close button, collapses the bar. The actual "Add" / "Clear" work still lives
+// in firebase-setup.js; those handlers call window.closeActionPanel() when done.
+(function () {
+  const buttonsBox = document.getElementById("buttons");
+  const addTab = document.getElementById("add-person-btn");
+  const clearTab = document.getElementById("clear-list-btn");
+  const closeBtn = document.getElementById("action-close");
+  if (!buttonsBox || !addTab || !clearTab) return;
+
+  function openActionPanel(tab) {
+    buttonsBox.dataset.tab = tab;
+    buttonsBox.classList.add("panel-open");
+    if (tab === "add") {
+      const nameInput = document.getElementById("name-input");
+      // Wait for the slide-up to start before focusing so mobile keyboards
+      // don't fight the opening animation.
+      if (nameInput) setTimeout(() => nameInput.focus(), 220);
+    }
+  }
+
+  function closeActionPanel() {
+    buttonsBox.classList.remove("panel-open");
+  }
+
+  function toggleTab(tab) {
+    const isOpen = buttonsBox.classList.contains("panel-open");
+    if (isOpen && buttonsBox.dataset.tab === tab) {
+      closeActionPanel(); // pressing the already-active tab collapses the bar
+    } else {
+      openActionPanel(tab); // open fresh, or switch panes if already open
+    }
+  }
+
+  addTab.addEventListener("click", () => toggleTab("add"));
+  clearTab.addEventListener("click", () => toggleTab("clear"));
+  if (closeBtn) closeBtn.addEventListener("click", closeActionPanel);
+
+  // Exposed so the Add/Clear confirm handlers in firebase-setup.js can collapse
+  // the bar once their work succeeds.
+  window.openActionPanel = openActionPanel;
+  window.closeActionPanel = closeActionPanel;
 })();
