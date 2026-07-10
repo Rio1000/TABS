@@ -2202,6 +2202,14 @@ async function populateFriendsList() {
           // whichever friend happened to render last.
           friendPendingRemoval = { friendId, friendData };
 
+          const removeFriendPrompt = document.getElementById("removeFriendPrompt");
+          if (removeFriendPrompt) {
+            const friendName = `${friendData.firstName || ""} ${friendData.lastName || ""}`.trim();
+            removeFriendPrompt.textContent = friendName
+              ? `Remove ${friendName}?`
+              : "Remove this friend?";
+          }
+
           const RFModal2 = document.getElementById("RFModal");
           if (RFModal2) {
             RFModal2.style.display = "flex";
