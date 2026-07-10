@@ -707,6 +707,7 @@ input {
   opacity: 80%;
   transition: 0.3s;
   z-index: 98;
+  filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(150deg) brightness(50%) contrast(200%);
 }
 
 /* Utility Classes */
