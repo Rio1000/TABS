@@ -257,9 +257,11 @@ body {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  background-color: #4f9bd6 !important;
+  background-color: #4fc2d666 !important;
+  border-color: #4fc2d6 !important;
+  border-width: 1px !important;
   color: #fff;
-  border: none;
+  border-style: solid!important;
   border-radius: 10px;
   font-size: 13px;
   cursor: pointer;
@@ -465,6 +467,7 @@ button:hover {
 
 /* Dropdown container (hidden by default). Optional: add a lighter background color and some left padding to change the design of the dropdown content */
 #friendBox {
+  margin-top: 30px;
   position: relative;
   padding: 10px;
   overflow-x: hidden;
@@ -493,12 +496,15 @@ button:hover {
 #friendsList li {
   display: flex;
   color: rgb(241, 241, 241);
-  background-color: rgb(89, 125, 134);
+  background-color: #0b5e69;
+  border-color: rgb(103, 196, 219);
+  border-style: solid;
+  border-width: 1px;
+  border-radius: 8px;
   justify-content: space-between;
   align-items: center;
   text-align: left;
   margin-top: 10px;
-  border-radius: 8px;
   padding: 8px;
   overflow-x: hidden;
   word-break: break-word;
@@ -608,6 +614,7 @@ button:hover {
   border-top-left-radius: 10px;
   border-bottom-left-radius: 10px;
   height: 30px;
+  border-width:1px !important;
 }
 
 .sidenav a:hover {
@@ -843,7 +850,6 @@ input {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(14, 53, 59, 0.781);
   justify-content: center;
   align-items: center;
   text-align: center;
@@ -1138,7 +1144,6 @@ input {
   text-indent: 5px;
 }
 
-.modal button,
 #currency-select {
   margin: 10px;
   padding: 10px;
@@ -1239,7 +1244,16 @@ input {
   max-height: 50px;
   
 }
-
+#RemoveButton,
+.remove-friend-from-list{
+  border: solid !important;
+  border-width: 1px !important;
+  border-radius: 8px !important;
+  background: rgba(94, 20, 20, 0.353) !important;
+  color: #cb4337 !important;
+  border-color: #cb4337 !important;
+  font-size: 15px !important;
+}
 #add-more-money-btn,
 #add-extra-info-btn,
 #remove-money-btn,
@@ -1254,9 +1268,7 @@ input {
 #add-person-btn,
 #editinffoBtn,
 #anotherSurprize,
-#addFriendBtn,
 #addFriendBtn2,
-#pendingRequestsBtn,
 #close-delete-account,
 #PayMyTuition,
 #menu-button,
@@ -1270,7 +1282,6 @@ input {
 #interest-btn{
   text-align: center;
   justify-content: center;
-  margin-top: 10px;
   background-color: rgba(56, 138, 147, 0.686);
   color: rgb(194, 233, 232);
   font-size: 20px;
@@ -1361,6 +1372,7 @@ input {
   font-weight: bold;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  border-width:1px;
 }
 
 #loginbutton,
@@ -1393,7 +1405,9 @@ input {
 }
 #profileInfo,
 #profileStats,
-#profileAccount {
+#profileAccount,
+#addFriendBtn,
+#pendingRequestsBtn{
   color: rgb(194, 233, 232);
   padding: 5px;
   background-color: rgba(50, 108, 112, 0.8);
@@ -1405,8 +1419,12 @@ input {
   border-radius: 10px;
   margin: 2px;
   font-weight: bold;
+  border-width: 1px !important;
 }
-
+#addFriendBtn,
+#pendingRequestsBtn{
+  height:39px;
+}
 #closeProfile {
   color: rgb(194, 233, 232);
   padding: 5px;
@@ -1483,7 +1501,10 @@ input {
   max-height: 70vh;
   padding: 20px;
 }
-
+#smsReminderTitle,
+#paymentRequestTitle{
+  margin-top: 40px!important;
+}
 #notificationsList {
   list-style: none;
   margin: 0;
@@ -1732,35 +1753,16 @@ body.payments-enabled .pay-request-btn {
   margin-bottom: 10px;
   background-color: rgba(25, 64, 66, 0.8);
   border-radius: 8px;
-  border-color: transparent;
+  border-color:#51949d;
   height: auto;
   overflow-wrap: break-word;
   text-overflow: ellipsis;
   color: rgb(194, 233, 232);
-  border-width: 5px;
+  border-width: 1px;
   max-width: 300px;
   min-height: 50px;
-}
-
-
-#friendCodeBox {
-  /* Was position: absolute; top: 0px — taken out of flow, so once
-     #friendBox below it was fixed to start at the top of .friend-content
-     (rather than sitting vertically centered), the two overlapped. Normal
-     flow lets it push #friendBox down by however tall it actually is,
-     rather than guessing a fixed offset. */
-  position: absolute;
-  bottom: 0px;
-  width: 100%;
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  justify-content: space-between;
-  align-items: center;
-  z-index: 100;
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
-  flex-shrink: 0;
+  border-style: solid;
+  
 }
 
 #extra-info-input {
@@ -1847,12 +1849,17 @@ body.payments-enabled .pay-request-btn {
   padding: 20px;
   border-radius: 10px;
   text-align: center;
-  width: 90%;
-  margin-top: 60px;
-  height: 90%;
+  width: 70%;
+  height: 80%;
   position: relative;
   align-items: center;
   justify-content: center;
+}
+#adsBox{
+  height: 50%;
+}
+#adsmessages{
+  margin-top: 30px;
 }
 
 /* .friend-content's only in-flow child is #friendBox (friendCodeBox is
@@ -1885,6 +1892,7 @@ body.payments-enabled .pay-request-btn {
   transition: 0.2s;
   cursor: pointer;
   height: 50px;
+  border-width: 1px !important;
 }
 
 #profile-stats>p {
@@ -1903,11 +1911,6 @@ body.payments-enabled .pay-request-btn {
   flex-direction: column;
 }
 
-#friendCodeBox {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-}
 
 #closeFriendModal {
   background-color: rgba(175, 53, 44, 0.8);
@@ -1926,7 +1929,8 @@ body.payments-enabled .pay-request-btn {
 #editMoneyRemove,
 #add-extra-info-box,
 #editNameBox,
-#interest-container {
+#interest-container,
+#Removefriend {
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -1987,13 +1991,15 @@ body.payments-enabled .pay-request-btn {
   opacity: 1;
 }
 
-.topnav {
+.topnav,
+#friendCodeBox {
+  margin: 8px;
   position: absolute;
   border-top-left-radius: 10px;
   border-top-right-radius: 10px;
   top: 0;
   left: 0;
-  width: 100%;
+  width: 80%;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2832,7 +2838,8 @@ body.payments-enabled .pay-request-btn {
 #add-extra-info-box,
 #editNameBox,
 #interest-container,
-#friendInputBox {
+#friendInputBox,
+#Removefriend {
   background: linear-gradient(150deg, #05434c 0%, #022a30 100%) !important;
   border: 1px solid rgba(80, 202, 211, 0.22) !important;
   border-radius: 18px !important;
@@ -2965,19 +2972,22 @@ body.action-open #action-backdrop {
   overflow-y: auto;
 }
 
-#action-sheet-close {
+#action-sheet-close,
+.modal-close-x {
   position: absolute;
   top: 10px;
   right: 12px;
-  width: 34px;
-  height: 34px;
+  width: 39px;
+  height: 39px;
   min-height: 0;
   margin: 0;
   padding: 0;
-  border: none;
+  border: solid;
+  border-width: 1px;
   border-radius: 8px;
-  background: rgba(224, 90, 86, 0.9);
-  color: #fff4f3;
+  background: rgba(94, 20, 20, 0.353);
+  color: #cb4337;
+  border-color: #cb4337;
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
@@ -2985,9 +2995,11 @@ body.action-open #action-backdrop {
   align-items: center;
   justify-content: center;
   transition: background-color 0.2s ease;
+  font-weight: bold;
 }
+
 #action-sheet-close:hover {
-  background: rgba(224, 90, 86, 1);
+  background: rgba(71, 21, 21, 0.353);
 }
 
 /* Panes — only the active one shows, with a small enter animation. */
@@ -3159,13 +3171,13 @@ body.action-open #action-backdrop {
   --btn-positive-text: 208, 236, 202;
 }
 
-button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(.close-btn):not(.modal-close-x):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(#confirmClearHistory):not(.accept):not(.decline),
+button:not(.remove-btn):not(.add-info-btn):not(.remove-friend-from-list):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(.close-btn):not(.modal-close-x):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(#confirmClearHistory):not(.accept):not(.decline),
 #profileInfo,
 #profileStats,
 #profileAccount,
 .btn {
   background-color: rgba(var(--btn-accent), 0.16) !important;
-  border: 2px solid rgba(var(--btn-accent), 0.7) !important;
+  border: 1px solid rgba(var(--btn-accent), 0.7) !important;
   color: rgb(var(--btn-text)) !important;
   border-radius: 12px !important;
   transition: background-color 0.2s ease, transform 0.15s ease,
@@ -3261,31 +3273,18 @@ button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request
 #notificationSettingsBox,
 #paymentSettingsBox,
 #paymentRequestBox,
-#smsReminderBox {
+#smsReminderBox,
+#Removefriend {
   position: relative;
-}
-.modal-close-x {
-  position: absolute;
-  top: 10px;
-  right: 12px;
-  width: 34px;
-  height: 34px;
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: rgba(224, 90, 86, 0.9);
-  color: #fff4f3;
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s ease;
-  z-index: 6;
 }
 .modal-close-x:hover {
   background: rgba(224, 90, 86, 1);
+}
+#pendingRequestsList li{
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
 }

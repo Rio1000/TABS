@@ -2192,9 +2192,7 @@ async function populateFriendsList() {
 
         // Create a remove button (✖️)
         let removeButton = document.createElement("button");
-        removeButton.textContent = "✖️";
-        removeButton.style.marginLeft = "10px";
-        removeButton.style.cursor = "pointer";
+        removeButton.textContent = "X";
         removeButton.classList.add("remove-friend-from-list");
         removeButton.id = "RemoveButton";
 
