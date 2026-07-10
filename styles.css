@@ -553,35 +553,35 @@ button:hover {
 }
 
 #FriendsTab {
-  border: 1px solid #fff7b172;
-  background-color: #7B7A69b0;
-  color: #e4dcbf;
+  border: 1px solid #5bc5c772;
+  background-color: #1F5C61b0;
+  color: #bbebec;
 }
 
 #feedback {
-  border: 1px solid #47813d72;
-  background-color: #486241b0;
-  color: #bfecbb;
+  border: 1px solid #5bc5c772;
+  background-color: #1F5C61b0;
+  color: #bbebec;
 }
 #inviteToTabsBtn{
-  border: 1px solid #cfaf9372;
-  background-color: #917558b0;
-  color: #eccebb;
+  border: 1px solid #5bc5c772;
+  background-color: #1F5C61b0;
+  color: #bbebec;
   width: 226px;
   overflow-x: hidden;
   text-wrap: none;
   height: 49px;
 }
 #notificationsBtn {
-  border: 1px solid #7a92ff72;
-  background-color: #534F7Eb0;
-  color: #bfc5e4;
+  border: 1px solid #5bc5c772;
+  background-color: #1F5C61b0;
+  color: #bbebec;
 }
 
 #Ads {
-  border: 1px solid #ff808072;
-  background-color: #775152b0;
-  color: #e4dcbf;
+  border: 1px solid #5bc5c772;
+  background-color: #1F5C61b0;
+  color: #bbebec;
 }
 #closeButton {
   margin-top: 30px;
@@ -598,7 +598,7 @@ button:hover {
   z-index: 96 !important;
   display: flex;
   transition: 1s;
-  background-color: #746f8ada;
+  background-color: #1F5C61b0;
   width: 90%;
   border-top-left-radius: 10px;
   border-bottom-left-radius: 10px;
@@ -2971,8 +2971,8 @@ body.action-open #action-backdrop {
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(80, 202, 211, 0.16);
-  color: #cfeff2;
+  background: rgba(224, 90, 86, 0.9);
+  color: #fff4f3;
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
@@ -2982,7 +2982,7 @@ body.action-open #action-backdrop {
   transition: background-color 0.2s ease;
 }
 #action-sheet-close:hover {
-  background: rgba(80, 202, 211, 0.32);
+  background: rgba(224, 90, 86, 1);
 }
 
 /* Panes — only the active one shows, with a small enter animation. */
@@ -3225,8 +3225,15 @@ button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
-/* Top-right ✕ on every modal card — same round teal look as the
-   add-person sheet's close button. JS (script.js) injects one into each
+/* The old text Close / Cancel buttons are replaced by the red ✕ in each
+   modal's top-right corner. Keep them in the DOM — the ✕ forwards its
+   click to them so their real teardown still runs — but hide them. */
+.close-btn {
+  display: none !important;
+}
+
+/* Top-right ✕ on every modal card — same round shape as the add-person
+   sheet's close button, colored red. JS (script.js) injects one into each
    card and wires it to that modal's real Close handler. */
 .modal-content,
 #interest-container,
@@ -3263,8 +3270,8 @@ button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(80, 202, 211, 0.16);
-  color: #cfeff2;
+  background: rgba(224, 90, 86, 0.9);
+  color: #fff4f3;
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
@@ -3275,5 +3282,5 @@ button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request
   z-index: 6;
 }
 .modal-close-x:hover {
-  background: rgba(80, 202, 211, 0.32);
+  background: rgba(224, 90, 86, 1);
 }
