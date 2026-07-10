@@ -2639,3 +2639,96 @@ body.payments-enabled .pay-request-btn {
     max-width: 1200px;
   }
 }
+
+
+/* =====================================================================
+   Mobile refinement layer (<=599px)
+   -------------------------------------------------------------------
+   Brings the same professional card treatment as the desktop layer to
+   the phone view — soft teal gradient, rounded cards, owe-status accent
+   stripe and a compact touch-friendly action cluster — while keeping the
+   single-column, full-width, bottom-button-bar ergonomics of mobile.
+   Same palette as before; appended last so it wins by source order.
+   ===================================================================== */
+@media screen and (max-width: 599px) {
+
+  #people-list {
+    width: 92%;
+    gap: 12px;
+    padding: 6px 0 10px;
+  }
+
+  /* Professional card: gradient, rounded, soft shadow, hover/press feel. */
+  .personlist-item {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 88px;
+    margin-bottom: 0;
+    padding: 14px 14px;
+    justify-content: center;
+    border-radius: 16px;
+    border: 1px solid rgba(80, 202, 211, 0.22);
+    background: linear-gradient(150deg, #05434c 0%, #022a30 100%);
+    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .personlist-item:active {
+    transform: scale(0.99);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  }
+  /* Left accent stripe keyed to who-owes-who, matching the desktop layer. */
+  .personlist-item[data-status="owesMe"] { border-left: 4px solid rgba(73, 255, 97, 0.55); }
+  .personlist-item[data-status="iOwe"]   { border-left: 4px solid rgba(255, 73, 73, 0.55); }
+
+  /* Name + amount on the left, actions on the right, vertically centered
+     so cards no longer stretch tall around a vertical button stack. */
+  .name-amount-container {
+    max-width: none;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0;
+    padding: 0;
+    gap: 10px;
+  }
+  .person-stuff {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    max-width: none;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .person-stuff .amount-container { width: auto; }
+  .name-span { font-size: 20px; }
+  .amount-input { font-size: 21px; font-weight: 700; }
+  .dollar-sign { font-size: 19px; opacity: 0.9; }
+
+  /* Compact, touch-friendly 2-up action cluster — same footprint whether
+     a card has 2 or 4 actions, so heights stay even. */
+  .extra-info-box {
+    flex-direction: unset;
+    display: grid;
+    grid-template-columns: repeat(2, 44px);
+    grid-auto-rows: 40px;
+    gap: 8px;
+    align-self: center;
+  }
+  .extra-info-box > button,
+  .extra-info-box > a {
+    width: 44px;
+    height: 40px;
+    margin: 0;
+    border-radius: 11px;
+  }
+
+  /* Slightly rounder, bolder Add / Clear in the bottom bar. */
+  #add-person-btn,
+  #clear-list-btn {
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 700;
+    min-height: 50px;
+  }
+}
