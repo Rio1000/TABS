@@ -88,10 +88,7 @@ body {
 
 }
 
-#Ads {
-  background-color: salmon;
-  color: #2b2b2b;
-}
+
 
 .login-input {
   margin-bottom: 15px;
@@ -554,7 +551,17 @@ button:hover {
   color: #eccebb;
   width: 90.5%;
 }
+#notificationsBtn {
+  border: 1px solid #7a92ff72;
+  background-color: #534F7Eb0;
+  color: #bfc5e4;
+}
 
+#Ads {
+  border: 1px solid #ff808072;
+  background-color: #775152b0;
+  color: #e4dcbf;
+}
 #closeButton {
   margin-top: 30px;
   color: #ececec;
@@ -1385,12 +1392,7 @@ input {
 /* Notifications now live as a side-nav link (#notificationsBtn) with the
    Friends/Login styling; the folder open button carries the unread count so
    it's visible without opening the menu. */
-#notificationsBtn {
-  background-color: #4c98af;
-  color: #061e22;
-  align-items: center;
-  justify-content: space-between;
-}
+
 
 /* Count badge sitting on the folder button itself. Anchored to the top-LEFT
    corner because the folder button hugs the right screen edge — a top-right
