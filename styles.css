@@ -1497,6 +1497,16 @@ input {
   font-size: 14px;
 }
 
+/* Positive action (Accept a friend request) — green to distinguish it from
+   the blue "Remind now" action, matching the app's green "owes me" accent. */
+.notification-action.accept {
+  background-color: #6da765 !important;
+}
+.notification-action:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .notification-setting-row {
   display: flex;
   align-items: center;
