@@ -13,11 +13,112 @@
 // US numbers) A2P 10DLC registration. See SETUP.md.
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onValueCreated } = require("firebase-functions/v2/database");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const twilio = require("twilio");
 
 admin.initializeApp();
+
+// Deliver a push notification to every device a user has registered, across
+// both transports we support: web browsers register raw FCM tokens; the Expo
+// mobile app registers Expo push tokens ("ExponentPushToken[...]"). Dead
+// tokens both services report are pruned. Shared by the reminder callable and
+// the friend-request trigger below. Never throws — returns a delivery summary.
+async function deliverPushToUser(db, targetUid, { title, body, data }) {
+  const tokensSnap = await db.ref(`users/${targetUid}/pushTokens`).get();
+  const tokens = tokensSnap.exists() ? Object.keys(tokensSnap.val()) : [];
+  if (tokens.length === 0) {
+    return { delivered: false, reason: "no-devices", successCount: 0, totalTokens: 0, fcmCount: 0, expoCount: 0 };
+  }
+
+  const isExpo = (t) =>
+    t.startsWith("ExponentPushToken[") || t.startsWith("ExpoPushToken[");
+  const expoTokens = tokens.filter(isExpo);
+  const fcmTokens = tokens.filter((t) => !isExpo(t));
+
+  const linkUrl = "https://tabsonfriends.com";
+  const payloadData = data || {};
+  let successCount = 0;
+  const stale = [];
+
+  // --- Web / FCM ---
+  if (fcmTokens.length > 0) {
+    try {
+      const resp = await admin.messaging().sendEachForMulticast({
+        tokens: fcmTokens,
+        notification: { title, body },
+        data: payloadData,
+        webpush: {
+          notification: { title, body, icon: "/logo.png" },
+          fcmOptions: { link: linkUrl },
+        },
+      });
+      successCount += resp.successCount;
+      resp.responses.forEach((r, i) => {
+        const code = r.error?.code;
+        if (
+          code === "messaging/registration-token-not-registered" ||
+          code === "messaging/invalid-registration-token" ||
+          code === "messaging/invalid-argument"
+        ) {
+          stale.push(fcmTokens[i]);
+        }
+      });
+    } catch (err) {
+      logger.error("FCM send failed:", err);
+    }
+  }
+
+  // --- Mobile / Expo ---
+  if (expoTokens.length > 0) {
+    try {
+      const expoRes = await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(
+          expoTokens.map((to) => ({
+            to,
+            title,
+            body,
+            sound: "default",
+            data: payloadData,
+          }))
+        ),
+      });
+      const json = await expoRes.json();
+      const receipts = Array.isArray(json?.data) ? json.data : [];
+      receipts.forEach((receipt, i) => {
+        if (receipt?.status === "ok") {
+          successCount += 1;
+        } else if (receipt?.details?.error === "DeviceNotRegistered") {
+          stale.push(expoTokens[i]);
+        }
+      });
+    } catch (err) {
+      logger.error("Expo push send failed:", err);
+    }
+  }
+
+  // Prune tokens both services reported as dead.
+  await Promise.all(
+    stale.map((t) =>
+      db.ref(`users/${targetUid}/pushTokens/${t}`).remove().catch(() => {})
+    )
+  );
+
+  return {
+    delivered: successCount > 0,
+    successCount,
+    totalTokens: tokens.length,
+    fcmCount: fcmTokens.length,
+    expoCount: expoTokens.length,
+    reason: successCount > 0 ? null : "all-failed",
+  };
+}
 
 // Turn whatever a user typed into their profile into an E.164 number Twilio
 // accepts. Defaults to US (+1) when a bare 10-digit number is given — change
@@ -142,102 +243,26 @@ exports.sendReminderPush = onCall(async (request) => {
     callerName ? `Reminder from ${callerName}` : String(request.data?.title || "TABS reminder")
   ).slice(0, 100);
 
-  const tokensSnap = await db.ref(`users/${friendUid}/pushTokens`).get();
-  const tokens = tokensSnap.exists() ? Object.keys(tokensSnap.val()) : [];
-  if (tokens.length === 0) {
+  const result = await deliverPushToUser(db, friendUid, {
+    title,
+    body,
+    data: { type: "sms-reminder", fromUid: callerUid },
+  });
+
+  if (result.reason === "no-devices") {
     // Not an error — the friend just hasn't enabled notifications on any
     // device. The client uses this to show a helpful message.
     return { delivered: false, reason: "no-devices", successCount: 0 };
   }
 
-  // Web browsers register raw FCM tokens; the mobile app (Expo) registers
-  // Expo push tokens ("ExponentPushToken[...]"). They go out through different
-  // services, so split them and deliver to each.
-  const isExpo = (t) =>
-    t.startsWith("ExponentPushToken[") || t.startsWith("ExpoPushToken[");
-  const expoTokens = tokens.filter(isExpo);
-  const fcmTokens = tokens.filter((t) => !isExpo(t));
-
-  const linkUrl = "https://tabsonfriends.com";
-  let successCount = 0;
-  const stale = [];
-
-  // --- Web / FCM ---
-  if (fcmTokens.length > 0) {
-    try {
-      const resp = await admin.messaging().sendEachForMulticast({
-        tokens: fcmTokens,
-        notification: { title, body },
-        data: { type: "sms-reminder", fromUid: callerUid },
-        webpush: {
-          notification: { title, body, icon: "/logo.png" },
-          fcmOptions: { link: linkUrl },
-        },
-      });
-      successCount += resp.successCount;
-      resp.responses.forEach((r, i) => {
-        const code = r.error?.code;
-        if (
-          code === "messaging/registration-token-not-registered" ||
-          code === "messaging/invalid-registration-token" ||
-          code === "messaging/invalid-argument"
-        ) {
-          stale.push(fcmTokens[i]);
-        }
-      });
-    } catch (err) {
-      logger.error("FCM send failed:", err);
-    }
-  }
-
-  // --- Mobile / Expo ---
-  if (expoTokens.length > 0) {
-    try {
-      const expoRes = await fetch("https://exp.host/--/api/v2/push/send", {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(
-          expoTokens.map((to) => ({
-            to,
-            title,
-            body,
-            sound: "default",
-            data: { type: "sms-reminder", fromUid: callerUid },
-          }))
-        ),
-      });
-      const json = await expoRes.json();
-      const receipts = Array.isArray(json?.data) ? json.data : [];
-      receipts.forEach((receipt, i) => {
-        if (receipt?.status === "ok") {
-          successCount += 1;
-        } else if (receipt?.details?.error === "DeviceNotRegistered") {
-          stale.push(expoTokens[i]);
-        }
-      });
-    } catch (err) {
-      logger.error("Expo push send failed:", err);
-    }
-  }
-
-  // Prune tokens both services reported as dead.
-  await Promise.all(
-    stale.map((t) =>
-      db.ref(`users/${friendUid}/pushTokens/${t}`).remove().catch(() => {})
-    )
-  );
-
   logger.info(
-    `Push by ${callerUid} to ${friendUid}: ${successCount}/${tokens.length} delivered ` +
-      `(${fcmTokens.length} web, ${expoTokens.length} mobile)`
+    `Push by ${callerUid} to ${friendUid}: ${result.successCount}/${result.totalTokens} delivered ` +
+      `(${result.fcmCount} web, ${result.expoCount} mobile)`
   );
   return {
-    delivered: successCount > 0,
-    successCount,
-    reason: successCount > 0 ? null : "all-failed",
+    delivered: result.delivered,
+    successCount: result.successCount,
+    reason: result.reason,
   };
 });
 
@@ -286,3 +311,63 @@ exports.disableAccount = onCall(async (request) => {
     throw new HttpsError("internal", "Could not disable the account.");
   }
 });
+
+// Push notifications for friend requests — both directions — driven off the
+// database instead of the client, so they fire even when the recipient's app
+// is closed (a client can't push to someone who isn't looking at the app).
+//
+// Both events are writes into a user's pendingRequests, so one create-trigger
+// covers both:
+//   • A brand-new incoming request  -> users/{recipient}/pendingRequests/{sender}
+//     (written by sendFriendRequest) — notify the recipient.
+//   • An acceptance marker          -> users/{sender}/pendingRequests/{accepter}
+//     with type:"accepted" (written by approveFriendRequest) — notify the
+//     original sender that their request was accepted.
+//
+// The node key is the OTHER user's uid and the value carries their name, so no
+// extra profile reads are needed. The in-app notification is still written
+// client-side (addNotification); this only adds the device push on top.
+exports.onFriendRequestPush = onValueCreated(
+  "/users/{uid}/pendingRequests/{fromUid}",
+  async (event) => {
+    const targetUid = event.params.uid; // whose pendingRequests received this
+    const req = event.data.val();
+    if (!req || typeof req !== "object") return;
+
+    const db = admin.database();
+
+    // Respect the recipient's notification preferences (Manage Notifications →
+    // master switch + "Friend activity"). Defaults match the client: on.
+    const prefsSnap = await db
+      .ref(`users/${targetUid}/settings/notifications`)
+      .get();
+    const prefs = prefsSnap.val() || {};
+    if (prefs.enabled === false || prefs.friends === false) return;
+
+    const name =
+      [req.firstName, req.lastName].filter(Boolean).join(" ").trim() ||
+      "Someone";
+
+    let type, title, body;
+    if (req.type === "accepted") {
+      type = "friend-accept";
+      title = "Friend request accepted";
+      body = `${name} accepted your friend request!`;
+    } else {
+      type = "friend-request";
+      title = "New friend request";
+      body = `${name} sent you a friend request`;
+    }
+
+    const result = await deliverPushToUser(db, targetUid, {
+      title,
+      body,
+      data: { type, fromUid: req.fromUserId || event.params.fromUid },
+    });
+
+    logger.info(
+      `Friend push (${type}) to ${targetUid}: ` +
+        `${result.successCount}/${result.totalTokens} delivered`
+    );
+  }
+);
