@@ -1502,6 +1502,11 @@ input {
 .notification-action.accept {
   background-color: #6da765 !important;
 }
+/* Negative action (Decline a friend request) — red, matching the app's
+   "danger" red used elsewhere. */
+.notification-action.decline {
+  background-color: #c0504d !important;
+}
 .notification-action:disabled {
   opacity: 0.6;
   cursor: default;
