@@ -478,7 +478,14 @@ button:hover {
   display: flex;
   flex-direction: column;
   margin-top: 30px;
+  /* Absolute + width:100% used to overflow to the right: an absolutely
+     positioned box sits at its content-box origin but sizes against the
+     wider padding box, so the whole list was shoved right of centre.
+     Pinning left/right to 0 (with width:auto) fills the container
+     symmetrically so the list is centred. */
   position: absolute;
+  left: 0;
+  right: 0;
   overflow-x: hidden;
   height: auto;
   color: #b6c5b9;
@@ -487,7 +494,7 @@ button:hover {
   font-size: 20px;
   display: flex;
   flex-direction: column;
-  width: 100%;
+  width: auto;
   transition: 0.5s;
 }
 
