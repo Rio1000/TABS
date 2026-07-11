@@ -71,7 +71,7 @@ function closeNav() {
   document.getElementById("openButton").style.display = "flex";
 }
 // Only close when the click lands on the backdrop itself — not on anything
-// inside the sidenav (nav links, the currency <select>, etc.), since a
+// inside the sidenavnav links, the currency <select>, etc.), since a
 // bubbled click from those was clthe nav out from under them (most
 // noticeably, the currency dropdown would open and immediately get yanked
 // shut).
@@ -96,6 +96,16 @@ function setListControlsVisible(visible) {
   const clearListBtn = document.getElementById("clear-list-btn");
   if (addPersonBtn) addPersonBtn.style.display = visible ? "flex" : "none";
   if (clearListBtn) clearListBtn.style.display = visible ? "flex" : "none";
+  // Show/hide the whole bottom action dock along with its bar, and make sure
+  // its sheet is collapsed when the controls are hidden (e.g. on logout).
+  const dock = document.getElementById("action-dock");
+  if (dock) dock.classList.toggle("hidden", !visible);
+  if (!visible) {
+    const sheet = document.getElementById("action-sheet");
+    if (sheet) sheet.dataset.open = "none";
+    if (buttonsBox) buttonsBox.classList.remove("active-add", "active-clear", "sheet-open");
+    document.body.classList.remove("action-open");
+  }
 }
 
 function setPersonListVisible(visible) {
@@ -444,7 +454,7 @@ function copyText() {
 
   const modals = Array.from(
     document.querySelectorAll(
-      ".modal, #customModal, #editMoneyModal, #friendModal, #add-person-box-modal, " +
+      ".modal, #customModal, #editMoneyModal, #friendModal, " +
         "#editNameModal, #add-extra-info-modal, #ProfileModal, #editItemModal, #RFModal, " +
         "#loader, #loginorsignupmodal, #adsModal, #editExtraInfoModal, #addFriendModal, " +
         "#pendingRequestsModal, #delete-account-modal, #AccountHistoryModal, #interestModal, " +
