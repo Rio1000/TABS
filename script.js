@@ -71,7 +71,7 @@ function closeNav() {
   document.getElementById("openButton").style.display = "flex";
 }
 // Only close when the click lands on the backdrop itself — not on anything
-// inside the sidenav (nav links, the currency <select>, etc.), since a
+// inside the sidenavnav links, the currency <select>, etc.), since a
 // bubbled click from those was clthe nav out from under them (most
 // noticeably, the currency dropdown would open and immediately get yanked
 // shut).

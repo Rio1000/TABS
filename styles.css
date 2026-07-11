@@ -3293,7 +3293,7 @@ button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request
 .btn:hover {
   background-color: rgba(var(--btn-accent), 0.3) !important;
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 20px rgba(15, 15, 15, 0.3);
 }
 
 /* Negative actions — Close / Cancel dismissals and destructive actions

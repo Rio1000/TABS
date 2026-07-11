@@ -2240,7 +2240,7 @@ async function populateFriendsList() {
             0,
             [],
             undefined,
-            true, // Add friend to person list, flagged so the row shows the friend icon
+            true, // Add friend  person list, flagged so the row shows the friend icon
             true // animate in
           );
           showToast(
