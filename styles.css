@@ -1393,6 +1393,38 @@ input {
   background-color: #3c94e7;
 }
 
+/* Pending-button request counts. Anchored to the button's top-right corner
+   as small pills (out of flow) so they never wrap the "Pending" label and
+   spill below the button. Recoloured to the app's palette instead of the
+   default red/blue: the app's accept-green for received requests (the ones
+   you act on) and the cyan accent for the informational sent count. The
+   cut-out ring matches the Pending button so each pill reads as a badge. */
+#pendingCount,
+#sentCount {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  margin-left: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  line-height: 1;
+  border: 1px solid rgba(80, 202, 211, 0.35);
+  box-shadow: 0 0 0 2px rgba(50, 108, 112, 0.95);
+  pointer-events: none;
+}
+#pendingCount {
+  background-color: #6da765;
+  color: #fff;
+}
+/* Tucked just left of the received badge so both can show side by side. */
+#sentCount {
+  right: 15px;
+  background-color: rgba(80, 202, 211, 0.92);
+  color: #04333a;
+}
+
 #googleSignInBtn,
 #googleSignUpBtn {
   display: flex;
@@ -1478,6 +1510,7 @@ input {
 #pendingRequestsBtn{
   color: rgb(194, 233, 232);
   padding: 5px;
+  position: relative;
   background-color: rgba(50, 108, 112, 0.8);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   width: 100%;
