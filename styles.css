@@ -253,7 +253,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: 10px;
   width: auto;
   height: 30px;
   display: inline-flex;
@@ -513,14 +512,34 @@ button:hover {
   border-style: solid;
   border-width: 1px;
   border-radius: 8px;
-  align-items: left;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
   text-align: left;
   margin-top: 10px;
-  padding: 8px;
+  padding: 8px 12px;
   overflow-x: hidden;
   word-break: break-word;
   white-space: normal;
   width: 90%;
+  box-sizing: border-box;
+}
+
+/* Buttons grouped on the left; the name fills the rest of the row so the
+   two can never overlap and every name starts at the same x. */
+.friend-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.friend-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  word-break: break-word;
 }
 
 #friendsList li button {
@@ -1282,8 +1301,6 @@ input {
 }
 #RemoveButton,
 .remove-friend-from-list{
-  position: absolute;
-  right: 15px;
   border: solid !important;
   border-width: 1px !important;
   border-radius: 8px !important;

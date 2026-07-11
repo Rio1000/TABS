@@ -2188,9 +2188,15 @@ async function populateFriendsList() {
 
         // Create a new <li> element for each friend
         const friendItem = document.createElement("li");
-        friendItem.textContent = `${friendData.firstName} ${friendData.lastName} `;
         friendItem.classList.add("friend-item");
-        
+
+        // Name lives in its own span so the row can be a flex layout (buttons
+        // on the left, name filling the rest) instead of the name being a bare
+        // text node that long names overflow onto the buttons.
+        const friendName = document.createElement("span");
+        friendName.classList.add("friend-name");
+        friendName.textContent = `${friendData.firstName} ${friendData.lastName}`;
+
 
         // Create a remove button (✖️)
         let removeButton = document.createElement("button");
@@ -2245,9 +2251,15 @@ async function populateFriendsList() {
           saveListToFirebase();
           document.getElementById("addFriendModal").style.display = "none";
         };
-        // Append the remove button to the friend item
-        friendItem.appendChild(friendAddButton);
-        friendItem.appendChild(removeButton);
+        // Group the action buttons together on the left so the name (added
+        // after them, and free to grow/wrap) can never overlap the buttons.
+        const friendActions = document.createElement("div");
+        friendActions.classList.add("friend-actions");
+        friendActions.appendChild(friendAddButton);
+        friendActions.appendChild(removeButton);
+
+        friendItem.appendChild(friendActions);
+        friendItem.appendChild(friendName);
         friendsListUl.appendChild(friendItem);
       });
     } else {
