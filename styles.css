@@ -509,6 +509,12 @@ button:hover {
   align-items: center;
   justify-content: center;
   list-style-type: none;
+  /* Reset the browser's default <ul> padding-inline-start (~40px) and
+     margin. Without this the list content is inset ~40px from the left,
+     so centring the 90%-width cards inside it leaves a bigger gap on the
+     left than the right and the list looks off-centre. */
+  margin: 0;
+  padding: 0;
   width: 100%;
 }
 
