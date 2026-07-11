@@ -74,17 +74,25 @@ Everything above is inert until you add your Firebase iOS config file:
    upload the `.p8` APNs key with its Key ID + your Team ID (this is what
    lets FCM talk to APNs).
 
-### Xcode capabilities (already configured in the project)
+### Xcode capabilities
 
-- **Push Notifications** — via `TABS/TABS.entitlements` (`aps-environment`).
-  Xcode's automatic signing turns this into the capability on your Apple
-  Developer account when you first build with your team selected.
+- **Push Notifications — currently OFF.** The `aps-environment` entitlement is
+  intentionally *not* wired into the build settings, because free / personal
+  Apple teams can't sign it ("Personal development teams … do not support the
+  Push Notifications capability"). The entitlements file
+  (`TABS/TABS.entitlements`) is kept in the project, ready to re-enable.
+  **To turn push on once you have a paid Developer account:** select the TABS
+  target → *Signing & Capabilities* → **+ Capability** → **Push Notifications**
+  (Xcode re-adds `CODE_SIGN_ENTITLEMENTS = TABS/TABS.entitlements`
+  automatically). Without this, the app builds and runs fine but won't receive
+  a device token.
 - **Background Modes → Remote notifications** — via `UIBackgroundModes` in
-  `Info.plist`.
+  `Info.plist`. Allowed on free teams, so it's left on.
 - **Firebase SDK** — added as a Swift Package
-  (`firebase-ios-sdk`, products `FirebaseCore` + `FirebaseMessaging`). Xcode
-  resolves it automatically on first open; if it doesn't, *File → Packages →
-  Resolve Package Versions*.
+  (`firebase-ios-sdk`, products `FirebaseCore` + `FirebaseMessaging`). If Xcode
+  shows *"Missing package product 'FirebaseCore'"*, it hasn't resolved yet:
+  *File → Packages → Resolve Package Versions* (or *Reset Package Caches* if
+  that stalls). Requires a network connection the first time.
 
 ### Testing notes
 
