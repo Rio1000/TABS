@@ -88,11 +88,15 @@ Everything above is inert until you add your Firebase iOS config file:
   a device token.
 - **Background Modes → Remote notifications** — via `UIBackgroundModes` in
   `Info.plist`. Allowed on free teams, so it's left on.
-- **Firebase SDK** — added as a Swift Package
-  (`firebase-ios-sdk`, products `FirebaseCore` + `FirebaseMessaging`). If Xcode
-  shows *"Missing package product 'FirebaseCore'"*, it hasn't resolved yet:
-  *File → Packages → Resolve Package Versions* (or *Reset Package Caches* if
-  that stalls). Requires a network connection the first time.
+- **Firebase SDK — add it via Xcode's UI.** The package is intentionally *not*
+  pre-wired in the project file: a hand-edited `.pbxproj` link produces a
+  stubborn *"Missing package product 'FirebaseCore'"* error even after the
+  package resolves. Let Xcode add it instead:
+  **File → Add Package Dependencies…** → paste
+  `https://github.com/firebase/firebase-ios-sdk.git` → *Add Package* → when the
+  product list appears, check **FirebaseCore** and **FirebaseMessaging** (add
+  both to the **TABS** target) → *Add Package*. `import FirebaseCore` /
+  `import FirebaseMessaging` in `AppDelegate.swift` compile once this is done.
 
 ### Testing notes
 
