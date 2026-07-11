@@ -1420,7 +1420,7 @@ input {
 }
 /* Tucked just left of the received badge so both can show side by side. */
 #sentCount {
-  right: 15px;
+  right: -5px;
   background-color: rgba(80, 202, 211, 0.92);
   color: #04333a;
 }
