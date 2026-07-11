@@ -584,3 +584,63 @@ function copyText() {
     observer.observe(el, { attributes: true, attributeFilter: ["style"] });
   });
 })();
+/* =====================================================================
+   Modal close ✕ (top-right)
+   -------------------------------------------------------------------
+   Give every modal card the same round teal ✕ in its top-right corner as
+   the add-person sheet. Each ✕ just forwards a click to that modal's real
+   Close / Cancel button, so all the existing teardown keeps running — we
+   don't duplicate any close logic here. */
+(function addModalCloseButtons() {
+  // [ card selector, existing Close/Cancel button id to forward to ]
+  const cards = [
+    ["#customModal .modal-content", "close-prompt"],
+    ["#interest-container", "close-interest"],
+    ["#friendModal .friend-content", "closeFriendModal"],
+    ["#addFriendBox", "closeAddFriend"],
+    ["#pendingRequestsBox", "closePendingRequests"],
+    ["#editMoneyAdd", "closeEditMoney"],
+    ["#editMoneyRemove", "closeEditMoney"],
+    ["#editNameBox", "closeEditName"],
+    ["#add-extra-info-box", "close-extra-info"],
+    ["#RemovefriendBox", "closeRemovefriend"],
+    ["#editItemBox", "closeEditItem"],
+    ["#editinffoBox", "closeEditinffo"],
+    ["#adsBox", "closeAdsBox"],
+    ["#ProfileBox", "closeProfile"],
+    ["#delete-account-box", "close-delete-account"],
+    ["#AccountHistoryBox", "closeAccountHistory"],
+    ["#clearAccountHistoryBox", "cancelClearHistory"],
+    ["#notificationsBox", "closeNotifications"],
+    ["#notificationSettingsBox", "closeNotificationSettings"],
+    ["#paymentSettingsBox", "closePaymentSettings"],
+    ["#paymentRequestBox", "closePaymentRequest"],
+    ["#smsReminderBox", "closeSmsReminder"],
+  ];
+
+  cards.forEach(([selector, closeId]) => {
+    const card = document.querySelector(selector);
+    if (!card) return;
+    if (card.querySelector(":scope > .modal-close-x")) return; // already added
+
+    const x = document.createElement("button");
+    x.type = "button";
+    x.className = "modal-close-x";
+    x.setAttribute("aria-label", "Close");
+    x.title = "Close";
+    x.textContent = "✕";
+    x.addEventListener("click", (event) => {
+      event.preventDefault();
+      // Run the modal's real Close/Cancel handler (resets inputs, etc.).
+      const closer = document.getElementById(closeId);
+      if (closer) closer.click();
+      // Fallback: if that didn't hide the modal, close it directly the same
+      // way every close button does (the modal-fx observer animates it out).
+      const modal = card.closest(".modal-fx") || card.parentElement;
+      if (modal && modal.style.display !== "none") {
+        modal.style.display = "none";
+      }
+    });
+    card.appendChild(x);
+  });
+})();

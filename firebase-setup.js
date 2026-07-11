@@ -2165,13 +2165,19 @@ async function populateFriendsList() {
 
         // Create a new <li> element for each friend
         const friendItem = document.createElement("li");
-        friendItem.textContent = `${friendData.firstName} ${friendData.lastName} `;
+        friendItem.classList.add("friend-item");
+
+        // Name lives in its own span so the row can be a flex layout (buttons
+        // on the left, name filling the rest) instead of the name being a bare
+        // text node that long names overflow onto the buttons.
+        const friendName = document.createElement("span");
+        friendName.classList.add("friend-name");
+        friendName.textContent = `${friendData.firstName} ${friendData.lastName}`;
+
 
         // Create a remove button (✖️)
         let removeButton = document.createElement("button");
-        removeButton.textContent = "✖️";
-        removeButton.style.marginLeft = "10px";
-        removeButton.style.cursor = "pointer";
+        removeButton.textContent = "X";
         removeButton.classList.add("remove-friend-from-list");
         removeButton.id = "RemoveButton";
 
@@ -2180,6 +2186,14 @@ async function populateFriendsList() {
           // button (bound once, below) removes the right one instead of
           // whichever friend happened to render last.
           friendPendingRemoval = { friendId, friendData };
+
+          const removeFriendPrompt = document.getElementById("removeFriendPrompt");
+          if (removeFriendPrompt) {
+            const friendName = `${friendData.firstName || ""} ${friendData.lastName || ""}`.trim();
+            removeFriendPrompt.textContent = friendName
+              ? `Are you sure you want to remove ${friendName}? They will be upset..`
+              : "Remove this friend?";
+          }
 
           const RFModal2 = document.getElementById("RFModal");
           if (RFModal2) {
@@ -2195,7 +2209,7 @@ async function populateFriendsList() {
         // "add this friend to my tab list" and can't be mistaken for an
         // accept-request button.
         friendAddButton.innerHTML =
-          '<span class="material-icons">playlist_add</span><span>Add to list</span>';
+          '<span class="material-icons">playlist_add</span>';
         friendAddButton.title = "Add this friend to your tab list";
         friendAddButton.onclick = () => {
           addPerson(
@@ -2214,9 +2228,16 @@ async function populateFriendsList() {
           saveListToFirebase();
           document.getElementById("addFriendModal").style.display = "none";
         };
-        // Append the remove button to the friend item
-        friendItem.appendChild(friendAddButton);
-        friendItem.appendChild(removeButton);
+        // Group the action buttons together. The name (added first, and
+        // free to grow/wrap) fills the row so the buttons are pushed to the
+        // right edge and can never overlap the name.
+        const friendActions = document.createElement("div");
+        friendActions.classList.add("friend-actions");
+        friendActions.appendChild(friendAddButton);
+        friendActions.appendChild(removeButton);
+
+        friendItem.appendChild(friendName);
+        friendItem.appendChild(friendActions);
         friendsListUl.appendChild(friendItem);
       });
     } else {

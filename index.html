@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TABS</title>
+    <title>  TABS  </title>
     <link rel="icon" type="image/x-icon" href="loawdgo.ico">
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet"
@@ -157,6 +157,7 @@
 
         <div id="customModal" class="modal-fx">
             <div class="modal-content">
+                <h2>Adjust Things</h2>
                 <button type="button" class="info-b" id="add-more-money-btn">Add Money</button>
                 <button type="button" class="danger-btn" id="remove-money-btn">Remove Money</button>
                 <button type="button" id="edit-item-btn">Edit Item</button>
@@ -208,10 +209,11 @@
         <!-- Add Friend Modal -->
         <div class="modal modal-fx" id="addFriendModal">
             <div id="addFriendBox">
+                <h2>Add a Friend</h2>
                 <input id="friend-code" type="text" placeholder="Friend Code" required />
                 <div>
                     <button id="addFriendBtn2">Add</button>
-                    <button id="closeAddFriend">cancel</button>
+                    <button id="closeAddFriend" class="close-btn">cancel</button>
                 </div>
             </div>
         </div>
@@ -219,8 +221,9 @@
         <!-- Pending Requests Modal -->
         <div class="modal modal-fx" id="pendingRequestsModal">
             <div id="pendingRequestsBox">
+                <h2>Pending Requests</h2>
                 <ul id="pendingRequestsList"></ul>
-                <button id="closePendingRequests">Close</button>
+                <button id="closePendingRequests" class="close-btn">Close</button>
             </div>
         </div>
         <!-- Edit Money Modal -->
@@ -230,7 +233,7 @@
                 <input id="editMoneyInput" type="number" placeholder="Amount" required />
                 <div class="AddOrCancleButtons">
                     <button id="editMoneyBtnAdd">Add</button>
-                    <button id="closeEditMoney">cancel</button>
+                    <button id="closeEditMoney" class="close-btn">cancel</button>
                 </div>
             </div>
             <div id="editMoneyRemove">
@@ -238,7 +241,7 @@
                 <input id="editMoneyInput" type="number" placeholder="Amount" required />
                 <div class="AddOrCancleButtons">
                     <button id="editMoneyBtnRemove">Remove</button>
-                    <button id="closeEditMoney">cancel</button>
+                    <button id="closeEditMoney" class="close-btn">cancel</button>
                 </div>
             </div>
         </div>
@@ -248,7 +251,7 @@
                 <input id="editNameInput" type="text" placeholder="Name" required />
                 <div class="AddOrCancleButtons">
                     <button id="editNameBtn">Done</button>
-                    <button id="closeEditName">cancel</button>
+                    <button id="closeEditName" class="close-btn">cancel</button>
                 </div>
             </div>
         </div>
@@ -258,15 +261,16 @@
                 <textarea id="extra-info-input" placeholder="Note Message" required></textarea>
                 <div class="AddOrCancleButtons">
                     <button id="add-extra-info">Add</button>
-                    <button id="close-extra-info">Cancel</button>
+                    <button id="close-extra-info" class="close-btn">Cancel</button>
                 </div>
             </div>
         </div>
         <div class="modal modal-fx" id="RFModal">
             <div id="RemovefriendBox">
+                <p id="removeFriendPrompt">Remove this friend?</p>
                 <div id="Removefriend" class="AddOrCancleButtons">
                     <button id="removeFriendBtn">Remove</button>
-                    <button id="closeRemovefriend">cancel</button>
+                    <button id="closeRemovefriend" class="close-btn">cancel</button>
                 </div>
             </div>
         </div>
@@ -276,7 +280,7 @@
                 <input id="editItemInput" type="text" placeholder="Item" required />
                 <div class="AddOrCancleButtons">
                     <button id="editItemBtn">Done</button>
-                    <button id="closeEditItem">Cancel</button>
+                    <button id="closeEditItem" class="close-btn">Cancel</button>
                 </div>
             </div>
         </div>
@@ -286,14 +290,14 @@
                 <textarea id="editinffoInput" placeholder="Extra Info" required></textarea>
                 <div class="AddOrCancleButtons">
                     <button id="editinffoBtn">Done</button>
-                    <button id="closeEditinffo">Cancel</button>
+                    <button id="closeEditinffo" class="close-btn">Cancel</button>
                 </div>
             </div>
         </div>
 
         <div class="modal modal-fx" id="adsModal">
             <div id="adsBox">
-                <div>
+                <div id="adsmessages">
                     <script async
                         src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7825788728707782"
                         crossorigin="anonymous"></script>
@@ -311,7 +315,7 @@
                         </div>
                     </div>
                     <div id="donate">
-                        <button id="closeAdsBox">Close</button>
+                        <button id="closeAdsBox" class="close-btn">Close</button>
                         <button id="PayMyTuition" type="button"
                             onclick="window.open('https://buymeacoffee.com/TABSonFriends', '_blank');"> Help Pay Our
                             Tuition</button>
@@ -371,7 +375,7 @@
                 <div>
                     <p id="delete-account-prompt">Are you sure you want to<br> delete your account?</p>
                     <button id="delete-account-btn">Delete</button>
-                    <button id="close-delete-account">Cancel</button>
+                    <button id="close-delete-account" class="close-btn">Cancel</button>
                 </div>
             </div>
         </div>
@@ -380,7 +384,7 @@
                 <h2>Account History</h2>
                 <ul id="account-history-list"></ul>
                 <div id="account-history-buttons">
-                    <button id="closeAccountHistory">Close</button>
+                    <button id="closeAccountHistory" class="close-btn">Close</button>
                     <button id="clearAccountHistory">Clear</button>
                 </div>
             </div>
@@ -389,7 +393,7 @@
             <div id="clearAccountHistoryBox">
                 <p>Are you sure you want to clear your account history?</p>
                 <div id="clearAccountHistoryButtons">
-                    <button id="cancelClearHistory">No</button>
+                    <button id="cancelClearHistory" class="close-btn">No</button>
                     <button id="confirmClearHistory">Yes</button>
                 </div>
             </div>
@@ -411,7 +415,7 @@
                 <div class="notification-buttons">
                     <button id="markAllReadBtn">Mark All Read</button>
                     <button id="clearNotificationsBtn">Clear All</button>
-                    <button id="closeNotifications">Close</button>
+                    <button id="closeNotifications" class="close-btn">Close</button>
                 </div>
             </div>
         </div>
@@ -441,7 +445,7 @@
                         <label for="notifRemindersToggle"></label>
                     </div>
                 </div>
-                <button id="closeNotificationSettings">Close</button>
+                <button id="closeNotificationSettings" class="close-btn">Close</button>
             </div>
         </div>
 
@@ -470,7 +474,7 @@
                     <input type="text" id="cashAppHandleInput" placeholder="yourcashtag" autocomplete="off" />
                 </div>
                 <button id="savePaymentSettings">Save</button>
-                <button id="closePaymentSettings">Close</button>
+                <button id="closePaymentSettings" class="close-btn">Close</button>
             </div>
         </div>
 
@@ -481,7 +485,7 @@
                 <p id="paymentRequestSubtitle"></p>
                 <div id="paymentRequestOptions"></div>
                 <p id="paymentRequestHint">TABS doesn't move money — this opens the payment app.</p>
-                <button id="closePaymentRequest">Close</button>
+                <button id="closePaymentRequest" class="close-btn">Close</button>
             </div>
         </div>
 
@@ -502,7 +506,7 @@
                     <input type="range" id="autoRemindRange" min="1" max="7" value="7" />
                     <p id="autoRemindLabel">Once a week</p>
                 </div>
-                <button id="closeSmsReminder">Close</button>
+                <button id="closeSmsReminder" class="close-btn">Close</button>
             </div>
         </div>
 

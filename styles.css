@@ -36,6 +36,8 @@ body {
   font-size: 50px;
   z-index: 901;
   transition: 0.3s;
+  text-decoration: underline;
+  color: #a0e8f3;
 }
 
 /* Container Styles */
@@ -88,10 +90,7 @@ body {
 
 }
 
-#Ads {
-  background-color: salmon;
-  color: #2b2b2b;
-}
+
 
 .login-input {
   margin-bottom: 15px;
@@ -126,7 +125,7 @@ body {
   align-items: flex-start;
   width: 85%;
   padding: 10px;
-  margin: 10px;
+  margin: auto;
   background-color: transparent;
 }
 
@@ -196,9 +195,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #3c94e7;
+  background-color: #3c94e74f;
+  border-color: #3c94e7 !important;
+  border-width: 1px !important;
   color: #fff;
-  border: none;
+  border: solid;
   border-radius: 10px;
   font-size: 16px;
   cursor: pointer;
@@ -249,16 +250,20 @@ body {
    unmistakable. !important overrides the generic red `#friendsList li
    button` rule. */
 .add-friend-to-list {
-  margin-left: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: auto;
   height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  background-color: #4f9bd6 !important;
+  background-color: #4fc2d666 !important;
+  border-color: #4fc2d6 !important;
+  border-width: 1px !important;
   color: #fff;
-  border: none;
+  border-style: solid!important;
   border-radius: 10px;
   font-size: 13px;
   cursor: pointer;
@@ -266,11 +271,14 @@ body {
   font-weight: bold;
   line-height: 1;
   padding: 0 10px !important;
-  white-space: nowrap;
-}
 
+}
+#friendItem{
+  background-color: #cc0000 !important;
+  height: 100px !important;
+}
 .add-friend-to-list:hover {
-  background-color: #6a3fc6 !important;
+  background-color: #3b96a4 !important;
 }
 
 .add-friend-to-list .material-icons {
@@ -360,6 +368,19 @@ button:hover {
   text-align: center;
   justify-content: center;
 }
+#add-person-btn{
+  border-right-style:solid !important;
+  border-right-width: 1px !important;
+  border-right-color: rgba(80, 202, 211, 0.22) !important;
+}
+#clear-list-btn{
+  border-left-style:solid !important;
+  border-left-width: 1px !important;
+  border-left-color: rgba(80, 202, 211, 0.22) !important;
+}
+
+
+
 
 .sidenav {
   margin-top: 10px;
@@ -428,11 +449,10 @@ button:hover {
   justify-content: center;
   text-align: center;
   color: #e6e6e6;
-  border-style: hidden;
+  border-style: solid;
   border-top-left-radius: 10px;
   border-bottom-left-radius: 10px;
   font-weight: bold;
-  border: 18px;
   opacity: 0.8;
   padding: 20px;
   top: 18px;
@@ -443,15 +463,29 @@ button:hover {
   z-index: 99;
   width: 20px;
   height: 20px;
-  background-color: #37adc791;
-    box-shadow: #023030c4 0px 0px 10px 0px;
+  background-color: #009eb663;
+  border-color: #2ea5b8 !important;
+  border-width: 1px;
+  box-shadow: #023030c4 0px 0px 10px 0px;
 
 }
 
 /* Dropdown container (hidden by default). Optional: add a lighter background color and some left padding to change the design of the dropdown content */
 #friendBox {
-  position: relative;
-  padding: 10px;
+  justify-content: center;
+  align-self: center;
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  margin-top: 30px;
+  /* Absolute + width:100% used to overflow to the right: an absolutely
+     positioned box sits at its content-box origin but sizes against the
+     wider padding box, so the whole list was shoved right of centre.
+     Pinning left/right to 0 (with width:auto) fills the container
+     symmetrically so the list is centred. */
+  position: absolute;
+  left: 0;
+  right: 0;
   overflow-x: hidden;
   height: auto;
   color: #b6c5b9;
@@ -460,9 +494,8 @@ button:hover {
   font-size: 20px;
   display: flex;
   flex-direction: column;
-  width: 100%;
+  width: auto;
   transition: 0.5s;
-  margin-left: -12px;
 }
 
 .dropdown-container {
@@ -471,24 +504,55 @@ button:hover {
 }
 
 #friendsList {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   list-style-type: none;
-  padding: 10px;
+  /* Reset the browser's default <ul> padding-inline-start (~40px) and
+     margin. Without this the list content is inset ~40px from the left,
+     so centring the 90%-width cards inside it leaves a bigger gap on the
+     left than the right and the list looks off-centre. */
+  margin: 0;
+  padding: 0;
+  width: 100%;
 }
 
 #friendsList li {
-  display: flex;
   color: rgb(241, 241, 241);
-  background-color: rgb(89, 125, 134);
-  justify-content: space-between;
+  background-color: #0b5e69;
+  border-color: rgb(103, 196, 219);
+  border-style: solid;
+  border-width: 1px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: row;
   align-items: center;
+  gap: 10px;
   text-align: left;
   margin-top: 10px;
-  border-radius: 8px;
-  padding: 8px;
+  padding: 8px 12px;
   overflow-x: hidden;
   word-break: break-word;
   white-space: normal;
-  width: 100%;
+  width: 90%;
+  box-sizing: border-box;
+}
+
+/* Name fills the rest of the row so the buttons are pushed to the right
+   edge; the two can never overlap and every name starts at the same x. */
+.friend-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.friend-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  word-break: break-word;
 }
 
 #friendsList li button {
@@ -530,21 +594,49 @@ button:hover {
 }
 
 
+#currency-select {
+  margin: 10px;
+  padding: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  border: 1px solid #5bc5c772;
+  background-color: #1F5C61b0;
+  color: #bbebec;}
+
 #Profile {
-  background-color: #7fbac5;
-  color: #1f4a5a;
+  border: 1px solid #5bc5c772;
+  background-color: #1F5C61b0;
+  color: #bbebec;
+
 }
 
 #FriendsTab {
-  background-color: #a8a39d;
-  color: #2b2b2b;
+  border: 1px solid #fff7b172;
+  background-color: #7B7A69b0;
+  color: #e4dcbf;
 }
 
 #feedback {
-  background-color: #5d9450;
-  color: #172022;
+  border: 1px solid #5a795472;
+  background-color: #416836b0;
+  color: #bfecbb;
 }
-
+#inviteToTabsBtn{
+  border: 1px solid #cfaf9372;
+  background-color: #917558b0;
+  color: #eccebb;
+  width: 90.5%;
+}
+#notificationsBtn {
+  border: 1px solid #7a92ff72;
+  background-color: #534F7Eb0;
+  color: #bfc5e4;
+}
+#Ads {
+  border: 1px solid #ff808072;
+  background-color: #775152b0;
+  color: #e4dcbf;
+}
 #closeButton {
   margin-top: 30px;
   color: #ececec;
@@ -560,11 +652,12 @@ button:hover {
   z-index: 96 !important;
   display: flex;
   transition: 1s;
-  background-color: #746f8ada;
+  background-color: #611f1fb0;
   width: 90%;
   border-top-left-radius: 10px;
   border-bottom-left-radius: 10px;
   height: 30px;
+  border-width:1px !important;
 }
 
 .sidenav a:hover {
@@ -616,15 +709,17 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #6da765;
-  color: #fff;
-  border: none;
+  border-color: #6da765 !important;
+  background-color: #6da7654d;
+  border: solid;
   border-radius: 10px;
+  border-width: 1px;
   font-size: 16px;
   cursor: pointer;
   text-decoration: none;
   font-weight: bold;
   padding: 0;
+  margin-top: 5px;
 }
 
 #more-btn {
@@ -667,8 +762,8 @@ input {
   opacity: 80%;
   transition: 0.3s;
   z-index: 98;
+  filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(150deg) brightness(50%) contrast(200%);
 }
-
 
 /* Utility Classes */
 .hidden {
@@ -708,6 +803,7 @@ input {
   align-self: flex-end; /* Push the box itself to the right */
   gap: 8px;
   position: relative;
+  padding: 2px;
 }
 .extra-info-box > button,
 .extra-info-box > a {
@@ -797,7 +893,6 @@ input {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(14, 53, 59, 0.781);
   justify-content: center;
   align-items: center;
   text-align: center;
@@ -1036,6 +1131,31 @@ input {
   padding: 10px;
 }
 
+/* Remove-friend confirmation card: a centered title above the Remove
+   button (Cancel is hidden — the red ✕ closes it). */
+#RemovefriendBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 24px 24px;
+  width: min(360px, 88vw);
+  box-sizing: border-box;
+}
+#removeFriendPrompt {
+  color: #fff;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 22px;
+  font-weight: bold;
+  line-height: 1.3;
+  margin: 0 0 6px;
+  text-align: center;
+}
+#Removefriend {
+  width: 100%;
+  justify-content: center;
+}
+
 #add-person-box {
   display: flex;
   flex-direction: column;
@@ -1090,14 +1210,15 @@ input {
   text-indent: 5px;
 }
 
-.modal button,
 #currency-select {
   margin: 10px;
   padding: 10px;
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  background-color: #4c7faf;
+  border: 1px solid rgba(80, 202, 211, 0.45);
+  background-color: rgba(80, 202, 211, 0.16);
+  color: #c2e9e8;
 }
 
 .button-container {
@@ -1189,7 +1310,16 @@ input {
   max-height: 50px;
   
 }
-
+#RemoveButton,
+.remove-friend-from-list{
+  border: solid !important;
+  border-width: 1px !important;
+  border-radius: 8px !important;
+  background: rgba(94, 20, 20, 0.353) !important;
+  color: #cb4337 !important;
+  border-color: #cb4337 !important;
+  font-size: 15px !important;
+}
 #add-more-money-btn,
 #add-extra-info-btn,
 #remove-money-btn,
@@ -1204,7 +1334,6 @@ input {
 #add-person-btn,
 #editinffoBtn,
 #anotherSurprize,
-#addFriendBtn,
 #addFriendBtn2,
 #pendingRequestsBtn,
 #close-delete-account,
@@ -1220,7 +1349,6 @@ input {
 #interest-btn{
   text-align: center;
   justify-content: center;
-  margin-top: 10px;
   background-color: rgba(56, 138, 147, 0.686);
   color: rgb(194, 233, 232);
   font-size: 20px;
@@ -1262,6 +1390,38 @@ input {
 
 .badge-sent {
   background-color: #3c94e7;
+}
+
+/* Pending-button request counts. Anchored to the button's top-right corner
+   as small pills (out of flow) so they never wrap the "Pending" label and
+   spill below the button. Recoloured to the app's palette instead of the
+   default red/blue: the app's accept-green for received requests (the ones
+   you act on) and the cyan accent for the informational sent count. The
+   cut-out ring matches the Pending button so each pill reads as a badge. */
+#pendingCount,
+#sentCount {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  margin-left: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  line-height: 1;
+  border: 1px solid rgba(80, 202, 211, 0.35);
+  box-shadow: 0 0 0 2px rgba(50, 108, 112, 0.95);
+  pointer-events: none;
+}
+#pendingCount {
+  background-color: #6da765;
+  color: #fff;
+}
+/* Tucked just left of the received badge so both can show side by side. */
+#sentCount {
+  right: -5px;
+  background-color: rgba(80, 202, 211, 0.92);
+  color: #04333a;
 }
 
 #googleSignInBtn,
@@ -1311,6 +1471,7 @@ input {
   font-weight: bold;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  border-width:1px;
 }
 
 #loginbutton,
@@ -1343,9 +1504,12 @@ input {
 }
 #profileInfo,
 #profileStats,
-#profileAccount {
+#profileAccount,
+#addFriendBtn,
+#pendingRequestsBtn{
   color: rgb(194, 233, 232);
   padding: 5px;
+  position: relative;
   background-color: rgba(50, 108, 112, 0.8);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   width: 100%;
@@ -1355,8 +1519,12 @@ input {
   border-radius: 10px;
   margin: 2px;
   font-weight: bold;
+  border-width: 1px !important;
 }
-
+#addFriendBtn,
+#pendingRequestsBtn{
+  height:39px;
+}
 #closeProfile {
   color: rgb(194, 233, 232);
   padding: 5px;
@@ -1373,12 +1541,7 @@ input {
 /* Notifications now live as a side-nav link (#notificationsBtn) with the
    Friends/Login styling; the folder open button carries the unread count so
    it's visible without opening the menu. */
-#notificationsBtn {
-  background-color: #4c98af;
-  color: #061e22;
-  align-items: center;
-  justify-content: space-between;
-}
+
 
 /* Count badge sitting on the folder button itself. Anchored to the top-LEFT
    corner because the folder button hugs the right screen edge — a top-right
@@ -1438,7 +1601,10 @@ input {
   max-height: 70vh;
   padding: 20px;
 }
-
+#smsReminderTitle,
+#paymentRequestTitle{
+  margin-top: 40px!important;
+}
 #notificationsList {
   list-style: none;
   margin: 0;
@@ -1526,13 +1692,15 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #2faea1;
+  border-color: #50c9bd !important;
+  background-color: #2faea159;
   color: #fff;
-  border: none;
+  border: solid;
   border-radius: 10px;
   font-size: 16px;
   cursor: pointer;
   padding: 0;
+  border-width: 1px;
 }
 
 .sms-remind-btn .material-icons {
@@ -1547,9 +1715,11 @@ input {
   height: 30px;
   align-items: center;
   justify-content: center;
-  background-color: #3d8a4f;
+  background-color: #3d8a4f63;
+  border-color: #3d8a4f !important;
   color: #fff;
-  border: none;
+  border: solid;
+  border-width: 1px;
   border-radius: 10px;
   font-size: 16px;
   cursor: pointer;
@@ -1668,35 +1838,16 @@ body.payments-enabled .pay-request-btn {
   margin-bottom: 10px;
   background-color: rgba(25, 64, 66, 0.8);
   border-radius: 8px;
-  border-color: transparent;
+  border-color:#51949d;
   height: auto;
   overflow-wrap: break-word;
   text-overflow: ellipsis;
   color: rgb(194, 233, 232);
-  border-width: 5px;
+  border-width: 1px;
   max-width: 300px;
   min-height: 50px;
-}
-
-
-#friendCodeBox {
-  /* Was position: absolute; top: 0px — taken out of flow, so once
-     #friendBox below it was fixed to start at the top of .friend-content
-     (rather than sitting vertically centered), the two overlapped. Normal
-     flow lets it push #friendBox down by however tall it actually is,
-     rather than guessing a fixed offset. */
-  position: absolute;
-  bottom: 0px;
-  width: 100%;
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  justify-content: space-between;
-  align-items: center;
-  z-index: 100;
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
-  flex-shrink: 0;
+  border-style: solid;
+  
 }
 
 #extra-info-input {
@@ -1783,12 +1934,17 @@ body.payments-enabled .pay-request-btn {
   padding: 20px;
   border-radius: 10px;
   text-align: center;
-  width: 90%;
-  margin-top: 60px;
-  height: 90%;
+  width: 70%;
+  height: 80%;
   position: relative;
   align-items: center;
   justify-content: center;
+}
+#adsBox{
+  height: 50%;
+}
+#adsmessages{
+  margin-top: 30px;
 }
 
 /* .friend-content's only in-flow child is #friendBox (friendCodeBox is
@@ -1821,6 +1977,7 @@ body.payments-enabled .pay-request-btn {
   transition: 0.2s;
   cursor: pointer;
   height: 50px;
+  border-width: 1px !important;
 }
 
 #profile-stats>p {
@@ -1839,11 +1996,6 @@ body.payments-enabled .pay-request-btn {
   flex-direction: column;
 }
 
-#friendCodeBox {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-}
 
 #closeFriendModal {
   background-color: rgba(175, 53, 44, 0.8);
@@ -1862,7 +2014,8 @@ body.payments-enabled .pay-request-btn {
 #editMoneyRemove,
 #add-extra-info-box,
 #editNameBox,
-#interest-container {
+#interest-container
+ {
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -1923,13 +2076,15 @@ body.payments-enabled .pay-request-btn {
   opacity: 1;
 }
 
-.topnav {
+.topnav,
+#friendCodeBox {
+  margin: 8px;
   position: absolute;
   border-top-left-radius: 10px;
   border-top-right-radius: 10px;
   top: 0;
   left: 0;
-  width: 100%;
+  width: 80%;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2176,6 +2331,7 @@ body.payments-enabled .pay-request-btn {
     position: absolute;
     background-color: rgba(211, 80, 80, 0.8);
     top: 0;
+    width: 100%;
   }
 
   .scroll-buttons {
@@ -2442,4 +2598,777 @@ body.payments-enabled .pay-request-btn {
     background-color: #868686;
   }
 
+}
+
+/* =====================================================================
+   Desktop / tablet refinement layer (>=600px)
+   -------------------------------------------------------------------
+   A fluid, professional pass over the tab list for larger screens.
+   Appended last so these rules win over the earlier min-width:600px
+   block by source order (equal specificity), without disturbing the
+   unrelated action-modal grid it also defines. Palette is unchanged —
+   the same dark-teal (#033238) cards, cyan accents (#50cad3) and page
+   gradient the mobile app uses — just tighter layout, uniform cards and
+   a responsive grid that reflows to any width instead of a fixed 1000px.
+   ===================================================================== */
+@media screen and (min-width: 600px) {
+
+  /* Center the list area; drop the mobile top-fade mask (not needed once
+     the list is a self-contained panel) and let it size to content. */
+  .personlist {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    padding: 24px 20px 8px;
+    overflow: visible;
+    height: auto;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  /* Fluid card grid: reflows from 1 up to as many 300px columns as fit,
+     capped at a comfortable reading width and centered. Replaces the old
+     fixed 1000px width that overflowed between 600–1000px. */
+  #people-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 18px;
+    align-content: start;
+    width: min(1120px, 92vw);
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 22px;
+    box-sizing: border-box;
+    border-radius: 20px;
+    background: rgba(3, 40, 46, 0.45);
+    border: 1px solid rgba(80, 202, 211, 0.18);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    max-height: 66vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* Subtle inner scrollbar that matches the palette */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(80, 202, 211, 0.5) transparent;
+  }
+  #people-list::-webkit-scrollbar { width: 8px; }
+  #people-list::-webkit-scrollbar-thumb {
+    background: rgba(80, 202, 211, 0.4);
+    border-radius: 8px;
+  }
+
+  /* Uniform, professional card. Same teal, now with a soft gradient,
+     consistent height and a clear hover state. Width is driven by the
+     grid track (auto), not a fixed 300px. */
+  .personlist-item {
+    width: auto;
+    min-height: 104px;
+    margin: 0;
+    padding: 16px 18px;
+    justify-content: center;
+    border-radius: 16px;
+    border: 1px solid rgba(80, 202, 211, 0.22);
+    background: linear-gradient(150deg, #05434c 0%, #022a30 100%);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .personlist-item:hover {
+    transform: translateY(-4px);
+    border-color: rgba(80, 202, 211, 0.6);
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42);
+  }
+  /* Slim accent stripe keyed to who-owes-who, using the app's existing
+     green/red amount colors, for an at-a-glance professional touch. */
+  .personlist-item[data-status="owesMe"] { border-left: 4px solid rgba(73, 255, 97, 0.55); }
+  .personlist-item[data-status="iOwe"]   { border-left: 4px solid rgba(255, 73, 73, 0.55); }
+
+  /* Name + amount stacked cleanly on the left, actions on the right,
+     both vertically centered so cards read evenly. Overrides the mobile
+     max-width:40vh which squeezed the row on wide screens. */
+  .name-amount-container {
+    max-width: none;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0;
+    padding: 0;
+    gap: 12px;
+  }
+  .person-stuff {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    max-width: none;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .person-stuff .amount-container { width: auto; }
+  .name-span { font-size: 22px; }
+  .amount-input { font-size: 22px; font-weight: 700; }
+  .dollar-sign { font-size: 20px; opacity: 0.9; }
+
+  /* Compact, uniform action cluster: a tidy grid of equal buttons that
+     stays the same footprint whether a card has 2 or 4 actions, so card
+     heights don't jump around. */
+  .extra-info-box {
+    flex-direction: unset;
+    display: grid;
+    grid-template-columns: repeat(2, 38px);
+    grid-auto-rows: 36px;
+    gap: 8px;
+    align-self: center;
+    align-items: stretch;
+  }
+  .extra-info-box > button,
+  .extra-info-box > a {
+    width: 38px;
+    height: 36px;
+    margin: 0;
+    border-radius: 10px;
+  }
+
+  /* The scroll-to-top/bottom helpers are a small-screen affordance; on
+     desktop the panel scrolls on its own and they only overlapped the
+     cards, so hide them for a cleaner look. */
+  .scroll-buttons { display: none !important; }
+
+  /* Add / Clear as a clean centered pair below the panel, not the mobile
+     blurred bottom bar (whose max-width:1000px rule this overrides). */
+  #buttons {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    justify-content: center;
+    align-items: center;
+    width: auto;
+    height: auto;
+    margin: 18px auto 24px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  #add-person-btn,
+  #clear-list-btn {
+    width: 190px;
+    min-height: 52px;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 700;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  }
+  #add-person-btn {
+    background-color: rgba(80, 202, 211, 0.16);
+    border: 2px solid rgba(80, 202, 211, 0.7);
+    color: rgb(194, 233, 232);
+  }
+  #add-person-btn:hover {
+    background-color: rgba(80, 202, 211, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  }
+  #clear-list-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Empty state centered under the header at desktop widths. */
+  #empty-list-message {
+    max-width: 520px;
+    margin: 40px auto;
+  }
+}
+
+/* Extra breathing room and a slightly larger reading width on big
+   desktop monitors, so the grid doesn't feel cramped in the center. */
+@media screen and (min-width: 1200px) {
+  #people-list {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    width: min(1200px, 88vw);
+    max-width: 1200px;
+  }
+}
+
+
+/* =====================================================================
+   Mobile refinement layer (<=599px)
+   -------------------------------------------------------------------
+   Brings the same professional card treatment as the desktop layer to
+   the phone view — soft teal gradient, rounded cards, owe-status accent
+   stripe and a compact touch-friendly action cluster — while keeping the
+   single-column, full-width, bottom-button-bar ergonomics of mobile.
+   Same palette as before; appended last so it wins by source order.
+   ===================================================================== */
+@media screen and (max-width: 599px) {
+
+  #people-list {
+    width: 92%;
+    gap: 12px;
+    padding: 6px 0 10px;
+  }
+
+  /* Professional card: gradient, rounded, soft shadow, hover/press feel. */
+  .personlist-item {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 88px;
+    margin-bottom: 0;
+    padding: 14px 14px;
+    justify-content: center;
+    border-radius: 16px;
+    border: 1px solid rgba(80, 202, 211, 0.22);
+    background: linear-gradient(150deg, #05434c 0%, #022a30 100%);
+    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .personlist-item:active {
+    transform: scale(0.99);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  }
+  /* Left accent stripe keyed to who-owes-who, matching the desktop layer. */
+  .personlist-item[data-status="owesMe"] { border-left: 4px solid rgba(73, 255, 97, 0.55); }
+  .personlist-item[data-status="iOwe"]   { border-left: 4px solid rgba(255, 73, 73, 0.55); }
+
+  /* Name + amount on the left, actions on the right, vertically centered
+     so cards no longer stretch tall around a vertical button stack. */
+  .name-amount-container {
+    max-width: none;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0;
+    padding: 0;
+    gap: 10px;
+  }
+  .person-stuff {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    max-width: none;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .person-stuff .amount-container { width: auto; }
+  .name-span { font-size: 20px; }
+  .amount-input { font-size: 21px; font-weight: 700; }
+  .dollar-sign { font-size: 19px; opacity: 0.9; }
+
+  /* Compact, touch-friendly 2-up action cluster — same footprint whether
+     a card has 2 or 4 actions, so heights stay even. */
+  .extra-info-box {
+    flex-direction: unset;
+    display: grid;
+    grid-template-columns: repeat(2, 44px);
+    grid-auto-rows: 40px;
+    gap: 8px;
+    align-self: center;
+  }
+  .extra-info-box > button,
+  .extra-info-box > a {
+    width: 44px;
+    height: 40px;
+    margin: 0;
+    border-radius: 11px;
+  }
+
+  /* Slightly rounder, bolder Add / Clear in the bottom bar. */
+  #add-person-btn,
+  #clear-list-btn {
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 700;
+    min-height: 50px;
+  }
+}
+
+
+/* =====================================================================
+   Unified modal / popup skin
+   -------------------------------------------------------------------
+   Every pop-up card now wears the same look as the person-list items:
+   a dark-teal gradient, a cyan hairline border, rounded corners and a
+   soft shadow — so every little screen in the app feels like one system.
+   Each modal keeps its own layout (flex/grid, sizing, positioning); this
+   only restyles the surface. Appended last so it wins by source order;
+   !important is used because the boxes set their backgrounds at a mix of
+   specificities and we want one consistent surface across all of them.
+   ===================================================================== */
+#loginorsignupbox,
+.login-content,
+#add-person-box,
+.modal-content,
+#AccountHistoryBox,
+#clearAccountHistoryBox,
+#delete-account-box,
+#clear-list-box,
+#notificationsBox,
+#notificationSettingsBox,
+#paymentSettingsBox,
+#paymentRequestBox,
+#smsReminderBox,
+.friend-content,
+#ProfileBox,
+#addFriendBox,
+#pendingRequestsBox,
+#editinffoBox,
+#adsBox,
+#editMoneyAdd,
+#editMoneyRemove,
+#add-extra-info-box,
+#editNameBox,
+#RemovefriendBox,
+#interest-container,
+#friendInputBox{
+  background: linear-gradient(150deg, #05434c 0%, #022a30 100%) !important;
+  border: 1px solid rgba(80, 202, 211, 0.22) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* These confirm/entry dialogs previously had no card of their own (they
+   were bare wrappers over the blurred backdrop). Now that they carry the
+   shared surface, give them consistent dialog sizing and padding so they
+   read as proper cards like the rest. */
+#delete-account-box,
+#clear-list-box,
+#addFriendBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 26px 24px;
+  width: min(360px, 88vw);
+  box-sizing: border-box;
+}
+#pendingRequestsBox,
+#editinffoBox,
+#adsBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 26px 24px;
+  width: min(460px, 92vw);
+  box-sizing: border-box;
+}
+/* Their inner content should span the card width so inputs/lists/buttons
+   don't collapse to their intrinsic size inside the newly-sized card. */
+#delete-account-box > div,
+#clear-list-box > div,
+#addFriendBox > div,
+#addFriendBox input,
+#editinffoBox textarea,
+#pendingRequestsBox ul {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Consistent modal headings across every pop-up, so the type feels like
+   one family too. */
+.login-content h2,
+#ProfileBox h2,
+#AccountHistoryBox h2,
+#notificationsBox h2,
+#notificationSettingsBox h2,
+#paymentSettingsBox h2,
+#paymentRequestBox h2,
+#smsReminderBox h2,
+#editinffoBox h2 {
+  margin-top: 0;
+  margin-bottom: 4px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: rgb(226, 245, 246);
+}
+
+
+/* =====================================================================
+   Bottom action dock — Add / Clear as Google-style tabs
+   -------------------------------------------------------------------
+   A persistent bar pinned to the bottom. Pressing Add or Clear slides a
+   teal sheet up out of the bar to reveal that tab's content (add-person
+   inputs, or the clear confirmation) plus a close button, and dims/blurs
+   the app behind it. The two act like tabs: pressing one while the
+   other's sheet is open switches panes and slides the indicator across.
+   ===================================================================== */
+
+/* Blurred dim behind the sheet while it's open. */
+#action-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 30, 34, 0.45);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 850;
+}
+body.action-open #action-backdrop {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* The dock spans the bottom but only its bar/sheet capture clicks, so the
+   list stays interactive around them. */
+#action-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+#action-dock > * {
+  pointer-events: auto;
+}
+
+/* Collapsible sheet — grows upward out of the bar. */
+#action-sheet {
+  position: relative;
+  width: min(520px, 94vw);
+  box-sizing: border-box;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  padding: 0 22px;
+  background: linear-gradient(150deg, #05434c 0%, #022a30 100%);
+  border: 1px solid rgba(80, 202, 211, 0.22);
+  border-bottom: none;
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
+  transition: max-height 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.24s ease, padding 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+#action-sheet[data-open="add"],
+#action-sheet[data-open="clear"] {
+  max-height: 72vh;
+  opacity: 1;
+  padding: 48px 22px 22px;
+  overflow-y: auto;
+}
+
+#action-sheet-close,
+.modal-close-x {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 39px;
+  height: 39px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: solid;
+  border-width: 1px;
+  border-radius: 8px;
+  background: rgba(94, 20, 20, 0.353);
+  color: #cb4337;
+  border-color: #cb4337;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+  font-weight: bold;
+}
+
+#action-sheet-close:hover,
+.modal-close-x:hover {
+  background: rgba(71, 21, 21, 0.353);
+}
+
+/* Panes — only the active one shows, with a small enter animation. */
+.action-pane {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+#action-sheet[data-open="add"] #action-pane-add,
+#action-sheet[data-open="clear"] #action-pane-clear {
+  display: flex;
+  animation: actionPaneIn 0.28s ease;
+}
+@keyframes actionPaneIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#action-pane-add input {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(80, 202, 211, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f1f1f1;
+  font-size: 16px;
+}
+#action-pane-add input::placeholder { color: #9fc2c6; }
+#action-pane-add #add {
+  width: 100%;
+  margin: 4px 0 0;
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid rgba(80, 202, 211, 0.7);
+  background: rgba(80, 202, 211, 0.18);
+  color: #dff6f7;
+  font-weight: 700;
+  font-size: 17px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+#action-pane-add #add:hover { background: rgba(80, 202, 211, 0.32); }
+
+#action-pane-clear {
+  align-items: center;
+  text-align: center;
+}
+#action-pane-clear #clear-list-prompt {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 600;
+}
+#action-pane-clear #clearListBtn {
+  width: 100%;
+  margin: 0;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: #c0504d;
+  color: #fff;
+  font-weight: 700;
+  font-size: 17px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+#action-pane-clear #clearListBtn:hover { background: #a83f3c; }
+
+/* The tab bar itself. Overrides the earlier mobile/desktop #buttons rules
+   (appended later ⇒ wins). */
+#action-dock #buttons {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  width: min(520px, 94vw);
+  box-sizing: border-box;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  background: linear-gradient(150deg, #05434c 0%, #022a30 100%);
+  border: 1px solid rgba(80, 202, 211, 0.22);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  transition: border-radius 0.2s ease;
+}
+#action-dock #buttons.sheet-open {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top: none;
+}
+#action-dock #add-person-btn,
+#action-dock #clear-list-btn {
+  flex: 1 1 50%;
+  width: auto;
+  min-height: 56px;
+  margin: 0;
+  padding: 16px 10px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: #bfe0e4;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+#action-dock #add-person-btn:hover,
+#action-dock #clear-list-btn:hover {
+  background: rgba(80, 202, 211, 0.08);
+}
+#buttons.active-add #add-person-btn,
+#buttons.active-clear #clear-list-btn {
+  color: #ffffff;
+  background: rgba(80, 202, 211, 0.14);
+}
+
+/* Sliding Google-style active indicator. */
+#tab-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  height: 3px;
+  background: #50cad3;
+  border-radius: 3px 3px 0 0;
+  opacity: 0;
+  transform: translateX(0);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  pointer-events: none;
+}
+#buttons.active-add #tab-indicator { opacity: 1; transform: translateX(0); }
+#buttons.active-clear #tab-indicator { opacity: 1; transform: translateX(100%); }
+
+/* Keep the last list rows clear of the pinned bar. */
+.personlist { padding-bottom: 96px; }
+
+
+/* =====================================================================
+   Unified translucent button styling
+   -------------------------------------------------------------------
+   One cohesive cool-toned language. Every text button AND link (except
+   the sidenav) wears the desktop "Add person" look — a translucent teal
+   fill, a teal outline and light-teal text. Two other roles read at a
+   glance while staying in the same family:
+     • Positive (Accept a friend request) → translucent green.
+     • Negative — every Close / Cancel / Delete / Remove / Clear button
+       → translucent red, so "back out of / undo this" always looks the
+       same everywhere.
+   Colors are driven by CSS custom properties so the three hues live in
+   one place. The small card icon buttons (✓ / ⋯ / pay / sms), the
+   Add/Clear dock tabs, the emoji back arrows and the sidenav keep their
+   own designs (they're icons / tab bars, not text buttons); they're
+   excluded from the neutral rule below so there's no specificity
+   tug-of-war, and they already sit on the shared teal. Every modal also
+   gets a teal ✕ in its top-right corner (.modal-close-x), matching the
+   add-person sheet. */
+:root {
+  --btn-accent: 80, 202, 211;        /* teal — neutral / default          */
+  --btn-text: 194, 233, 232;         /* light text that sits on the fill  */
+  --btn-danger: 224, 90, 86;         /* red — Close / Cancel / destructive */
+  --btn-danger-text: 246, 205, 203;
+  --btn-positive: 120, 190, 110;     /* green — Accept                    */
+  --btn-positive-text: 208, 236, 202;
+}
+
+button:not(.remove-btn):not(.add-info-btn):not(.remove-friend-from-list):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(.close-btn):not(.modal-close-x):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(#confirmClearHistory):not(.accept):not(.decline),
+#profileInfo,
+#profileStats,
+#profileAccount,
+.btn {
+  background-color: rgba(var(--btn-accent), 0.16) !important;
+  border: 1px solid rgba(var(--btn-accent), 0.7) !important;
+  color: rgb(var(--btn-text)) !important;
+  border-radius: 12px !important;
+  transition: background-color 0.2s ease, transform 0.15s ease,
+    box-shadow 0.2s ease, border-color 0.2s ease !important;
+}
+button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(.close-btn):not(.modal-close-x):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(#confirmClearHistory):not(.accept):not(.decline):hover,
+#profileInfo:hover,
+#profileStats:hover,
+#profileAccount:hover,
+.btn:hover {
+  background-color: rgba(var(--btn-accent), 0.3) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Negative actions — Close / Cancel dismissals and destructive actions
+   (Delete / Remove / Clear) all read red. */
+.close-btn,
+#clearListBtn,
+#delete-account,
+#delete-account-btn,
+#remove-money-btn,
+#removeFriendBtn,
+#clearNotificationsBtn,
+#clearAccountHistory,
+#confirmClearHistory,
+.notification-action.decline {
+  background-color: rgba(var(--btn-danger), 0.2) !important;
+  border: 2px solid rgba(var(--btn-danger), 0.85) !important;
+  color: rgb(var(--btn-danger-text)) !important;
+  border-radius: 12px !important;
+  transition: background-color 0.2s ease, transform 0.15s ease,
+    box-shadow 0.2s ease !important;
+}
+.close-btn:hover,
+#clearListBtn:hover,
+#delete-account:hover,
+#delete-account-btn:hover,
+#remove-money-btn:hover,
+#removeFriendBtn:hover,
+#clearNotificationsBtn:hover,
+#clearAccountHistory:hover,
+#confirmClearHistory:hover,
+.notification-action.decline:hover {
+  background-color: rgba(var(--btn-danger), 0.36) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Positive action (Accept a friend request) — translucent green. */
+.notification-action.accept {
+  background-color: rgba(var(--btn-positive), 0.22) !important;
+  border: 2px solid rgba(var(--btn-positive), 0.82) !important;
+  color: rgb(var(--btn-positive-text)) !important;
+  border-radius: 12px !important;
+  transition: background-color 0.2s ease, transform 0.15s ease,
+    box-shadow 0.2s ease !important;
+}
+.notification-action.accept:hover {
+  background-color: rgba(var(--btn-positive), 0.38) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* The old text Close / Cancel buttons are replaced by the red ✕ in each
+   modal's top-right corner. Keep them in the DOM — the ✕ forwards its
+   click to them so their real teardown still runs — but hide them. */
+.close-btn {
+  display: none !important;
+}
+
+/* Top-right ✕ on every modal card — same round shape as the add-person
+   sheet's close button, colored red. JS (script.js) injects one into each
+   card and wires it to that modal's real Close handler. */
+.modal-content,
+#interest-container,
+.friend-content,
+#addFriendBox,
+#pendingRequestsBox,
+#editMoneyAdd,
+#editMoneyRemove,
+#editNameBox,
+#add-extra-info-box,
+#RemovefriendBox,
+#editItemBox,
+#editinffoBox,
+#adsBox,
+#ProfileBox,
+#delete-account-box,
+#AccountHistoryBox,
+#clearAccountHistoryBox,
+#notificationsBox,
+#notificationSettingsBox,
+#paymentSettingsBox,
+#paymentRequestBox,
+#smsReminderBox,
+#Removefriend {
+  position: relative;
+}
+#pendingRequestsList li{
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
 }
