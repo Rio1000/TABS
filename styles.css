@@ -250,6 +250,9 @@ body {
    unmistakable. !important overrides the generic red `#friendsList li
    button` rule. */
 .add-friend-to-list {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-left: 10px;
   width: auto;
   height: 30px;
@@ -269,11 +272,14 @@ body {
   font-weight: bold;
   line-height: 1;
   padding: 0 10px !important;
-  white-space: nowrap;
-}
 
+}
+#friendItem{
+  background-color: #cc0000 !important;
+  height: 100px !important;
+}
 .add-friend-to-list:hover {
-  background-color: #6a3fc6 !important;
+  background-color: #3b96a4 !important;
 }
 
 .add-friend-to-list .material-icons {
@@ -467,9 +473,13 @@ button:hover {
 
 /* Dropdown container (hidden by default). Optional: add a lighter background color and some left padding to change the design of the dropdown content */
 #friendBox {
+  justify-content: center;
+  align-self: center;
+  align-items: center;
+  display: flex;
+  flex-direction: column;
   margin-top: 30px;
-  position: relative;
-  padding: 10px;
+  position: absolute;
   overflow-x: hidden;
   height: auto;
   color: #b6c5b9;
@@ -480,7 +490,6 @@ button:hover {
   flex-direction: column;
   width: 100%;
   transition: 0.5s;
-  margin-left: -12px;
 }
 
 .dropdown-container {
@@ -489,27 +498,29 @@ button:hover {
 }
 
 #friendsList {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   list-style-type: none;
-  padding: 10px;
+  width: 100%;
 }
 
 #friendsList li {
-  display: flex;
   color: rgb(241, 241, 241);
   background-color: #0b5e69;
   border-color: rgb(103, 196, 219);
   border-style: solid;
   border-width: 1px;
   border-radius: 8px;
-  justify-content: space-between;
-  align-items: center;
+  align-items: left;
   text-align: left;
   margin-top: 10px;
   padding: 8px;
   overflow-x: hidden;
   word-break: break-word;
   white-space: normal;
-  width: 100%;
+  width: 90%;
 }
 
 #friendsList li button {
@@ -1271,6 +1282,8 @@ input {
 }
 #RemoveButton,
 .remove-friend-from-list{
+  position: absolute;
+  right: 15px;
   border: solid !important;
   border-width: 1px !important;
   border-radius: 8px !important;
@@ -1954,8 +1967,8 @@ body.payments-enabled .pay-request-btn {
 #editMoneyRemove,
 #add-extra-info-box,
 #editNameBox,
-#interest-container,
-#Removefriend {
+#interest-container
+ {
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -2271,6 +2284,7 @@ body.payments-enabled .pay-request-btn {
     position: absolute;
     background-color: rgba(211, 80, 80, 0.8);
     top: 0;
+    width: 100%;
   }
 
   .scroll-buttons {
@@ -2864,8 +2878,7 @@ body.payments-enabled .pay-request-btn {
 #editNameBox,
 #RemovefriendBox,
 #interest-container,
-#friendInputBox,
-#Removefriend {
+#friendInputBox{
   background: linear-gradient(150deg, #05434c 0%, #022a30 100%) !important;
   border: 1px solid rgba(80, 202, 211, 0.22) !important;
   border-radius: 18px !important;

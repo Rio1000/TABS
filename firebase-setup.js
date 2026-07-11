@@ -2189,6 +2189,8 @@ async function populateFriendsList() {
         // Create a new <li> element for each friend
         const friendItem = document.createElement("li");
         friendItem.textContent = `${friendData.firstName} ${friendData.lastName} `;
+        friendItem.classList.add("friend-item");
+        
 
         // Create a remove button (✖️)
         let removeButton = document.createElement("button");
@@ -2206,7 +2208,7 @@ async function populateFriendsList() {
           if (removeFriendPrompt) {
             const friendName = `${friendData.firstName || ""} ${friendData.lastName || ""}`.trim();
             removeFriendPrompt.textContent = friendName
-              ? `Remove ${friendName}?`
+              ? `Are you sure you want to remove ${friendName}? They will be upset..`
               : "Remove this friend?";
           }
 
@@ -2224,7 +2226,7 @@ async function populateFriendsList() {
         // "add this friend to my tab list" and can't be mistaken for an
         // accept-request button.
         friendAddButton.innerHTML =
-          '<span class="material-icons">playlist_add</span><span>Add to list</span>';
+          '<span class="material-icons">playlist_add</span>';
         friendAddButton.title = "Add this friend to your tab list";
         friendAddButton.onclick = () => {
           addPerson(
