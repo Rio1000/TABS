@@ -49,6 +49,10 @@ final class WebViewController: UIViewController {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = []
+        // Appends to the default user-agent so the site can detect the native
+        // app and switch Google sign-in from popup to redirect (popups are
+        // blocked inside a WKWebView).
+        configuration.applicationNameForUserAgent = "TABSApp/1.0"
 
         let contentController = WKUserContentController()
         contentController.add(self, name: Self.notificationHandler)

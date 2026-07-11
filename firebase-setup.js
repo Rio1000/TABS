@@ -21,7 +21,9 @@ import {
   signOut,
   sendPasswordResetEmail,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult
 
 } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-auth.js";
 
@@ -584,45 +586,84 @@ onAuthStateChanged(auth, async (user) => {
 
   }
 });
+// Inside the native iOS app the site runs in a WKWebView, where popups
+// (signInWithPopup) are blocked — Google auth must use a full-page redirect
+// instead. The native wrapper tags its user-agent with "TABSApp" so we can
+// detect it here.
+const IS_NATIVE_APP =
+  typeof navigator !== "undefined" && navigator.userAgent.includes("TABSApp");
+
+// Shared handling for a signed-in Google user (from either a popup result or
+// a redirect result): create their profile + friend code on first sign-in,
+// then greet them. `verb` is "Signed in" or "Signed up".
+async function provisionGoogleUser(user, verb) {
+  const profileRef = ref(database, `users/${user.uid}/profile`);
+  const snapshot = await get(profileRef);
+
+  if (!snapshot.exists()) {
+    const displayName = user.displayName || "User";
+    const [firstName, ...rest] = displayName.split(" ");
+    const lastName = rest.join(" ") || "";
+
+    const friendCode = generateFriendCode();
+
+    await set(profileRef, {
+      firstName: firstName,
+      lastName: lastName,
+      phoneNumber: user.phoneNumber || "",
+      email: user.email,
+      friendCode: friendCode,
+    });
+
+    await set(ref(database, `friendCodes/${friendCode}`), {
+      userId: user.uid,
+      firstName: firstName,
+      lastName: lastName,
+    });
+  }
+
+  showToast(`${verb} with Google as ${user.displayName}`, "success");
+  await logUserAction(`${verb} with Google`);
+}
+
+// Start Google auth: redirect in the native app, popup on the web.
+async function startGoogleAuth(verb) {
+  const provider = new GoogleAuthProvider();
+
+  if (IS_NATIVE_APP) {
+    // Remember which flow we were in so we can greet correctly after the
+    // page reloads back from Google.
+    try { sessionStorage.setItem("googleAuthVerb", verb); } catch (e) {}
+    await signInWithRedirect(auth, provider);
+    return; // page navigates away; completion is handled by getRedirectResult
+  }
+
+  const result = await signInWithPopup(auth, provider);
+  await provisionGoogleUser(result.user, verb);
+}
+
+// On the web, a redirect result won't exist and this resolves to null. In the
+// app, this completes the sign-in after returning from Google.
+getRedirectResult(auth)
+  .then((result) => {
+    if (!result || !result.user) return;
+    let verb = "Signed in";
+    try { verb = sessionStorage.getItem("googleAuthVerb") || verb; } catch (e) {}
+    try { sessionStorage.removeItem("googleAuthVerb"); } catch (e) {}
+    return provisionGoogleUser(result.user, verb);
+  })
+  .catch((error) => {
+    console.error("Google redirect result error:", error);
+    showToast("Google sign-in failed: " + error.message, "error");
+  });
+
 // Google Sign-In Button Listener
 const googleBtn = document.getElementById("googleSignInBtn");
 
 if (googleBtn) {
   googleBtn.addEventListener("click", async () => {
-    const provider = new GoogleAuthProvider();
     try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-
-      // Check if user profile exists
-      const profileRef = ref(database, `users/${user.uid}/profile`);
-      const snapshot = await get(profileRef);
-
-      if (!snapshot.exists()) {
-        const displayName = user.displayName || "User";
-        const [firstName, ...rest] = displayName.split(" ");
-        const lastName = rest.join(" ") || "";
-
-        const friendCode = generateFriendCode();
-
-        await set(profileRef, {
-          firstName: firstName,
-          lastName: lastName,
-          phoneNumber: user.phoneNumber || "",
-          email: user.email,
-          friendCode: friendCode,
-        });
-
-        await set(ref(database, `friendCodes/${friendCode}`), {
-          userId: user.uid,
-          firstName: firstName,
-          lastName: lastName,
-        });
-      }
-
-      showToast(`Signed in with Google as ${user.displayName}`, "success");
-      await logUserAction("Signed in with Google");
-
+      await startGoogleAuth("Signed in");
     } catch (error) {
       console.error("Google Sign-In Error:", error);
       showToast("Google sign-in failed: " + error.message, "error");
@@ -632,40 +673,8 @@ if (googleBtn) {
 const googleSignUpBtn = document.getElementById("googleSignUpBtn");
 if (googleSignUpBtn) {
   googleSignUpBtn.addEventListener("click", async () => {
-    const provider = new GoogleAuthProvider();
     try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-
-      // Check if user profile exists
-      const profileRef = ref(database, `users/${user.uid}/profile`);
-      const snapshot = await get(profileRef);
-
-      if (!snapshot.exists()) {
-        const displayName = user.displayName || "User";
-        const [firstName, ...rest] = displayName.split(" ");
-        const lastName = rest.join(" ") || "";
-
-        const friendCode = generateFriendCode();
-
-        await set(profileRef, {
-          firstName: firstName,
-          lastName: lastName,
-          phoneNumber: user.phoneNumber || "",
-          email: user.email,
-          friendCode: friendCode,
-        });
-
-        await set(ref(database, `friendCodes/${friendCode}`), {
-          userId: user.uid,
-          firstName: firstName,
-          lastName: lastName,
-        });
-      }
-
-      showToast(`Signed up with Google as ${user.displayName}`, "success");
-      await logUserAction("Signed up with Google");
-
+      await startGoogleAuth("Signed up");
     } catch (error) {
       console.error("Google Sign-Up Error:", error);
       showToast("Google sign-up failed: " + error.message, "error");
