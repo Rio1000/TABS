@@ -1,11 +1,24 @@
 import UIKit
 import UserNotifications
+import FirebaseCore
+import FirebaseMessaging
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Only configure Firebase once GoogleService-Info.plist has been added
+        // to the app bundle. Until then the app still runs (web push bridge is
+        // simply inert), so the project builds before you drop the file in.
+        if Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil {
+            FirebaseApp.configure()
+            Messaging.messaging().delegate = self
+        } else {
+            print("GoogleService-Info.plist not found — Firebase push disabled. " +
+                  "Add it to the TABS target to enable notifications.")
+        }
+
         UNUserNotificationCenter.current().delegate = self
         return true
     }
@@ -22,8 +35,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication,
                      didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        let token = deviceToken.map { String(format: "%02x", $0) }.joined()
-        print("APNs device token: \(token)")
+        // Hand the raw APNs token to FCM; it exchanges it for a registration
+        // token and delivers that via the messaging delegate below.
+        Messaging.messaging().apnsToken = deviceToken
     }
 
     func application(_ application: UIApplication,
@@ -31,6 +45,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         print("Failed to register for remote notifications: \(error.localizedDescription)")
     }
 }
+
+// MARK: - MessagingDelegate
+
+extension AppDelegate: MessagingDelegate {
+
+    // Fires whenever FCM issues (or refreshes) this device's registration
+    // token. We stash it so the web bridge can store it under the signed-in
+    // user; the Cloud Function delivers to it just like a web FCM token.
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        PushTokenStore.shared.update(token: fcmToken)
+    }
+}
+
+// MARK: - UNUserNotificationCenterDelegate
 
 extension AppDelegate: UNUserNotificationCenterDelegate {
 

@@ -11,6 +11,9 @@
 		A10000010000000000000002 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000002 /* SceneDelegate.swift */; };
 		A10000010000000000000003 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000003 /* WebViewController.swift */; };
 		A10000010000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000004 /* Assets.xcassets */; };
+		A10000010000000000000005 /* PushTokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000007 /* PushTokenStore.swift */; };
+		A10000010000000000000006 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = A100000C0000000000000001 /* FirebaseCore */; };
+		A10000010000000000000007 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = A100000C0000000000000002 /* FirebaseMessaging */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -20,6 +23,8 @@
 		A10000020000000000000004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000020000000000000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000020000000000000006 /* TABS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TABS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000020000000000000007 /* PushTokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushTokenStore.swift; sourceTree = "<group>"; };
+		A10000020000000000000008 /* TABS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TABS.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -27,6 +32,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000010000000000000006 /* FirebaseCore in Frameworks */,
+				A10000010000000000000007 /* FirebaseMessaging in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -47,7 +54,9 @@
 				A10000020000000000000001 /* AppDelegate.swift */,
 				A10000020000000000000002 /* SceneDelegate.swift */,
 				A10000020000000000000003 /* WebViewController.swift */,
+				A10000020000000000000007 /* PushTokenStore.swift */,
 				A10000020000000000000004 /* Assets.xcassets */,
+				A10000020000000000000008 /* TABS.entitlements */,
 				A10000020000000000000005 /* Info.plist */,
 			);
 			path = TABS;
@@ -77,6 +86,10 @@
 			dependencies = (
 			);
 			name = TABS;
+			packageProductDependencies = (
+				A100000C0000000000000001 /* FirebaseCore */,
+				A100000C0000000000000002 /* FirebaseMessaging */,
+			);
 			productName = TABS;
 			productReference = A10000020000000000000006 /* TABS.app */;
 			productType = "com.apple.product-type.application";
@@ -105,6 +118,9 @@
 				Base,
 			);
 			mainGroup = A10000040000000000000001;
+			packageReferences = (
+				A100000B0000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			productRefGroup = A10000040000000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -133,6 +149,7 @@
 				A10000010000000000000001 /* AppDelegate.swift in Sources */,
 				A10000010000000000000002 /* SceneDelegate.swift in Sources */,
 				A10000010000000000000003 /* WebViewController.swift in Sources */,
+				A10000010000000000000005 /* PushTokenStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -195,6 +212,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = TABS/TABS.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = TABS/Info.plist;
@@ -215,6 +233,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = TABS/TABS.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = TABS/Info.plist;
@@ -252,6 +271,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A100000B0000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 10.20.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A100000C0000000000000001 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A100000B0000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		A100000C0000000000000002 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A100000B0000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A10000090000000000000001 /* Project object */;
 }

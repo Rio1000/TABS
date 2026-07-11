@@ -13,8 +13,9 @@ final class WebViewController: UIViewController {
     private static let siteURL = URL(string: "https://tabsonfriends.com")!
     private static let siteHost = "tabsonfriends.com"
 
-    /// Name of the script message handler the injected JS posts to.
+    /// Names of the script message handlers the injected JS posts to.
     private static let notificationHandler = "notificationToggle"
+    private static let bridgeHandler = "nativeBridge"
 
     private var webView: WKWebView!
 
@@ -32,6 +33,12 @@ final class WebViewController: UIViewController {
 
         webView = makeWebView()
         view.addSubview(webView)
+
+        // Whenever FCM issues/refreshes a token, push it into the page so it
+        // gets stored under the signed-in user (no-op if not logged in yet).
+        PushTokenStore.shared.onToken = { [weak self] token in
+            self?.forwardPushTokenToWeb(token)
+        }
 
         webView.load(URLRequest(url: Self.siteURL))
     }
@@ -56,6 +63,7 @@ final class WebViewController: UIViewController {
 
         let contentController = WKUserContentController()
         contentController.add(self, name: Self.notificationHandler)
+        contentController.add(self, name: Self.bridgeHandler)
 
         // Injected before anything on the page runs.
         let script = WKUserScript(source: Self.bridgeScript,
@@ -96,10 +104,24 @@ final class WebViewController: UIViewController {
     /// 3. Watches the "Enable notifications" switch (`#notifEnabledToggle`)
     ///    and notifies native code EVERY time it is flipped on or off, so
     ///    the user is re-prompted each time.
+    /// 4. Defines `window.ReactNativeWebView` so the site's existing native
+    ///    push path activates: it posts `{type:"requestPushToken"}`, native
+    ///    fetches the FCM token and calls `window.__onNativePushToken`.
     private static let bridgeScript = """
     (function () {
         function post(state) {
             try { window.webkit.messageHandlers.\(notificationHandler).postMessage(state); } catch (e) {}
+        }
+
+        // 4. Native push bridge. The site checks for window.ReactNativeWebView
+        //    and, if present, asks it for the device push token instead of
+        //    doing web push. Route that request to native code.
+        if (!window.ReactNativeWebView) {
+            window.ReactNativeWebView = {
+                postMessage: function (msg) {
+                    try { window.webkit.messageHandlers.\(bridgeHandler).postMessage(msg); } catch (e) {}
+                }
+            };
         }
 
         // 1. Full-bleed viewport.
@@ -147,6 +169,64 @@ final class WebViewController: UIViewController {
         }
     })();
     """
+
+    // MARK: - Native push bridge
+
+    /// Handles messages the page posts through `window.ReactNativeWebView`.
+    /// Today the only one is `{ "type": "requestPushToken" }`, sent when a
+    /// user logs in: ensure permission, register with APNs, and forward the
+    /// FCM token back to the page.
+    private func handleBridgeMessage(_ body: Any) {
+        guard let json = body as? String,
+              let data = json.data(using: .utf8),
+              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let type = dict["type"] as? String else { return }
+
+        if type == "requestPushToken" {
+            requestPushToken()
+        }
+    }
+
+    /// Make sure the app is authorized and registered for remote
+    /// notifications, then forward whatever FCM token we have (now or once it
+    /// arrives via `PushTokenStore.onToken`).
+    private func requestPushToken() {
+        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                switch settings.authorizationStatus {
+                case .authorized, .provisional, .ephemeral:
+                    UIApplication.shared.registerForRemoteNotifications()
+                    if let token = PushTokenStore.shared.token {
+                        self.forwardPushTokenToWeb(token)
+                    }
+                case .notDetermined:
+                    UNUserNotificationCenter.current()
+                        .requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
+                            guard granted else { return }
+                            DispatchQueue.main.async {
+                                UIApplication.shared.registerForRemoteNotifications()
+                            }
+                        }
+                case .denied:
+                    break // Nothing to register; user must enable in Settings.
+                @unknown default:
+                    break
+                }
+            }
+        }
+    }
+
+    /// Inject the FCM token into the page. The site stores it under the
+    /// signed-in user (and no-ops if nobody is logged in yet), exactly like
+    /// the web and Expo push paths.
+    private func forwardPushTokenToWeb(_ token: String) {
+        // JSON-encode the token so it's safely escaped inside the JS string.
+        guard let encoded = try? JSONSerialization.data(withJSONObject: [token]),
+              let jsArray = String(data: encoded, encoding: .utf8) else { return }
+        let js = "window.__onNativePushToken && window.__onNativePushToken(\(jsArray)[0], 'ios');"
+        webView.evaluateJavaScript(js, completionHandler: nil)
+    }
 
     // MARK: - Notification prompting
 
@@ -242,9 +322,16 @@ extension WebViewController: WKScriptMessageHandler {
 
     func userContentController(_ userContentController: WKUserContentController,
                                didReceive message: WKScriptMessage) {
-        guard message.name == Self.notificationHandler,
-              let state = message.body as? String else { return }
-        handleToggle(state: state)
+        switch message.name {
+        case Self.notificationHandler:
+            if let state = message.body as? String {
+                handleToggle(state: state)
+            }
+        case Self.bridgeHandler:
+            handleBridgeMessage(message.body)
+        default:
+            break
+        }
     }
 }
 
