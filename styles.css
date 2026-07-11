@@ -932,33 +932,31 @@ input {
 @keyframes modalCardIn {
   from {
     opacity: 0;
-    transform: translateY(120px);
+    transform: translateY(26px) scale(0.94);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
 @keyframes modalCardOut {
   from {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
   to {
     opacity: 0;
-    transform: translateY(120px);
+    transform: translateY(18px) scale(0.94);
   }
 }
 
-/* Each modal card slides up from the bottom (bottom-sheet feel) as the
-   blurred backdrop fades in behind it. */
 .modal-fx > * {
-  animation: modalCardIn 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: modalCardIn 0.28s cubic-bezier(0.22, 1.1, 0.36, 1);
 }
 
 .modal-fx.modal-fx-closing > * {
-  animation: modalCardOut 0.22s cubic-bezier(0.4, 0, 1, 1) forwards;
+  animation: modalCardOut 0.18s ease forwards;
 }
 
 /* Swapping directly from one modal to another (login → signup, tab modal →
@@ -1337,6 +1335,7 @@ input {
 #editinffoBtn,
 #anotherSurprize,
 #addFriendBtn2,
+#pendingRequestsBtn,
 #close-delete-account,
 #PayMyTuition,
 #menu-button,
@@ -1661,21 +1660,6 @@ input {
   background-color: #3c94e7 !important;
   border: none;
   font-size: 14px;
-}
-
-/* Positive action (Accept a friend request) — green to distinguish it from
-   the blue "Remind now" action, matching the app's green "owes me" accent. */
-.notification-action.accept {
-  background-color: #6da765 !important;
-}
-/* Negative action (Decline a friend request) — red, matching the app's
-   "danger" red used elsewhere. */
-.notification-action.decline {
-  background-color: #c0504d !important;
-}
-.notification-action:disabled {
-  opacity: 0.6;
-  cursor: default;
 }
 
 .notification-setting-row {

@@ -1955,46 +1955,9 @@ document.getElementById("closeEditinffo").addEventListener("click", () => {
   extraInfoElement = null; // clear reference after editing});
 });
 
-// --- Bottom action dock: Add / Clear behave like Google tabs -----------
-// Pressing a tab slides its pane up out of the bar; pressing the other
-// while one is open switches panes; pressing the active tab (or Close /
-// the backdrop) collapses the sheet.
-const actionSheet = document.getElementById("action-sheet");
-const actionButtonsBar = document.getElementById("buttons");
-
-function openActionPane(pane) {
-  actionSheet.dataset.open = pane;
-  actionButtonsBar.classList.toggle("active-add", pane === "add");
-  actionButtonsBar.classList.toggle("active-clear", pane === "clear");
-  actionButtonsBar.classList.add("sheet-open");
-  document.body.classList.add("action-open");
-  if (pane === "add") {
-    setTimeout(() => document.getElementById("name-input")?.focus(), 260);
-  }
-}
-
-function closeActionSheet() {
-  actionSheet.dataset.open = "none";
-  actionButtonsBar.classList.remove("active-add", "active-clear", "sheet-open");
-  document.body.classList.remove("action-open");
-}
-
-function toggleActionPane(pane) {
-  if (actionSheet.dataset.open === pane) closeActionSheet();
-  else openActionPane(pane);
-}
-
-addPersonBtn.addEventListener("click", () => toggleActionPane("add"));
-document
-  .getElementById("clear-list-btn")
-  .addEventListener("click", () => toggleActionPane("clear"));
-document
-  .getElementById("action-sheet-close")
-  .addEventListener("click", closeActionSheet);
-document
-  .getElementById("action-backdrop")
-  .addEventListener("click", closeActionSheet);
-
+addPersonBtn.addEventListener("click", () => {
+  document.getElementById("add-person-box-modal").style.display = "flex";
+});
 document.getElementById("add").addEventListener("click", () => {
   const nameInput = document.getElementById("name-input");
   const moneyInput = document.getElementById("money-input");
@@ -2038,24 +2001,38 @@ document.getElementById("add").addEventListener("click", () => {
   itemInput.value = "";
   logUserAction(`Added a tab for: ${name}`);
 
-  closeActionSheet();
+  document.getElementById("add-person-box-modal").style.display = "none";
+});
+
+document.getElementById("cancel").addEventListener("click", () => {
+  document.getElementById("add-person-box-modal").style.display = "none";
 });
 
 // Load list when page loads
 document.addEventListener("DOMContentLoaded", loadListFromFirebase);
 
+document.getElementById("clear-list-btn").addEventListener("click", () => {
+  document.getElementById("clear-list-modal").style.display = "flex";
+});
+
+
+document.getElementById("clear-list-cancel").addEventListener("click", () => {
+  document.getElementById("clear-list-modal").style.display = "none";
+})
+
+
 const clearListBtn = document.getElementById("clearListBtn");
 clearListBtn.addEventListener("click", async () => {
   if (peopleList.innerHTML === "") {
     showToast("The list is already empty.", "info");
-    closeActionSheet();
     return;
   } else {
     peopleList.innerHTML = ""; // Clear the list
     saveListToFirebase();
     await logUserAction("Cleared people list");
     showToast("People list cleared successfully.", "success");
-    closeActionSheet();
+    document.getElementById("clear-list-modal").style.display = "none";
+
   }
 });
 
