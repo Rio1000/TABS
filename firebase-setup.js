@@ -2244,7 +2244,7 @@ async function populateFriendsList() {
             true // animate in
           );
           showToast(
-            `${friendData.firstName} has been added to your person list.`,
+            `${friendData.firstName} has been added to your tabs list.`,
             "success"
           );
           windowClosed();
