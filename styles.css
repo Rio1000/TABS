@@ -539,8 +539,8 @@ button:hover {
   box-sizing: border-box;
 }
 
-/* Buttons grouped on the left; the name fills the rest of the row so the
-   two can never overlap and every name starts at the same x. */
+/* Name fills the rest of the row so the buttons are pushed to the right
+   edge; the two can never overlap and every name starts at the same x. */
 .friend-actions {
   display: flex;
   flex-direction: row;

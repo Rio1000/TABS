@@ -2251,15 +2251,16 @@ async function populateFriendsList() {
           saveListToFirebase();
           document.getElementById("addFriendModal").style.display = "none";
         };
-        // Group the action buttons together on the left so the name (added
-        // after them, and free to grow/wrap) can never overlap the buttons.
+        // Group the action buttons together. The name (added first, and
+        // free to grow/wrap) fills the row so the buttons are pushed to the
+        // right edge and can never overlap the name.
         const friendActions = document.createElement("div");
         friendActions.classList.add("friend-actions");
         friendActions.appendChild(friendAddButton);
         friendActions.appendChild(removeButton);
 
-        friendItem.appendChild(friendActions);
         friendItem.appendChild(friendName);
+        friendItem.appendChild(friendActions);
         friendsListUl.appendChild(friendItem);
       });
     } else {
