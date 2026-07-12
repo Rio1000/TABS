@@ -615,6 +615,16 @@ document.addEventListener("click", (e) => {
   triggerCoffeeSupport();
 });
 
+// Ads by platform:
+//   • Web  → a single AdSense banner on the login/signup landing (#landing-ad).
+//   • iOS  → a native AdMob banner rendered by the app wrapper.
+// AdSense never fills inside a WebView, so hide the web landing ad in the app
+// and let the native AdMob banner be the only ad there.
+if (IS_NATIVE_APP) {
+  const landingAd = document.getElementById("landing-ad");
+  if (landingAd) landingAd.style.display = "none";
+}
+
 // Shared handling for a signed-in Google user (from either a popup result or
 // a redirect result): create their profile + friend code on first sign-in,
 // then greet them. `verb` is "Signed in" or "Signed up".
@@ -1310,109 +1320,14 @@ function addPerson(
   return listItem;
 
 }
-// Ad network config — see ADS_SETUP.md.
-//   provider: "aads"    → Anonymous Ads. Instant, no approval, works anywhere
-//                          (including the mobile WebView). Paste your unit id.
-//             "adsense" → Google AdSense. Needs site approval and often won't
-//                          fill for small utility apps or inside a WebView.
-//             "house"   → self-promo only (also the automatic fallback when the
-//                          chosen provider isn't configured yet).
-const AD_CONFIG = {
-  provider: "aads",
-  aadsUnitId: "2447531", // from a-ads.com → your unit → "Ad code"
-  adsenseClient: "ca-pub-7825788728707782",
-  adsenseSlot: "8944873686",
-};
 
 function addAdBox() {
-  // Idempotent: loadListFromFirebase can run more than once per session
-  // (login, reloads), and stacking a new ad box each time both clutters the
-  // list and double-push()es slots a network then refuses to fill.
+  // The in-list ad has been retired. Ads now live only on the login/signup
+  // landing (web AdSense banner in #landing-ad) and, inside the iOS app, as a
+  // native AdMob banner rendered by the wrapper. Keep this as a cleanup no-op so
+  // any ad box left over from an older session/cache is removed from the list.
   const existingAd = peopleList.querySelector(".ad-box");
   if (existingAd) existingAd.remove();
-
-  const adItem = document.createElement("div");
-  adItem.classList.add("personlist-item", "ad-box");
-  adItem.style.justifyContent = "center";
-  adItem.style.background = "rgba(255, 255, 255, 0.05)"; // Subtly different background
-
-  const inner = document.createElement("div");
-  inner.style.cssText = "text-align:center;font-size:12px;color:#888;width:100%;";
-  inner.innerHTML = '<p style="margin:0 0 4px;">ADVERTISEMENT</p>';
-
-  const aadsReady =
-    AD_CONFIG.provider === "aads" && !AD_CONFIG.aadsUnitId.startsWith("YOUR_");
-  const adsenseReady =
-    AD_CONFIG.provider === "adsense" &&
-    !AD_CONFIG.adsenseClient.startsWith("YOUR_");
-
-  if (aadsReady) {
-    // A-ADS serves through a simple iframe — no script, no approval, and it
-    // renders inside WebViews where AdSense won't.
-    const iframe = document.createElement("iframe");
-    iframe.setAttribute("data-aa", AD_CONFIG.aadsUnitId);
-    // "Adaptive" lets A-ADS size the creative to the container width; a
-    // min-height keeps the iframe from collapsing to 0 before it fills.
-    iframe.src = `//acceptable.a-ads.com/${AD_CONFIG.aadsUnitId}/?size=Adaptive`;
-    iframe.setAttribute("scrolling", "no");
-    iframe.style.cssText =
-      "border:0;padding:0;width:100%;height:auto;min-height:90px;overflow:hidden;display:block;margin:auto;background:transparent;";
-    inner.appendChild(iframe);
-    adItem.appendChild(inner);
-    peopleList.appendChild(adItem);
-  } else if (adsenseReady) {
-    inner.insertAdjacentHTML(
-      "beforeend",
-      `<ins class="adsbygoogle" style="display:block"
-            data-ad-client="${AD_CONFIG.adsenseClient}"
-            data-ad-slot="${AD_CONFIG.adsenseSlot}"
-            data-ad-format="auto" data-full-width-responsive="true"></ins>`
-    );
-    adItem.appendChild(inner);
-    peopleList.appendChild(adItem);
-    pushAdWhenVisible(adItem);
-  } else {
-    // House-ad fallback — always renders, so the slot is never blank while a
-    // network is unconfigured or pending approval.
-    renderHouseAd(inner);
-    adItem.appendChild(inner);
-    peopleList.appendChild(adItem);
-  }
-}
-
-// Simple self-promo shown when no ad network is configured yet.
-function renderHouseAd(container) {
-  const ads = [
-    { text: "Enjoying TABS? Add a friend so you never forget who owes what.", cta: "Add a friend", href: "https://tabsonfriends.com" },
-    { text: "Help keep TABS free ☕", cta: "Buy us a coffee", href: "https://buymeacoffee.com/TABSonFriends", coffee: true },
-  ];
-  const pick = ads[Math.floor(Math.random() * ads.length)];
-  const coffeeAttr = pick.coffee ? " data-support-coffee" : "";
-  container.insertAdjacentHTML(
-    "beforeend",
-    `<div style="padding:8px 4px;">
-       <p style="margin:0 0 6px;color:#cfe;font-size:14px;">${pick.text}</p>
-       <a href="${pick.href}" target="_blank" rel="noopener"${coffeeAttr}
-          style="color:#7fd4ff;font-weight:bold;text-decoration:none;">${pick.cta} →</a>
-     </div>`
-  );
-}
-
-// The <ins> is only in the DOM after the list has rendered — unlike the ins
-// tags baked into index.html (pushed once at page load), it needs its own
-// push(). But AdSense skips slots with zero layout width ("availableWidth=0"),
-// and the person list can still be display:none at this point (e.g. the
-// loader or a login page is up), so wait until the box actually has width.
-function pushAdWhenVisible(adItem, attempt = 0) {
-  if (adItem.offsetWidth > 0) {
-    try {
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-    } catch (error) {
-      console.error("❌ AdSense push failed:", error);
-    }
-  } else if (attempt < 40) {
-    setTimeout(() => pushAdWhenVisible(adItem, attempt + 1), 250);
-  }
 }
 
 // Guests never run loadListFromFirebase (it bails without a user), so give

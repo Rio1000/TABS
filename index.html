@@ -30,15 +30,18 @@
                 <button id="loginbutton" onclick="openLogin()">Login</button>
                 <button id="signupbutton" onclick="openSignup()">Signup</button>
                 <button id="ContinueasGuest">Continue as Guest<br /> (Nothing will be saved)</button>
-                <!-- Static A-ADS unit on the public landing so A-ADS's verifier
-                     bot (which isn't logged in) can find the ad at the site URL.
-                     The in-list adbox only renders after login, which the bot
-                     can't reach. -->
+                <!-- Web ads live only on this sparse login/signup landing page.
+                     A single responsive AdSense banner; the label is required by
+                     AdSense policy. Hidden inside the native app (AdSense doesn't
+                     fill in a WebView — the app shows a native AdMob banner). -->
                 <div id="landing-ad" style="width:100%;margin-top:14px;text-align:center;">
                     <p style="margin:0 0 4px;font-size:11px;color:#8aa;">ADVERTISEMENT</p>
-                    <iframe data-aa="2447531" src="//acceptable.a-ads.com/2447531/?size=Adaptive"
-                        scrolling="no"
-                        style="border:0;padding:0;width:100%;height:auto;min-height:90px;overflow:hidden;display:block;margin:auto;background:transparent;"></iframe>
+                    <ins class="adsbygoogle" style="display:block"
+                        data-ad-client="ca-pub-7825788728707782"
+                        data-ad-slot="8944873686"
+                        data-ad-format="auto"
+                        data-full-width-responsive="true"></ins>
+                    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
                 </div>
             </div>
         </div>
@@ -309,15 +312,6 @@
         <div class="modal modal-fx" id="adsModal">
             <div id="adsBox">
                 <div id="adsmessages">
-                    <script async
-                        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7825788728707782"
-                        crossorigin="anonymous"></script>
-
-                    <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-7825788728707782"
-                        data-ad-slot="8944873686" data-ad-format="auto" data-full-width-responsive="true"></ins>
-                    <script>
-                        (adsbygoogle = window.adsbygoogle || []).push({});
-                    </script>
                     <div id="info">
                         <h4>Ads help us keep the server running and allow us to continue supporting the app, but if you
                             want to donate, you can do so. Any amount is appreciated. 😊</h4>

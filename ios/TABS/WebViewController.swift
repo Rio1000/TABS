@@ -4,6 +4,8 @@ import UserNotifications
 import FirebaseCore
 import GoogleSignIn
 import StoreKit
+import GoogleMobileAds
+import AppTrackingTransparency
 
 /// Full-screen wrapper around tabsonfriends.com.
 ///
@@ -20,7 +22,22 @@ final class WebViewController: UIViewController {
     private static let notificationHandler = "notificationToggle"
     private static let bridgeHandler = "nativeBridge"
 
+    /// AdMob banner ad unit. This is Google's official **test** unit — it always
+    /// fills so you can verify layout without a live account. Replace it with
+    /// your real unit ID from the AdMob console before shipping.
+    private static let bannerAdUnitID = "ca-app-pub-3940256099942544/2934735716"
+
     private var webView: WKWebView!
+
+    /// Bottom-anchored AdMob banner (the native replacement for the old A-ADS
+    /// in-list box). Created hidden and revealed only once an ad loads, so the
+    /// web view uses the full screen whenever there's nothing to show.
+    private var bannerView: BannerView!
+    /// Height currently reserved for the banner (0 when hidden). Drives the
+    /// web view's bottom inset in `viewWillLayoutSubviews`.
+    private var bannerHeight: CGFloat = 0
+    /// ATT is requested once, the first time the app becomes visible.
+    private var didRequestTracking = false
 
     // MARK: - Status bar
 
@@ -37,6 +54,8 @@ final class WebViewController: UIViewController {
         webView = makeWebView()
         view.addSubview(webView)
 
+        setupBannerAd()
+
         // Whenever FCM issues/refreshes a token, push it into the page so it
         // gets stored under the signed-in user (no-op if not logged in yet).
         PushTokenStore.shared.onToken = { [weak self] token in
@@ -48,9 +67,18 @@ final class WebViewController: UIViewController {
 
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
-        // Fill the entire screen, ignoring the safe area, so the site's
-        // background reaches the very edges of the display.
-        webView.frame = view.bounds
+        // Fill the screen edge-to-edge, but leave room at the bottom for the ad
+        // banner (plus the home-indicator inset) whenever one is showing.
+        var frame = view.bounds
+        if bannerHeight > 0 {
+            frame.size.height -= bannerHeight + view.safeAreaInsets.bottom
+        }
+        webView.frame = frame
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        requestTrackingThenLoadAd()
     }
 
     // MARK: - Web view construction
@@ -211,6 +239,51 @@ final class WebViewController: UIViewController {
                 self.presentAlert(title: result.title, message: result.message)
             }
         }
+    }
+
+    // MARK: - AdMob banner
+
+    /// Build the banner and pin it to the bottom safe area. It stays hidden
+    /// until an ad actually loads (see the delegate), so the layout only
+    /// reserves space when there's something to show.
+    private func setupBannerAd() {
+        let banner = BannerView()
+        banner.adUnitID = Self.bannerAdUnitID
+        banner.rootViewController = self
+        banner.delegate = self
+        banner.isHidden = true
+        banner.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(banner)
+        NSLayoutConstraint.activate([
+            banner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            banner.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+        ])
+        bannerView = banner
+    }
+
+    /// Ask for App Tracking Transparency once, then load the first ad. AdMob
+    /// serves either way — authorization only decides personalized vs. not —
+    /// so we load the banner regardless of the user's choice.
+    private func requestTrackingThenLoadAd() {
+        guard !didRequestTracking else { return }
+        didRequestTracking = true
+
+        if #available(iOS 14, *) {
+            ATTrackingManager.requestTrackingAuthorization { [weak self] _ in
+                DispatchQueue.main.async { self?.loadBannerAd() }
+            }
+        } else {
+            loadBannerAd()
+        }
+    }
+
+    /// Size the banner to the available width (adaptive) and request an ad.
+    private func loadBannerAd() {
+        guard let bannerView else { return }
+        let safeWidth = view.bounds.inset(by: view.safeAreaInsets).width
+        let width = safeWidth > 0 ? safeWidth : view.bounds.width
+        bannerView.adSize = currentOrientationAnchoredAdaptiveBanner(width: width)
+        bannerView.load(Request())
     }
 
     // MARK: - Native Google Sign-In
@@ -495,6 +568,27 @@ extension WebViewController: WKUIDelegate {
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completionHandler(false) })
         alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler(true) })
         present(alert, animated: true)
+    }
+}
+
+// MARK: - BannerViewDelegate
+
+extension WebViewController: BannerViewDelegate {
+
+    /// Ad loaded: show the banner and reserve its height so the web view no
+    /// longer sits underneath it.
+    func bannerViewDidReceiveAd(_ bannerView: BannerView) {
+        bannerView.isHidden = false
+        bannerHeight = bannerView.adSize.size.height
+        view.setNeedsLayout()
+    }
+
+    /// No fill (or an error): keep the banner hidden and give the space back to
+    /// the web view.
+    func bannerView(_ bannerView: BannerView, didFailToReceiveAdWithError error: Error) {
+        bannerView.isHidden = true
+        bannerHeight = 0
+        view.setNeedsLayout()
     }
 }
 

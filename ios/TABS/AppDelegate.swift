@@ -2,6 +2,7 @@ import UIKit
 import UserNotifications
 import FirebaseCore
 import FirebaseMessaging
+import GoogleMobileAds
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -20,6 +21,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
 
         UNUserNotificationCenter.current().delegate = self
+
+        // Start the Google Mobile Ads (AdMob) SDK. Safe to call before the ATT
+        // prompt — ads simply stay non-personalized until the user allows
+        // tracking. Requires GADApplicationIdentifier in Info.plist.
+        MobileAds.shared.start(completionHandler: nil)
+
         return true
     }
 
