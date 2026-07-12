@@ -952,8 +952,12 @@ input {
 }
 
 /* Each modal card slides up from the bottom (bottom-sheet feel) as the
-   blurred backdrop fades in behind it. */
-.modal-fx > * {
+   blurred backdrop fades in behind it. Gated behind .modal-fx-open (added by
+   script.js only for genuine, non-swap opens) rather than applying to every
+   .modal-fx child: otherwise, when a swap finishes and .modal-fx-swap-in is
+   removed, this slide-up would re-trigger — producing a second animation
+   right after the swap's horizontal slide. */
+.modal-fx.modal-fx-open > * {
   animation: modalCardIn 0.34s cubic-bezier(0.22, 1, 0.36, 1);
 }
 

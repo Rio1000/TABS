@@ -504,10 +504,12 @@ function copyText() {
 (function () {
   const CLOSE_ANIM_MS = 190;
   const SWAP_ANIM_MS = 320;
+  const OPEN_ANIM_MS = 360;
   const lastVisibleDisplay = new WeakMap();
   const selfTriggered = new WeakSet();
   const closeTimers = new WeakMap();
   const swapInTimers = new WeakMap();
+  const openTimers = new WeakMap();
   const wasVisible = new WeakMap();
 
   let pendingOpens = [];
@@ -541,16 +543,28 @@ function copyText() {
       );
     });
 
-    if (isSwap) {
-      opens.forEach((el) => {
+    opens.forEach((el) => {
+      if (isSwap) {
+        // Swap: hold the backdrop, slide the card in horizontally.
+        el.classList.remove("modal-fx-open");
+        clearTimeout(openTimers.get(el));
         el.classList.add("modal-fx-swap-in");
         clearTimeout(swapInTimers.get(el));
         swapInTimers.set(
           el,
           setTimeout(() => el.classList.remove("modal-fx-swap-in"), SWAP_ANIM_MS + 80)
         );
-      });
-    }
+      } else {
+        // Genuine open: slide the card up from the bottom. This class gates
+        // the entrance animation so it only plays here (see styles.css).
+        el.classList.add("modal-fx-open");
+        clearTimeout(openTimers.get(el));
+        openTimers.set(
+          el,
+          setTimeout(() => el.classList.remove("modal-fx-open"), OPEN_ANIM_MS)
+        );
+      }
+    });
   }
 
   function scheduleFlush() {

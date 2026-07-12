@@ -1,0 +1,12 @@
+# Firebase config — contains project keys, add locally (see README).
+GoogleService-Info.plist
+
+# Xcode / SwiftPM build artifacts
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+Packages/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
