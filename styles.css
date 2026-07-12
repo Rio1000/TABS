@@ -921,7 +921,13 @@ input {
   }
 }
 
-.modal-fx {
+/* Gated behind .modal-fx-open (added by script.js only for genuine, non-swap
+   opens), NOT on every .modal-fx. Otherwise, when a swap finishes and
+   .modal-fx-swap-in (which sets animation:none) is removed, the animation
+   property flips none → modalFxIn and the fade re-fires on an already-settled
+   window — a visible flash right after the swap slide. Same gating reason as
+   the card animation below. */
+.modal-fx.modal-fx-open {
   animation: modalFxIn 0.22s ease;
 }
 
