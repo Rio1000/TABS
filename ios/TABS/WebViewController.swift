@@ -422,8 +422,13 @@ extension WebViewController: WKNavigationDelegate {
         let isOurSite = host.hasSuffix(Self.siteHost)
         // Google/Firebase auth flows must stay in the web view to complete.
         let isAuthFlow = host.contains("google") || host.contains("firebaseapp.com") || host.contains("gstatic")
+        // Sub-frame loads (the embedded ad iframe, tracking pixels, etc.) must
+        // render inside their frame. Only top-level navigations should ever be
+        // handed off to Safari — otherwise the ad iframe's own load gets kicked
+        // out to the system browser and "opens an ad" every time the app opens.
+        let isMainFrame = navigationAction.targetFrame?.isMainFrame ?? true
 
-        if isHTTP && (isOurSite || isAuthFlow) {
+        if isHTTP && (isOurSite || isAuthFlow || !isMainFrame) {
             decisionHandler(.allow)
         } else {
             decisionHandler(.cancel)
