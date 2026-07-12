@@ -1,10 +1,11 @@
-# TABS — Roadmap: cheaper messaging + ads in the person-list adbox
+# TABS — Roadmap: cheaper messaging + ads
 
 Two tracks:
 
 1. **Messaging** — replace Twilio with a free path that reaches friends without
    ever tripping carrier spam filters.
-2. **Ads** — grow the AdSense adbox that already lives in the person list.
+2. **Ads** — web AdSense on the login/signup landing, native AdMob banner in the
+   iOS app.
 
 ---
 
@@ -107,59 +108,55 @@ architecture (callable function, friendship check, E.164 normalization) stays.
 
 ---
 
-## Track 2 — Ads in the person-list adbox
+## Track 2 — Ads
 
-Ads already render in the person list — `addAdBox()` in `firebase-setup.js:957`
-injects a `.ad-box .personlist-item` with a Google AdSense unit (client
-`ca-pub-7825788728707782`, slot `8944873686`) and pushes it once it has layout
-width (`pushAdWhenVisible`). This roadmap is about making it **reliable, denser,
-and higher-yielding** — not about adding ads from scratch.
+Current setup (see `ADS_SETUP.md` for the full reference):
 
-### Phase 0 — Verify what's live (do first)
-- Confirm the AdSense account is **approved** and the site is verified for
-  `tabsonfriends.com` (per `CNAME`). Unapproved accounts show blank boxes.
-- Confirm slot `8944873686` is a real **in-feed / responsive display** unit in
-  the AdSense dashboard, matching the `data-ad-format="auto"` markup.
-- Watch the console for `availableWidth=0` / "All 'ins' elements already have
-  ads" — the current `pushAdWhenVisible` retry loop guards the width case; the
-  duplicate-push case is guarded by removing the old `.ad-box` first.
+- **Web** — one Google **AdSense** banner on the login/signup landing
+  (`#landing-ad` in `index.html`; client `ca-pub-7825788728707782`, slot
+  `8944873686`). No in-list ad and no About Us ad — web ads are login/signup
+  only. The landing banner is hidden inside the app (`IS_NATIVE_APP` check in
+  `firebase-setup.js`).
+- **iOS** — a native **AdMob** adaptive banner anchored to the bottom safe area
+  (`WebViewController.swift`), since AdMob can't render inline in the WebView.
+  SDK started in `AppDelegate.swift`; keys in `Info.plist`.
 
-### Phase 1 — Placement & UX
-- **Every-N-rows interpolation:** instead of a single ad appended at the bottom
-  (`peopleList.appendChild`), insert an ad every ~6 people so it's seen without
-  dominating short lists. Skip if the list has fewer than N rows.
-- Keep the **"ADVERTISEMENT"** label (already present) — required by AdSense
-  policy and good for trust.
-- Ensure ad rows are **excluded from data** everywhere: `saveListToFirebase`
-  already skips `.ad-box` (line 537) and the drag/reorder logic filters
-  `:not(.ad-box)` (`script.js:284`). Re-check any new list operations.
+This roadmap is about making that **reliable, compliant, and higher-yielding**.
 
-### Phase 2 — Yield & fill
-- Turn on **Auto ads** (anchor/vignette) in AdSense as a floor for when the
-  in-feed slot doesn't fill.
-- Add a **house-ad fallback**: when AdSense returns unfilled
-  (`ins[data-ad-status="unfilled"]`), swap in a self-promo card (e.g. "Invite a
-  friend", "Rate TABS") so the box is never empty.
-- Consider **lazy-loading**: only `push()` the slot when the ad row scrolls near
-  the viewport (IntersectionObserver) to improve viewability RPM.
+### Phase 0 — Get real ads serving (do first)
+- **AdSense (web):** confirm the account is **approved** and the site is
+  verified for `tabsonfriends.com` (per `CNAME`). Unapproved accounts render
+  blank. Confirm slot `8944873686` is a real **responsive display** unit.
+- **AdMob (iOS):** add the Google Mobile Ads SDK in Xcode, then replace the
+  **test** IDs — `GADApplicationIdentifier` in `Info.plist` and `bannerAdUnitID`
+  in `WebViewController.swift` — with your real app / unit IDs, and paste the
+  full `SKAdNetworkItems` list.
 
-### Phase 3 — Consent & compliance
-- Add a **consent banner / CMP** (Google's or a lightweight one) for GDPR/UK
-  users, and gate `adsbygoogle.push()` on consent — required for EEA traffic
-  and protects the AdSense account.
+### Phase 1 — Yield & fill
+- **AdSense:** consider **Auto ads** (anchor/vignette) as a floor, and
+  lazy-load the landing banner only when visible to lift viewability RPM.
+- **AdMob:** experiment with an **adaptive vs. fixed** banner size; optionally
+  refresh the banner on a timer (respecting AdMob's refresh policy).
+
+### Phase 2 — Consent & compliance
+- Add a **consent banner / CMP** (Google's UMP SDK on iOS, a web CMP on the
+  site) for GDPR/UK users, and gate ad requests / `adsbygoogle.push()` on
+  consent — required for EEA traffic and protects both accounts.
+- Keep **App Tracking Transparency** (already prompted on iOS) and the App
+  Store **privacy nutrition labels** accurate for what AdMob collects.
 - Respect a **premium / ad-free** flag on the user profile
-  (`users/{uid}/profile/adsDisabled`): `addAdBox()` should early-return when set,
-  laying groundwork for a paid "remove ads" upgrade.
+  (`users/{uid}/profile/adsDisabled`): hide `#landing-ad` and skip the AdMob
+  banner load when set — groundwork for a paid "remove ads" upgrade.
 
-### Phase 4 — Alternatives / diversification (optional)
-- If AdSense fill or approval is a problem, evaluate **Ezoic / Media.net** or a
-  direct **affiliate card** (finance/budgeting offers fit the audience) rendered
-  with the same `addAdBox()` slot — no third-party SDK, full styling control,
-  and no spam/consent surface.
+### Phase 3 — Alternatives / diversification (optional)
+- If AdSense fill or approval is a problem on web, evaluate **Ezoic /
+  Media.net** or a direct **affiliate card** (finance/budgeting offers fit the
+  audience) in the same `#landing-ad` slot — no third-party SDK, full styling
+  control, and no extra consent surface.
 
 ### Suggested order
-`Phase 0 (verify) → Phase 1 (interpolate + label) → Phase 3 (consent + ad-free
-flag) → Phase 2 (fill/house ads) → Phase 4 (only if AdSense underperforms).`
+`Phase 0 (get serving) → Phase 2 (consent + ad-free flag) → Phase 1 (yield) →
+Phase 3 (only if AdSense underperforms).`
 
 ---
 
