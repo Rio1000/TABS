@@ -455,7 +455,9 @@ button:hover {
   font-weight: bold;
   opacity: 0.8;
   padding: 20px;
-  top: 18px;
+  /* Push below the status bar / notch / Dynamic Island on iOS (the native app
+     draws edge-to-edge). env() is 0 in a normal browser, so web is unchanged. */
+  top: calc(18px + env(safe-area-inset-top));
   right: 0px;
   font-size: 40px;
   cursor: pointer;
@@ -754,7 +756,8 @@ input {
 /* Logo Styles */
 .Logo {
   position: absolute;
-  top: 10px;
+  /* Clear the status bar / notch on iOS; env() is 0 in a browser. */
+  top: calc(10px + env(safe-area-inset-top));
   left: 10px;
   width: 100px;
   margin: 0;
@@ -3119,11 +3122,9 @@ body.action-open #action-backdrop {
 #action-sheet[data-open="add"] #action-pane-add,
 #action-sheet[data-open="clear"] #action-pane-clear {
   display: flex;
-  animation: actionPaneIn 0.28s ease;
-}
-@keyframes actionPaneIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  /* No separate pane animation: the sheet's own max-height + opacity
+     transition already reveals the content. A second animation here made the
+     pull-up look like a double motion (sheet growing + pane sliding). */
 }
 
 #action-pane-add input {
