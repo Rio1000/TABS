@@ -728,13 +728,18 @@ const firebaseErrorMap = {
   "auth/invalid-email": "Invalid email or password",
   "auth/wrong-password": "Invalid email or password",
   "auth/user-not-found": "Invalid email or password",
+  "auth/invalid-credential": "Invalid email or password",
   "auth/too-many-requests": "Too many failed attempts. Try again later.",
+  "auth/network-request-failed": "No internet connection. Please try again.",
+  // Thrown when Email/Password sign-in isn't enabled for the Firebase project
+  // (Firebase console → Authentication → Sign-in method → Email/Password).
+  "auth/operation-not-allowed": "Email sign-in isn't enabled yet. Please try again later.",
   // Add more as needed
 };
 // Login Event
 // Login Event
 loginButton.addEventListener("click", async () => {
-  const email = loginEmail.value;
+  const email = loginEmail.value.trim();
   const password = loginPassword.value;
 
   try {
@@ -751,6 +756,9 @@ loginButton.addEventListener("click", async () => {
 
     await logUserAction("Logged in");
   } catch (error) {
+    // Log the real Firebase code so the underlying cause is visible in the
+    // console (the toast is intentionally vague for users).
+    console.error("Email/password login failed:", error.code, error.message);
     const cleanMessage = firebaseErrorMap[error.code] || "Something went wrong. Please try again.";
     showToast(cleanMessage, "error");
   }
