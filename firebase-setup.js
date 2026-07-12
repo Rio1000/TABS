@@ -594,6 +594,27 @@ onAuthStateChanged(auth, async (user) => {
 const IS_NATIVE_APP =
   typeof navigator !== "undefined" && navigator.userAgent.includes("TABSApp");
 
+// "Buy us a coffee" support. On the web this opens Buy Me a Coffee as before;
+// inside the native iOS app Apple requires digital tips/donations to go through
+// In-App Purchase (App Store Review Guideline 3.1.1), so we hand off to the
+// native StoreKit flow via the same bridge the app already uses.
+function triggerCoffeeSupport() {
+  if (IS_NATIVE_APP && window.ReactNativeWebView) {
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: "purchaseCoffee" }));
+  } else {
+    window.open("https://buymeacoffee.com/TABSonFriends", "_blank", "noopener");
+  }
+}
+
+// Any element tagged with data-support-coffee routes through the one handler,
+// so the web/native branch lives in a single place.
+document.addEventListener("click", (e) => {
+  const trigger = e.target.closest("[data-support-coffee]");
+  if (!trigger) return;
+  e.preventDefault();
+  triggerCoffeeSupport();
+});
+
 // Shared handling for a signed-in Google user (from either a popup result or
 // a redirect result): create their profile + friend code on first sign-in,
 // then greet them. `verb` is "Signed in" or "Signed up".
@@ -1363,14 +1384,15 @@ function addAdBox() {
 function renderHouseAd(container) {
   const ads = [
     { text: "Enjoying TABS? Add a friend so you never forget who owes what.", cta: "Add a friend", href: "https://tabsonfriends.com" },
-    { text: "Help keep TABS free ☕", cta: "Buy us a coffee", href: "https://buymeacoffee.com/TABSonFriends" },
+    { text: "Help keep TABS free ☕", cta: "Buy us a coffee", href: "https://buymeacoffee.com/TABSonFriends", coffee: true },
   ];
   const pick = ads[Math.floor(Math.random() * ads.length)];
+  const coffeeAttr = pick.coffee ? " data-support-coffee" : "";
   container.insertAdjacentHTML(
     "beforeend",
     `<div style="padding:8px 4px;">
        <p style="margin:0 0 6px;color:#cfe;font-size:14px;">${pick.text}</p>
-       <a href="${pick.href}" target="_blank" rel="noopener"
+       <a href="${pick.href}" target="_blank" rel="noopener"${coffeeAttr}
           style="color:#7fd4ff;font-weight:bold;text-decoration:none;">${pick.cta} →</a>
      </div>`
   );

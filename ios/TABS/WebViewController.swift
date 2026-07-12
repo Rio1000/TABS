@@ -3,6 +3,7 @@ import WebKit
 import UserNotifications
 import FirebaseCore
 import GoogleSignIn
+import StoreKit
 
 /// Full-screen wrapper around tabsonfriends.com.
 ///
@@ -189,8 +190,26 @@ final class WebViewController: UIViewController {
             requestPushToken()
         case "googleSignIn":
             startGoogleSignIn()
+        case "purchaseCoffee":
+            startCoffeePurchase()
         default:
             break
+        }
+    }
+
+    // MARK: - In-App Purchase ("Buy us a coffee" support)
+
+    /// Apple requires digital tips/donations from a for-profit app to go
+    /// through In-App Purchase, not an external link (Guideline 3.1.1). On the
+    /// web the button still opens Buy Me a Coffee; inside the app the page posts
+    /// `{type:"purchaseCoffee"}` and we run the StoreKit flow instead.
+    private func startCoffeePurchase() {
+        Task {
+            let result = await CoffeeStore.shared.buyCoffee()
+            guard !result.title.isEmpty else { return } // user cancelled: no alert
+            await MainActor.run {
+                self.presentAlert(title: result.title, message: result.message)
+            }
         }
     }
 
@@ -476,5 +495,57 @@ extension WebViewController: WKUIDelegate {
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completionHandler(false) })
         alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler(true) })
         present(alert, animated: true)
+    }
+}
+
+// MARK: - StoreKit tip jar
+
+/// Thin StoreKit 2 wrapper for the "Buy us a coffee" support purchase.
+///
+/// The coffee is a **consumable** IAP (users can tip more than once). Its
+/// product identifier must be created in App Store Connect exactly as
+/// `Self.productID` — under In-App Purchases, type "Consumable" — otherwise
+/// `Product.products(for:)` returns nothing and the user sees the
+/// "not available" alert.
+final class CoffeeStore {
+
+    static let shared = CoffeeStore()
+
+    /// Must match the product ID configured in App Store Connect.
+    static let productID = "com.tabsonfriends.app.coffee"
+
+    /// Runs the full purchase flow and returns a user-facing alert to show.
+    /// An empty `title` means "show nothing" (user cancelled).
+    func buyCoffee() async -> (title: String, message: String) {
+        do {
+            let products = try await Product.products(for: [Self.productID])
+            guard let coffee = products.first else {
+                return ("Support Unavailable",
+                        "The in-app support option isn't ready yet. Please try again later.")
+            }
+
+            switch try await coffee.purchase() {
+            case .success(let verification):
+                switch verification {
+                case .verified(let transaction):
+                    // Consumable: nothing to unlock, so just finish the txn.
+                    await transaction.finish()
+                    return ("Thank You! ☕️",
+                            "Your support helps keep TABS running and free for everyone.")
+                case .unverified:
+                    return ("Couldn't Verify Purchase",
+                            "We couldn't verify that purchase, so you haven't been charged.")
+                }
+            case .userCancelled:
+                return ("", "")
+            case .pending:
+                return ("Purchase Pending",
+                        "Your purchase needs approval and will complete once it's confirmed.")
+            @unknown default:
+                return ("", "")
+            }
+        } catch {
+            return ("Purchase Failed", error.localizedDescription)
+        }
     }
 }
