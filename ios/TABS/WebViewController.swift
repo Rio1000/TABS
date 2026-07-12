@@ -1,6 +1,8 @@
 import UIKit
 import WebKit
 import UserNotifications
+import FirebaseCore
+import GoogleSignIn
 
 /// Full-screen wrapper around tabsonfriends.com.
 ///
@@ -182,9 +184,74 @@ final class WebViewController: UIViewController {
               let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let type = dict["type"] as? String else { return }
 
-        if type == "requestPushToken" {
+        switch type {
+        case "requestPushToken":
             requestPushToken()
+        case "googleSignIn":
+            startGoogleSignIn()
+        default:
+            break
         }
+    }
+
+    // MARK: - Native Google Sign-In
+
+    /// Google blocks OAuth inside embedded web views, so we run sign-in through
+    /// the GoogleSignIn SDK (which uses an ASWebAuthenticationSession — a system
+    /// browser Google allows), then hand the resulting ID token back to the page
+    /// to complete Firebase sign-in via `signInWithCredential`.
+    private func startGoogleSignIn() {
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            presentAlert(
+                title: "Google Sign-In Unavailable",
+                message: "GoogleService-Info.plist is missing, so Google sign-in can't run. Add it to the app to enable it.")
+            return
+        }
+
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+        GIDSignIn.sharedInstance.signIn(withPresenting: self) { [weak self] result, error in
+            guard let self else { return }
+
+            if let error = error {
+                // User-cancelled is not worth an alert; anything else we surface.
+                if (error as? GIDSignInError)?.code == .canceled {
+                    return
+                }
+                self.presentAlert(title: "Google Sign-In Failed",
+                                  message: error.localizedDescription)
+                return
+            }
+
+            guard let idToken = result?.user.idToken?.tokenString else {
+                self.presentAlert(title: "Google Sign-In Failed",
+                                  message: "No identity token was returned. Please try again.")
+                return
+            }
+            let accessToken = result?.user.accessToken.tokenString
+
+            self.forwardGoogleCredentialToWeb(idToken: idToken, accessToken: accessToken)
+        }
+    }
+
+    /// Inject the Google credential into the page so it can finish the Firebase
+    /// sign-in with `signInWithCredential`.
+    private func forwardGoogleCredentialToWeb(idToken: String, accessToken: String?) {
+        // JSON-encode both values so they're safely escaped inside the JS call.
+        let payload: [String: Any] = [
+            "idToken": idToken,
+            "accessToken": accessToken ?? "",
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8) else { return }
+        let js = """
+        (function () {
+            var c = \(json);
+            if (window.__onNativeGoogleCredential) {
+                window.__onNativeGoogleCredential(c.idToken, c.accessToken || null);
+            }
+        })();
+        """
+        webView.evaluateJavaScript(js, completionHandler: nil)
     }
 
     /// Make sure the app is authorized and registered for remote

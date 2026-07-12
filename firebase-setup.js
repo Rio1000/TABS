@@ -22,8 +22,7 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult
+  signInWithCredential
 
 } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-auth.js";
 
@@ -586,10 +585,12 @@ onAuthStateChanged(auth, async (user) => {
 
   }
 });
-// Inside the native iOS app the site runs in a WKWebView, where popups
-// (signInWithPopup) are blocked — Google auth must use a full-page redirect
-// instead. The native wrapper tags its user-agent with "TABSApp" so we can
-// detect it here.
+// Inside the native iOS app the site runs in a WKWebView. Google blocks all
+// OAuth from embedded web views ("disallowed_useragent"), so neither popup nor
+// redirect works there. Instead the native wrapper performs Google Sign-In in
+// a system browser (GoogleSignIn SDK) and hands the resulting credential back
+// to this page, which completes the login with signInWithCredential. The
+// wrapper tags its user-agent with "TABSApp" so we can detect it here.
 const IS_NATIVE_APP =
   typeof navigator !== "undefined" && navigator.userAgent.includes("TABSApp");
 
@@ -626,36 +627,43 @@ async function provisionGoogleUser(user, verb) {
   await logUserAction(`${verb} with Google`);
 }
 
-// Start Google auth: redirect in the native app, popup on the web.
+// Start Google auth: hand off to the native app's system-browser sign-in when
+// running inside the wrapper, otherwise use a popup on the web.
 async function startGoogleAuth(verb) {
-  const provider = new GoogleAuthProvider();
-
   if (IS_NATIVE_APP) {
-    // Remember which flow we were in so we can greet correctly after the
-    // page reloads back from Google.
+    // Remember which flow we were in so we greet correctly when the native
+    // credential comes back via window.__onNativeGoogleCredential.
     try { sessionStorage.setItem("googleAuthVerb", verb); } catch (e) {}
-    await signInWithRedirect(auth, provider);
-    return; // page navigates away; completion is handled by getRedirectResult
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: "googleSignIn" }));
+    }
+    return; // native presents the sign-in sheet; completion happens below
   }
 
+  const provider = new GoogleAuthProvider();
   const result = await signInWithPopup(auth, provider);
   await provisionGoogleUser(result.user, verb);
 }
 
-// On the web, a redirect result won't exist and this resolves to null. In the
-// app, this completes the sign-in after returning from Google.
-getRedirectResult(auth)
-  .then((result) => {
-    if (!result || !result.user) return;
+// Called by the native wrapper after a successful system-browser Google
+// Sign-In. It passes the Google ID token (and access token), which we turn
+// into a Firebase credential to finish signing in — no embedded-webview OAuth,
+// so Google's "secure browser" policy is satisfied.
+window.__onNativeGoogleCredential = async (idToken, accessToken) => {
+  try {
+    if (!idToken) return;
+    const credential = GoogleAuthProvider.credential(idToken, accessToken || null);
+    const result = await signInWithCredential(auth, credential);
+
     let verb = "Signed in";
     try { verb = sessionStorage.getItem("googleAuthVerb") || verb; } catch (e) {}
     try { sessionStorage.removeItem("googleAuthVerb"); } catch (e) {}
-    return provisionGoogleUser(result.user, verb);
-  })
-  .catch((error) => {
-    console.error("Google redirect result error:", error);
+    await provisionGoogleUser(result.user, verb);
+  } catch (error) {
+    console.error("Native Google sign-in failed:", error);
     showToast("Google sign-in failed: " + error.message, "error");
-  });
+  }
+};
 
 // Google Sign-In Button Listener
 const googleBtn = document.getElementById("googleSignInBtn");

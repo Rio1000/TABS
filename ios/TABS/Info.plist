@@ -18,6 +18,18 @@
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
+	<!-- Google Sign-In callback. Replace the scheme below with the
+	     REVERSED_CLIENT_ID value from your GoogleService-Info.plist
+	     (it looks like com.googleusercontent.apps.1234567890-abcdef). -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>REPLACE_WITH_REVERSED_CLIENT_ID</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>UIApplicationSceneManifest</key>
