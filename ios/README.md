@@ -18,8 +18,11 @@ App Store app.
 - **Native dialogs.** JavaScript `alert()` / `confirm()` render as native
   iOS alerts.
 - **External links stay functional.** Venmo / PayPal / Cash App links,
-  `mailto:`, and `sms:` open in the appropriate system app; Google/Firebase
-  sign-in flows stay inside the web view so login keeps working.
+  `mailto:`, and `sms:` open in the appropriate system app.
+- **Native Google Sign-In.** Google blocks OAuth inside embedded web views
+  (`disallowed_useragent`), so the app signs in with the GoogleSignIn SDK
+  through a system browser and hands the credential to the page to finish the
+  Firebase login. See *Google Sign-In setup* below.
 - **Notification toggle re-prompts every time.** The app watches the site's
   "Enable notifications" switch (`#notifEnabledToggle`). Every single flip
   triggers a native prompt:
@@ -43,6 +46,35 @@ App Store app.
 3. In *Signing & Capabilities*, pick your team (bundle id is
    `com.tabsonfriends.app` — change it if it's taken).
 4. Run (⌘R).
+
+## Google Sign-In setup
+
+Google refuses OAuth inside embedded web views, so Google login is handled
+natively. Wire it up once:
+
+1. **Add the GoogleSignIn SDK** (same way you added Firebase):
+   *File → Add Package Dependencies…* →
+   `https://github.com/google/GoogleSignIn-iOS` → add the **GoogleSignIn**
+   product to the **TABS** target.
+2. **Add `GoogleService-Info.plist`** to the TABS target if you haven't
+   already (it carries the OAuth client ID the sign-in uses). Adding the iOS
+   app in the Firebase Console is free and doesn't need a paid Apple account.
+3. **Add the URL scheme.** Open `GoogleService-Info.plist`, copy the
+   **`REVERSED_CLIENT_ID`** value (looks like
+   `com.googleusercontent.apps.1234567890-abcdef`), and paste it into
+   `Info.plist` in place of `REPLACE_WITH_REVERSED_CLIENT_ID` (under
+   *URL Types → URL Schemes*). This is the callback the system browser returns
+   to after sign-in.
+
+How it flows: the site (running as `TABSApp`) posts a `googleSignIn` message →
+`WebViewController` runs `GIDSignIn` in a system browser → the Google ID token
+is injected back via `window.__onNativeGoogleCredential` → the page finishes
+with `signInWithCredential`. On the web (not the app) nothing changes — it
+still uses `signInWithPopup`.
+
+> The site-side half of this lives in `firebase-setup.js`, so those changes
+> must be deployed to `tabsonfriends.com` (merge the PR) for in-app Google
+> login to work — the app loads the live site, not local files.
 
 ## Push notifications (FCM / APNs)
 
