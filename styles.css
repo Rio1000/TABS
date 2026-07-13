@@ -394,7 +394,9 @@ button:hover {
   box-shadow: #011d1d 0px 0px 10px 0px;
   overflow-x: hidden;
   transition: 0.5s;
-  padding-top: 60px;
+  /* Extra top padding so the close button / nav links clear the status bar and
+     notch on iOS. env() is 0 in a browser, so web spacing is unchanged. */
+  padding-top: calc(60px + env(safe-area-inset-top));
   border-top-left-radius: 10px;
   border-bottom-left-radius: 10px;
   max-height: 100%;
