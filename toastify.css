@@ -6,12 +6,16 @@
   padding: 12px 20px;
   color: #fff;
   display: inline-block;
-  background-color: red;  
+  background-color: red;
   opacity: 0;
   transition: all 0.4s cubic-bezier(0.215, 0.61, 0.355, 1);
   cursor: pointer;
   text-decoration: none;
   z-index: 2147483647;
+  /* Toasts use gravity:"top" and Toastify sets their `top` inline. A top margin
+     shifts them down past the status bar / notch on iOS without overriding that
+     inline position; env() is 0 in a browser, so web is unchanged. */
+  margin-top: env(safe-area-inset-top);
 }
 .toastify.on {
   opacity: 1;

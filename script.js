@@ -436,48 +436,11 @@ function copyText() {
     }
 }
 
-// Hide the header (logo, title, menu button) whenever any modal is open.
-// The Add/Clear button bar isn't included here — it now sits below every
-// modal in z-index (see #buttons in styles.css), so an open modal's own
-// backdrop already covers it without needing a visibility toggle. These
-// elements share a flex-stacking context with the modals, and a numeric
-// z-index plus a translucent backdrop wasn't reliably enough to keep the
-// header from rendering on top of an open modal. Rather than touching
-// every individual modal's open/close call site scattered across
-// script.js and firebase-setup.js, this watches the modals themselves
-// (via the exact same selector the shared .modal CSS rule uses) and
-// reacts centrally whenever one's display style changes.
-(function () {
-  const chromeElements = ["#TITLE", ".Logo", "#openButton"]
-    .map((selector) => document.querySelector(selector))
-    .filter(Boolean);
-
-  const modals = Array.from(
-    document.querySelectorAll(
-      ".modal, #customModal, #editMoneyModal, #friendModal, " +
-        "#editNameModal, #add-extra-info-modal, #ProfileModal, #editItemModal, #RFModal, " +
-        "#loader, #loginorsignupmodal, #adsModal, #editExtraInfoModal, #addFriendModal, " +
-        "#pendingRequestsModal, #delete-account-modal, #AccountHistoryModal, #interestModal, " +
-        "#Loginpage, #signupPage"
-    )
-  );
-
-  function updateChromeVisibility() {
-    const anyModalOpen = modals.some(
-      (modal) => getComputedStyle(modal).display !== "none"
-    );
-    chromeElements.forEach((el) => {
-      el.style.visibility = anyModalOpen ? "hidden" : "";
-    });
-  }
-
-  const observer = new MutationObserver(updateChromeVisibility);
-  modals.forEach((modal) => {
-    observer.observe(modal, { attributes: true, attributeFilter: ["style"] });
-  });
-
-  updateChromeVisibility();
-})();
+// The header (logo, title, menu button) is intentionally left visible and in
+// place when a modal opens — no visibility toggle. Every modal is a
+// full-screen overlay far above the header in z-index (.modal is z-index 9999;
+// the header elements are all < 1000), so the blurred backdrop already sits on
+// top of them: they show through blurred but can't be tapped.
 
 // Animate modals in/out instead of an abrupt display:none <-> flex flip.
 // Every modal open/close elsewhere in script.js and firebase-setup.js
