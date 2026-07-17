@@ -62,7 +62,7 @@ const firebaseConfig = {
 function showToast(message, type = "success") {
   Toastify({
     text: `${message}`, // Prepend icon to message
-    duration: 100000,
+    duration: 2.5,
     close: true,
     gravity: "top",
     position: "right",
