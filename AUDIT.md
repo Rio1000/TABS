@@ -1,20 +1,27 @@
 # TABS Interior App Audit — July 2026
 
 > **Resolution status:** every finding below has been fixed on this branch
-> except the three that need decisions/credentials only the owner has:
+> except two that need decisions/credentials only the owner has:
 >
 > 1. **AdMob production IDs (§1)** — the iOS app still uses Google's test
 >    IDs. Swap in your real app/unit IDs from the AdMob console
 >    (`Info.plist` → `GADApplicationIdentifier`, `WebViewController.swift` →
 >    `bannerAdUnitID`); until then iOS serves $0 test/house ads.
-> 2. **GDPR/UK consent banner (§1.3)** — gating `adsbygoogle.push()` on
->    consent needs a CMP vendor choice (Google's certified CMP list, or
->    Funding Choices). The ad code paths are otherwise unchanged, so a CMP
->    can be added around the single `push()` call in `index.html`.
-> 3. **The giant `:not()` selector / `!important` CSS architecture (§4.3)** —
+> 2. **The giant `:not()` selector / `!important` CSS architecture (§4.3)** —
 >    duplicates and dead rules were removed, but a full restyle to a
 >    class-based button system is a design-level refactor left for a
 >    dedicated pass (high regression risk for zero user-visible gain now).
+>
+> **GDPR/UK consent banner (§1.3) — code is now done on both platforms.**
+> Web reads consent through the AdSense console's own CMP (Privacy &
+> messaging → GDPR) via the existing `adsbygoogle.js` loader — no code
+> change needed, just publish a message in that console. iOS gates ad
+> loading behind Google's UMP SDK (`gatherConsentThenLoadAd` in
+> `WebViewController.swift`, added on this branch) ahead of App Tracking
+> Transparency and the banner load; it needs its own GDPR message published
+> in the AdMob console (separate from AdSense's) before it does anything —
+> see `ADS_SETUP.md` for both console steps and how to test the iOS form
+> from outside the EEA.
 >
 > Notes on two fixes that changed behavior slightly:
 > - Friend requests no longer carry the sender's phone number (§3.3). For
