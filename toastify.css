@@ -23,12 +23,28 @@
 .toast-close {
   font-size: 24px;
   border: 0;
-  color: #2c2c2c;
-  cursor: pointer;
+  border: solid;
+  border-width: 1px;
+  border-radius: 8px;
+  background: rgba(94, 20, 20, 0.353);
+  color: #cb4337;
+  border-color: #cb4337;  cursor: pointer;
   font-family: inherit;
   padding: 0 5px;
   margin: 5px;
 }
+.toastify-success .toast-close {
+  background: rgba(7, 42, 9, 0.353);
+  color: #1fe51f;
+  border-color: #207120;
+}
+
+.toastify-error .toast-close {
+  background: rgba(94, 20, 20, 0.353);
+  color: #cb4337;
+  border-color: #cb4337;
+}
+
 .toastify::before {
   content: "";
   display: inline-block;

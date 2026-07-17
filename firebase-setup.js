@@ -62,7 +62,7 @@ const firebaseConfig = {
 function showToast(message, type = "success") {
   Toastify({
     text: `${message}`, // Prepend icon to message
-    duration: 2500,
+    duration: 100000,
     close: true,
     gravity: "top",
     position: "right",
@@ -1191,6 +1191,9 @@ function addPerson(
   const nameAmountContainer = document.createElement("div");
   nameAmountContainer.classList.add("name-amount-container");
 
+  const nameFriendIconContainer = document.createElement("div");
+  nameFriendIconContainer.classList.add("name-friend-icon-container");
+
   const nameSpan = document.createElement("span");
   nameSpan.textContent = name;
   nameSpan.classList.add("name-span");
@@ -1220,7 +1223,8 @@ function addPerson(
   amountContainer.appendChild(amountSpan);
 
   const personItem = document.createElement("div");
-  personItem.appendChild(nameSpan);
+  personItem.appendChild(nameFriendIconContainer);
+  nameFriendIconContainer.appendChild(nameSpan);
   if (isFriend) {
     // Sibling of nameSpan, not a child of it — anything reading
     // nameSpan.textContent as the person's name (save/edit/logging) would
@@ -1229,7 +1233,7 @@ function addPerson(
     friendIcon.className = "material-icons friend-icon";
     friendIcon.textContent = "how_to_reg";
     friendIcon.title = "This person is one of your friends";
-    personItem.appendChild(friendIcon);
+    nameFriendIconContainer.appendChild(friendIcon);
   }
   personItem.appendChild(amountContainer);
   personItem.classList.add("person-stuff");

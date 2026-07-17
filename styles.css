@@ -32,6 +32,8 @@ body {
 
 /* Title Styles */
 #TITLE {
+  position: absolute;
+  top: calc(10px + env(safe-area-inset-top));
   visibility: visible;
   font-size: 50px;
   z-index: 901;
@@ -764,10 +766,9 @@ input {
   width: 100px;
   margin: 0;
   transform: none;
-  opacity: 80%;
+  image-rendering: pixelated;
   transition: 0.3s;
   z-index: 98;
-  filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(150deg) brightness(50%) contrast(200%);
 }
 
 /* Utility Classes */
@@ -1179,12 +1180,12 @@ input {
 }
 
 .modal-content {
-  margin-top: 100px;
+  margin-top: 0px;
   align-items: center;
   display: flex;
   flex-direction: column;
   padding: 20px;
-  width: 70%;
+  width: 80%;
   z-index: 1;
   background-color: #033238;
   border-radius: 10px;
@@ -1377,6 +1378,24 @@ input {
   backdrop-filter: blur(3px);
   cursor: pointer;
   max-height:50px;
+}
+.owe-toggle{
+  text-align: center;
+  justify-content: center;
+  background-color: rgba(56, 138, 147, 0.686);
+  color: rgb(194, 233, 232);
+  font-size: 20px;
+  width: 93%;
+  font-weight: bold;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  cursor: pointer;
+  max-height:50px;
+  height: 49px;
+  margin-bottom: 5px;
 }
 #copy-friend-code{
   background-color: rgba(56, 138, 147, 0.686);
@@ -1965,7 +1984,7 @@ body.payments-enabled .pay-request-btn {
   padding: 20px;
   border-radius: 10px;
   text-align: center;
-  width: 70%;
+  width: 80%;
   height: 80%;
   position: relative;
   align-items: center;
@@ -2158,6 +2177,8 @@ body.payments-enabled .pay-request-btn {
 }
 .switch {
   display: inline-block;
+  background-color:#033238;
+  border-radius: 15px;
 }
 
 .switch input {
@@ -2211,7 +2232,7 @@ body.payments-enabled .pay-request-btn {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  width: 100%;
+  width: 93%;
 }
 
 .owe-toggle-label {
@@ -2223,20 +2244,20 @@ body.payments-enabled .pay-request-btn {
 }
 
 .owe-switch label {
-  border-color: #7e2323;
+  border-color: #23637e;
 }
 
 .owe-switch label::after {
-  background: #ff4d4d;
+  background: #4dc4ff;
 }
 
 .owe-switch input:checked ~ label {
-  border-color: #237e29;
-  box-shadow: 0px 0px 5px 0px #237e29;
+  border-color: #23637e;
+  box-shadow: 0px 0px 5px 0px #237e2900;
 }
 
 .owe-switch input:checked ~ label::after {
-  background: #59ba39;
+  background: #4dc4ff;
 }
 
 .signupbtns{
@@ -3011,7 +3032,8 @@ body.payments-enabled .pay-request-btn {
 #paymentSettingsBox h2,
 #paymentRequestBox h2,
 #smsReminderBox h2,
-#editinffoBox h2 {
+#editinffoBox h2,
+.owe-toggle-label{
   margin-top: 0;
   margin-bottom: 4px;
   font-weight: 700;
@@ -3287,10 +3309,11 @@ body.action-open #action-backdrop {
   --btn-positive-text: 208, 236, 202;
 }
 
-button:not(.remove-btn):not(.add-info-btn):not(.remove-friend-from-list):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(.close-btn):not(.modal-close-x):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(#confirmClearHistory):not(.accept):not(.decline),
+button:not(.remove-btn):not(.add-info-btn):not(.remove-friend-from-list):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(.close-btn):not(.modal-close-x):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(.toast-close):not(#confirmClearHistory):not(.accept):not(.decline),
 #profileInfo,
 #profileStats,
 #profileAccount,
+.owe-toggle,
 .btn {
   background-color: rgba(var(--btn-accent), 0.16) !important;
   border: 1px solid rgba(var(--btn-accent), 0.7) !important;
@@ -3299,7 +3322,7 @@ button:not(.remove-btn):not(.add-info-btn):not(.remove-friend-from-list):not(.sm
   transition: background-color 0.2s ease, transform 0.15s ease,
     box-shadow 0.2s ease, border-color 0.2s ease !important;
 }
-button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(.close-btn):not(.modal-close-x):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(#confirmClearHistory):not(.accept):not(.decline):hover,
+button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(.close-btn):not(.modal-close-x):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(#confirmClearHistory):not(.toast-close):not(.accept):not(.decline):hover,
 #profileInfo:hover,
 #profileStats:hover,
 #profileAccount:hover,
