@@ -882,9 +882,20 @@ input {
   animation: modalFxIn 0.22s ease;
 }
 
+/* !important on both declarations: most modals are ALSO matched by an ID
+   selector in the giant `.modal, #customModal, #editMoneyModal, ...` block
+   above (higher specificity than two classes — an ID always outranks any
+   number of classes), and that block's own `transition` only lists
+   backdrop-filter/background-color, not opacity. Without !important here,
+   that ID-selector transition wins the `transition` property outright on
+   those modals, so `opacity: 0` still applies but with nothing to animate
+   it — it snaps instantly instead of fading, which is what made the
+   background UI look like it "popped" back into view on close instead of
+   fading in as the blur lifted. !important makes the fade apply uniformly
+   regardless of whether the modal happens to carry a styled ID. */
 .modal-fx.modal-fx-closing {
-  opacity: 0;
-  transition: opacity 0.18s ease;
+  opacity: 0 !important;
+  transition: opacity 0.24s ease !important;
 }
 
 /* The modal's direct children are its content card(s) — they pop in/out
@@ -922,7 +933,9 @@ input {
 }
 
 .modal-fx.modal-fx-closing > * {
-  animation: modalCardOut 0.22s cubic-bezier(0.4, 0, 1, 1) forwards;
+  /* Matches the backdrop's 0.24s fade above so the card and the blur finish
+     together instead of the card visibly cutting out first. */
+  animation: modalCardOut 0.24s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
 /* Swapping directly from one modal to another (login → signup, tab modal →
@@ -1791,6 +1804,34 @@ body.payments-enabled .pay-request-btn {
   padding: 8px 16px;
   font-size: 15px;
   font-weight: 700;
+}
+
+/* In-list AdSense card — deliberately just `.personlist-item` (see
+   addAdBox() in firebase-setup.js) so it inherits the exact same card shape,
+   gradient, border, hover lift and responsive sizing as every real tab row
+   at every breakpoint, with no card-specific rule of its own needed. These
+   overrides only center its two children (the label + the ad itself), since
+   a plain ad has no name/amount/action-row layout to preserve. */
+.ad-box {
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  cursor: default;
+}
+.ad-box-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #9fc2c6;
+  opacity: 0.8;
+}
+/* Make sure the AdSense <ins> actually gets layout width — a zero-width
+   container makes AdSense skip filling it. */
+.ad-box .adsbygoogle {
+  width: 100%;
+  min-width: 250px;
 }
 
 #close-prompt {

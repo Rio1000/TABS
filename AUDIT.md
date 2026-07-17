@@ -75,11 +75,13 @@ happens today:
 3. `ADS_SETUP.md`/`ROADMAP.md` call for a consent banner (GDPR/UK CMP) before
    `adsbygoogle.push()` — not implemented. EEA traffic is currently served
    personalized ads without consent.
-4. Dead leftovers from the retired in-list ad: `.ad-box` CSS rules
-   (`styles.css:1825-1831`, `2149-2158`, including invalid `cursor: cursor;`),
-   the `addAdBox()` no-op + its `ContinueasGuest` listener
-   (`firebase-setup.js:1332-1345`), and the `.ad-box` exclusions in
-   `saveListToFirebase`/`updateEmptyState`. Safe to delete.
+4. Dead leftovers from the then-retired in-list ad were removed (`.ad-box`
+   CSS, the `addAdBox()` no-op, its `ContinueasGuest` listener, and the
+   `.ad-box` exclusions in `saveListToFirebase`/`updateEmptyState`). **Update:**
+   the in-list ad was deliberately reintroduced in a later pass, styled as a
+   `.personlist-item` and with its own blocked/unfilled fallback — see
+   `ADS_SETUP.md`. The dead-code observation above described the state at
+   audit time, not the current app.
 
 ---
 

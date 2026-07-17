@@ -1,22 +1,29 @@
 # Ads in TABS
 
-TABS shows ads in two different places depending on the platform:
+TABS shows ads in a few places depending on the platform:
 
 | Platform | Network | Where it renders |
 |---|---|---|
-| **Web** | Google **AdSense** | One banner on the **login / signup landing page** only (`#landing-ad`) |
+| **Web** | Google **AdSense** | The **login / signup landing page** (`#landing-ad`), and one card at the bottom of the tab **list** itself (`.ad-box`) |
 | **iOS app** | Google **AdMob** | A native **adaptive banner** anchored to the bottom of the screen |
 
-There are **no in-list ads** and **no ad in the About Us modal** — those were
-removed so ads stay minimal and unobtrusive. The old A-ADS integration is gone.
+There's **no ad in the About Us modal**. The old A-ADS integration is gone.
+The in-list ad is styled as a plain `.personlist-item` (see `addAdBox()` in
+`firebase-setup.js`) so it inherits the exact same card look as every real
+tab row, with a small "Advertisement" label (required by AdSense policy on
+any ad placed among real content). It's hidden entirely inside the iOS app
+(AdSense doesn't fill in a WebView there) and hides itself if AdSense is
+blocked or unfilled — see "Why it may show nothing" below.
 
 ---
 
-## Web — Google AdSense (login/signup only)
+## Web — Google AdSense
+
+### Landing page banner (`#landing-ad`)
 
 The banner lives in `#landing-ad` inside the `loginorsignupmodal` in
 `index.html`. That page is intentionally sparse (Login / Signup / Continue as
-Guest), so a single banner there is the only web ad placement.
+Guest), so a single banner there is a natural placement.
 
 - Ad client/slot are already filled in: client `ca-pub-7825788728707782`,
   slot `8944873686`.
@@ -27,6 +34,27 @@ Guest), so a single banner there is the only web ad placement.
   (it checks `IS_NATIVE_APP`), because AdSense does not fill inside a WebView —
   the app shows the native AdMob banner instead.
 
+### In-list ad card (`.ad-box`)
+
+`addAdBox()` in `firebase-setup.js` appends one `.personlist-item.ad-box` card
+to the bottom of the tab list — same gradient/border/hover as every real row
+(it's just the shared `.personlist-item` class), with a small "Advertisement"
+label above the `<ins>`.
+
+- Currently reuses the **same** ad unit as the landing page (client
+  `ca-pub-7825788728707782`, slot `8944873686`). Create a dedicated "in-list"
+  ad unit in the AdSense console (Ads → By ad unit → Display ads) and swap the
+  `data-ad-slot` in `addAdBox()` for cleaner per-placement reporting once
+  you're ready.
+- Re-parked at the end of the list after every add (`addAdBox()` is called
+  again, which just moves the existing node rather than duplicating it) —
+  it never gets buried above a newly-added person.
+- Excluded from `saveListToFirebase` (it's not a person) and from the
+  "no tabs yet" empty-state check and the "list already empty" check in
+  `script.js` / `firebase-setup.js`.
+- Skipped entirely inside the native app (`IS_NATIVE_APP`) — AdMob's banner is
+  the only ad there.
+
 ### Why it may show nothing
 
 AdSense does not serve until Google **reviews and approves** your site, and
@@ -35,15 +63,20 @@ Until you're approved the `<ins>` renders **blank** — that's expected, not a
 bug. On `localhost` or with an ad blocker, `adsbygoogle.js` is also blocked
 outright (`ERR_BLOCKED_BY_CLIENT`).
 
-Either way, `script.js`'s `landingAdFallback()` detects the blocked/unfilled
-state (an ad-blocker load failure, or AdSense stamping
-`data-ad-status="unfilled"` on the `<ins>`) and swaps in the first-party
-`#house-ad` card instead of leaving a labeled empty box.
+Either way, both placements detect the blocked/unfilled state (an ad-blocker
+load failure, or AdSense stamping `data-ad-status="unfilled"` on the `<ins>`)
+and fall back gracefully instead of leaving a labeled empty box:
+- **Landing page:** `script.js`'s `landingAdFallback()` swaps in the
+  first-party `#house-ad` card ("Support TABS").
+- **In-list card:** `watchInListAdFill()` in `firebase-setup.js` just hides
+  the `.ad-box` row entirely — a "Support TABS" promo card mixed into
+  someone's actual list of friend tabs would read as clutter, unlike the
+  landing page where the whole screen is already ad-hosting.
 
 ### Changing it
 
-Edit the `<ins>` in `#landing-ad` in `index.html` (client/slot/format). To move
-or add a placement, add another `<ins>` + `push({})` on the page you want.
+Edit the relevant `<ins>` (in `#landing-ad` in `index.html`, or the template
+string in `addAdBox()` in `firebase-setup.js`) for client/slot/format changes.
 
 ### GDPR / UK consent (EEA traffic)
 

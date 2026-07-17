@@ -112,11 +112,13 @@ architecture (callable function, friendship check, E.164 normalization) stays.
 
 Current setup (see `ADS_SETUP.md` for the full reference):
 
-- **Web** — one Google **AdSense** banner on the login/signup landing
-  (`#landing-ad` in `index.html`; client `ca-pub-7825788728707782`, slot
-  `8944873686`). No in-list ad and no About Us ad — web ads are login/signup
-  only. The landing banner is hidden inside the app (`IS_NATIVE_APP` check in
-  `firebase-setup.js`).
+- **Web** — a Google **AdSense** banner on the login/signup landing
+  (`#landing-ad` in `index.html`) plus one card at the bottom of the tab list
+  (`.ad-box`, added by `addAdBox()` in `firebase-setup.js`), styled to match a
+  real tab row. Both currently use client `ca-pub-7825788728707782`, slot
+  `8944873686` — worth splitting into separate ad units per placement for
+  reporting (see `ADS_SETUP.md`). No About Us ad. Both placements are hidden
+  inside the app (`IS_NATIVE_APP` check in `firebase-setup.js`).
 - **iOS** — a native **AdMob** adaptive banner anchored to the bottom safe area
   (`WebViewController.swift`), since AdMob can't render inline in the WebView.
   SDK started in `AppDelegate.swift`; keys in `Info.plist`.

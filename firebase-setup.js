@@ -926,6 +926,7 @@ async function saveListToFirebase() {
   const peopleData = [];
 
   listItems.forEach((item) => {
+    if (item.classList.contains("ad-box")) return; // not a person — nothing to save
     const name = item.querySelector(".name-span").textContent;
     // .value (not .textContent) holds the canonical USD amount — .textContent
     // is just its converted display in whatever currency is selected.
@@ -998,7 +999,85 @@ function renderPeopleList(peopleData) {
       }
     }
   });
+
+  addAdBox();
 }
+
+// In-list AdSense unit, styled as a normal .personlist-item card (same
+// gradient/border/hover as every other row) so it sits in the list without
+// looking bolted-on — with a small "Advertisement" label, which AdSense
+// policy requires on any ad placed among real content. Reuses the same ad
+// unit as the landing page for now; create a dedicated "in-list" ad unit in
+// the AdSense console for better reporting once this is live (see
+// ADS_SETUP.md). Always pinned to the END of the list: appendChild on an
+// existing node moves it rather than duplicating it, so every call after an
+// add/reload just re-parks it at the bottom instead of creating a second box.
+// Hidden entirely inside the native app — AdSense doesn't fill inside a
+// WebView there (the native AdMob banner is the only ad on iOS).
+function addAdBox() {
+  if (!peopleList || IS_NATIVE_APP) return;
+
+  let adBox = peopleList.querySelector(".ad-box");
+  if (!adBox) {
+    adBox = document.createElement("div");
+    adBox.classList.add("personlist-item", "ad-box");
+    adBox.innerHTML = `
+      <p class="ad-box-label">Advertisement</p>
+      <ins class="adsbygoogle" style="display:block"
+        data-ad-client="ca-pub-7825788728707782"
+        data-ad-slot="8944873686"
+        data-ad-format="auto"
+        data-full-width-responsive="true"></ins>
+    `;
+    watchInListAdFill(adBox);
+  }
+  peopleList.appendChild(adBox);
+
+  // Request a fill only once per box (AdSense throws if push() runs twice on
+  // the same <ins>); re-parking an existing box on later renders must not
+  // re-push.
+  if (!adBox.dataset.adsPushed) {
+    adBox.dataset.adsPushed = "1";
+    try {
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (error) {
+      console.warn("AdSense push failed (likely blocked):", error);
+    }
+  }
+}
+
+// Hides the whole card if the ad never actually renders (ad blocker, or
+// AdSense has no fill). Unlike the landing page's #landing-ad (which swaps in
+// a "Support TABS" house card — see landingAdFallback in script.js), this box
+// sits inside a list of real people's tabs, where a promo card would read as
+// clutter mixed into someone's ledger; simply not showing the row is the
+// better fallback here. Called once per freshly-created <ins> (re-parking an
+// existing box doesn't need a second watcher).
+function watchInListAdFill(adBox) {
+  const ins = adBox.querySelector(".adsbygoogle");
+  if (!ins) return;
+
+  function checkFill() {
+    const scriptBlocked = !(window.adsbygoogle && window.adsbygoogle.loaded);
+    const neverFilled = ins.dataset.adStatus !== "filled" && ins.offsetHeight === 0;
+    adBox.style.display = scriptBlocked || neverFilled ? "none" : "";
+  }
+
+  new MutationObserver(checkFill).observe(ins, {
+    attributes: true,
+    attributeFilter: ["data-ad-status"],
+  });
+  setTimeout(checkFill, 3000);
+}
+
+// Guests never run loadListFromFirebase (it bails without a user, since
+// there's nothing to load), so give them the ad box too — this listener is
+// separate from the one in script.js (which just shows the empty list) since
+// addAdBox() lives in this module and script.js is a classic script that
+// can't reach it directly.
+document.getElementById("ContinueasGuest").addEventListener("click", () => {
+  addAdBox();
+});
 
 // Load list and interest data from Firebase
 async function loadListFromFirebase() {
@@ -2019,6 +2098,7 @@ document.getElementById("add").addEventListener("click", () => {
   const extraInfo = hasMoney && itemRaw ? [{ text: itemRaw }] : [];
 
   addPerson(name, amount, extraInfo, undefined, false, true);
+  addAdBox(); // re-park it at the bottom, below the row just added
   saveListToFirebase();
 
   // Clear inputs and hide modal after adding
@@ -2036,13 +2116,19 @@ document.addEventListener("DOMContentLoaded", loadListFromFirebase);
 const clearListBtn = document.getElementById("clearListBtn");
 clearListBtn.addEventListener("click", async () => {
   // Count actual rows — comparing innerHTML to "" broke whenever any stray
-  // node (whitespace, leftovers) sat in the container.
-  if (peopleList.querySelectorAll(".personlist-item").length === 0) {
+  // node (whitespace, leftovers) sat in the container. The ad box isn't a
+  // person, so it doesn't count toward "already empty" (and clearing wipes
+  // it along with everyone else — addAdBox() below puts it right back).
+  const realItems = peopleList.querySelectorAll(
+    ".personlist-item:not(.ad-box)"
+  ).length;
+  if (realItems === 0) {
     showToast("The list is already empty.", "info");
     closeActionSheet();
     return;
   }
   peopleList.innerHTML = ""; // Clear the list
+  addAdBox();
   saveListToFirebase();
   await logUserAction("Cleared people list");
   showToast("People list cleared successfully.", "success");
@@ -2244,6 +2330,7 @@ async function populateFriendsList() {
             `${friendData.firstName} has been added to your tabs list.`,
             "success"
           );
+          addAdBox(); // re-park it at the bottom, below the row just added
           windowClosed();
           saveListToFirebase();
           document.getElementById("addFriendModal").style.display = "none";

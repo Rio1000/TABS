@@ -246,11 +246,16 @@ window.addEventListener('load', updateScrollButtons);
 window.addEventListener('resize', updateScrollButtons);
 peopleList.addEventListener('scroll', updateScrollButtons);
 
-// Show a centered "no tabs yet" message whenever the list has no people in it.
+// Show a centered "no tabs yet" message whenever the list has no real
+// people in it. The ad box also lives in #people-list and carries the
+// .personlist-item class, so it's excluded from the count — an empty list
+// with only an ad still counts as empty.
 function updateEmptyState() {
   const message = document.getElementById("empty-list-message");
   if (!message) return;
-  const realItems = peopleList.querySelectorAll(".personlist-item").length;
+  const realItems = peopleList.querySelectorAll(
+    ".personlist-item:not(.ad-box)"
+  ).length;
   // Only surface the message once the list controls are visible (i.e. the
   // user is past the login/guest screen); otherwise it would show behind
   // the login modal on first load.
@@ -416,7 +421,12 @@ function copyText() {
 // (.modal-fx-swap-out / .modal-fx-swap-in) instead of fading the whole
 // screen out and back in.
 (function () {
-  const CLOSE_ANIM_MS = 190;
+  // Each *_ANIM_MS is the matching CSS animation/transition duration (in
+  // styles.css) plus a small buffer, so display:none never lands mid-fade
+  // and cuts an animation off early. Close: 0.24s backdrop fade + card exit
+  // (was 190ms against a 220ms card animation — the card used to visibly
+  // snap the last 30ms short of finishing).
+  const CLOSE_ANIM_MS = 260;
   const SWAP_ANIM_MS = 320;
   const OPEN_ANIM_MS = 360;
   const lastVisibleDisplay = new WeakMap();
