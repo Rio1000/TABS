@@ -1,20 +1,21 @@
+// Matches the showToast in firebase-setup.js (same duration/colors) so toasts
+// look identical no matter which file fired them.
 function showToast(message, type = "success") {
-
   Toastify({
-    text: `${message}`, // Prepend icon to message
-    duration: 2000,
+    text: `${message}`,
+    duration: 2500,
     close: true,
     gravity: "top",
     position: "right",
     className:
       type === "error"
         ? "toastify toastify-error"
-        : "toastify toastify-success", // Set class dynamically
+        : "toastify toastify-success",
     style: {
-      background: type === "error" ? "#ef4444" : "#50c444",
+      background: type === "error" ? "#bc3838" : "#52bc38",
       display: "flex",
       alignItems: "center",
-      gap: "8px", // Space between icon & text
+      gap: "8px",
     },
   }).showToast();
 }
@@ -27,18 +28,6 @@ const clearListBtn = document.getElementById("clear-list-btn");
 
 
 
-// Listen for currency change
-
-
-
-
-function debounce(func, wait) {
-  let timeout;
-  return function (...args) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), wait);
-  };
-}
 // Modal Event Listeners
 
 function openNav() {
@@ -127,12 +116,6 @@ function openLogin() {
 
   closeNav();
 }
-function openSignUp() {
-  document.getElementById("signupPage").style.display = "flex";
-  document.getElementById("Loginpage").style.display = "none";
-}
-
-
 function openFriends() {
   document.getElementById("friendModal").style.display = "flex";
   document.getElementById("ProfileModal").style.display = "none";
@@ -196,26 +179,6 @@ document.getElementById("Ads").addEventListener("click", () => {
   document.getElementById("adsModal").style.display = "flex";
   closeNav();
 });
-function moreinfo() {
-  document.getElementById("myDropdown").classList.toggle("show");
-}
-// After adding a new personlist-item
-peopleList.scrollTop = peopleList.scrollHeight;
-
-
-// Close the dropdown menu if the user clicks outside of it
-window.onclick = function(event) {
-  if (!event.target.matches('.dropbtn')) {
-    var dropdowns = document.getElementsByClassName("dropdown-content");
-    var i;
-    for (i = 0; i < dropdowns.length; i++) {
-      var openDropdown = dropdowns[i];
-      if (openDropdown.classList.contains('show')) {
-        openDropdown.classList.remove('show');
-      }
-    }
-  }
-} 
 function openSignup() {
   document.getElementById("signupPage").style.display = "flex";
   document.getElementById("Loginpage").style.display = "none";
@@ -283,16 +246,11 @@ window.addEventListener('load', updateScrollButtons);
 window.addEventListener('resize', updateScrollButtons);
 peopleList.addEventListener('scroll', updateScrollButtons);
 
-// Show a centered "no tabs yet" message whenever the list has no real
-// people in it. The ad box also lives in #people-list and carries the
-// .personlist-item class, so it's excluded from the count — an empty list
-// with only an ad still counts as empty.
+// Show a centered "no tabs yet" message whenever the list has no people in it.
 function updateEmptyState() {
   const message = document.getElementById("empty-list-message");
   if (!message) return;
-  const realItems = peopleList.querySelectorAll(
-    ".personlist-item:not(.ad-box)"
-  ).length;
+  const realItems = peopleList.querySelectorAll(".personlist-item").length;
   // Only surface the message once the list controls are visible (i.e. the
   // user is past the login/guest screen); otherwise it would show behind
   // the login modal on first load.
@@ -331,9 +289,6 @@ function activateProfileTab(index) {
       ? "rgba(89, 192, 199, 0.8)"
       : "rgba(50, 108, 112, 0.8)";
   });
-  if (buttons[index] && buttons[index].id === 'profileStats') {
-    document.dispatchEvent(new Event('renderSpendingChart'));
-  }
 }
 
 buttons.forEach((button, index) => {
@@ -357,23 +312,6 @@ document.getElementById('closeAddFriend').addEventListener('click', () => {
 });
 
 
-/* When the user clicks on the button, 
-toggle between hiding and showing the dropdown content */
-
-
-// Close the dropdown if the user clicks outside of it
-window.onclick = function(event) {
-  if (!event.target.matches('.dropbtn')) {
-    var dropdowns = document.getElementsByClassName("dropdown-content");
-    var i;
-    for (i = 0; i < dropdowns.length; i++) {
-      var openDropdown = dropdowns[i];
-      if (openDropdown.classList.contains('show')) {
-        openDropdown.classList.remove('show');
-      }
-    }
-  }
-}
 document.getElementById("add-more-money-btn").addEventListener("click", () => {
   document.getElementById("customModal").style.display = "none";
 });
@@ -410,8 +348,8 @@ phoneInput.value = formatted;
 });
 
 function copyText() {
-    const textArea = document.getElementById("profile-friend-code");
-    let text = textArea.innerText;
+    const codeEl = document.getElementById("profile-friend-code");
+    let text = codeEl.innerText;
     if (text.includes(':')) {
         text = text.split(':').pop().trim();
     }
@@ -421,14 +359,27 @@ function copyText() {
             .then(() => {
                 showToast(`Copied: ${text}`);
             })
-            .catch(err => {
+            .catch(() => {
                 showToast("Failed to copy friend code.", "error");
             });
     } else {
-        textArea.select();
+        // Older browser / insecure context: the friend code lives in a <p>
+        // (which has no .select()), so copy it through a temporary textarea.
         try {
+            const helper = document.createElement("textarea");
+            helper.value = text;
+            helper.setAttribute("readonly", "");
+            helper.style.position = "fixed";
+            helper.style.opacity = "0";
+            document.body.appendChild(helper);
+            helper.select();
             const successful = document.execCommand('copy');
-            showToast(successful ? "Text copied to clipboard!" : "Failed to copy friend code.", "error");
+            helper.remove();
+            if (successful) {
+                showToast(`Copied: ${text}`);
+            } else {
+                showToast("Failed to copy friend code.", "error");
+            }
         } catch (err) {
             console.error("Fallback copy failed: ", err);
             showToast("Failed to copy friend code.", "error");
@@ -537,6 +488,10 @@ function copyText() {
   }
 
   document.querySelectorAll(".modal-fx").forEach((el) => {
+    // Baseline dialog semantics for assistive tech — these are all
+    // full-screen overlays acting as dialogs.
+    el.setAttribute("role", "dialog");
+    el.setAttribute("aria-modal", "true");
     const initialDisplay = getComputedStyle(el).display;
     wasVisible.set(el, initialDisplay !== "none");
     if (initialDisplay !== "none") lastVisibleDisplay.set(el, initialDisplay);
@@ -586,8 +541,8 @@ function copyText() {
     ["#friendModal .friend-content", "closeFriendModal"],
     ["#addFriendBox", "closeAddFriend"],
     ["#pendingRequestsBox", "closePendingRequests"],
-    ["#editMoneyAdd", "closeEditMoney"],
-    ["#editMoneyRemove", "closeEditMoney"],
+    ["#editMoneyAdd", "closeEditMoneyAdd"],
+    ["#editMoneyRemove", "closeEditMoneyRemove"],
     ["#editNameBox", "closeEditName"],
     ["#add-extra-info-box", "close-extra-info"],
     ["#RemovefriendBox", "closeRemovefriend"],
@@ -629,5 +584,87 @@ function copyText() {
       }
     });
     card.appendChild(x);
+  });
+})();
+
+/* =====================================================================
+   Keyboard support
+   -------------------------------------------------------------------
+   • The folder "…" opener is a <span>, so give it Enter/Space handling
+     to match its role="button".
+   • Pressing Enter in the login / signup / add-friend / add-person
+     inputs submits that form's primary button (there are no <form>
+     elements, so the browser gives us nothing for free). */
+(function keyboardSupport() {
+  const openButton = document.getElementById("openButton");
+  if (openButton) {
+    openButton.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openNav();
+      }
+    });
+  }
+
+  // [ input ids..., button id to "click" on Enter ]
+  const enterSubmits = [
+    [["login-email", "login-password"], "login-btn"],
+    [["first-name", "last-name", "phonenumber", "signup-email", "signup-password"], "signup-btn"],
+    [["friend-code"], "addFriendBtn2"],
+    [["name-input", "money-input", "item-input"], "add"],
+  ];
+  enterSubmits.forEach(([inputIds, buttonId]) => {
+    inputIds.forEach((id) => {
+      const input = document.getElementById(id);
+      if (!input) return;
+      input.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        document.getElementById(buttonId)?.click();
+      });
+    });
+  });
+})();
+
+/* =====================================================================
+   Landing-ad fallback (ad blockers / unfilled AdSense)
+   -------------------------------------------------------------------
+   The AdSense <ins> in #landing-ad renders nothing when the loader
+   script is blocked (ERR_BLOCKED_BY_CLIENT) or when Google has no fill
+   (e.g. the account isn't approved yet). Both used to leave a labeled
+   empty hole on the landing card. Detect either state and swap in the
+   first-party house card (#house-ad) instead:
+     • unfilled → AdSense stamps data-ad-status="unfilled" on the <ins>;
+     • blocked  → window.adsbygoogle never becomes the real processor
+       (adsbygoogle.loaded stays unset), checked after a grace period. */
+(function landingAdFallback() {
+  const landingAd = document.getElementById("landing-ad");
+  if (!landingAd) return;
+  const ins = landingAd.querySelector(".adsbygoogle");
+  const label = document.getElementById("landing-ad-label");
+  const house = document.getElementById("house-ad");
+  if (!ins || !house) return;
+
+  function showHouseAd() {
+    // Our own card isn't a paid ad, so the ADVERTISEMENT label comes off.
+    if (label) label.style.display = "none";
+    ins.style.display = "none";
+    house.style.display = "block";
+  }
+
+  // Unfilled: Google loaded but had nothing to serve.
+  new MutationObserver(() => {
+    if (ins.dataset.adStatus === "unfilled") showHouseAd();
+  }).observe(ins, { attributes: true, attributeFilter: ["data-ad-status"] });
+
+  // Blocked / failed to load: after the page settles, the loader script
+  // never upgraded the adsbygoogle array (no .loaded flag) — or it did
+  // load but the slot still has no height and no fill status.
+  window.addEventListener("load", () => {
+    setTimeout(() => {
+      const scriptBlocked = !(window.adsbygoogle && window.adsbygoogle.loaded);
+      const neverFilled = ins.dataset.adStatus !== "filled" && ins.offsetHeight === 0;
+      if (scriptBlocked || neverFilled) showHouseAd();
+    }, 3000);
   });
 })();

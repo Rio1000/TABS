@@ -5,12 +5,13 @@ name: Deploy Firebase Functions
 # below, or on demand from the Actions tab ("Run workflow"). No local Firebase
 # CLI needed — everything runs here.
 
+# Deploys run from main only — feature branches must merge before anything
+# reaches production functions or rules (stale claude/* branches used to be
+# able to deploy directly).
 on:
   push:
     branches:
       - main
-      - claude/notifications-ui-fixes-8tsm89
-      - claude/twilio-alternative-ads-medk8f
     paths:
       - "functions/**"
       - "firebase.json"

@@ -119,6 +119,21 @@ async function deliverPushToUser(db, targetUid, { title, body, data }) {
   };
 }
 
+// Simple per-action cooldown, stored under a rules-inaccessible path (no
+// client rule grants /rateLimits, so only the Admin SDK can touch it). Returns
+// true when the action is allowed and stamps the new timestamp; false while
+// the cooldown is still running. Keeps a caller from spamming a friend's lock
+// screen with unlimited pushes.
+async function passesCooldown(db, key, cooldownMs) {
+  const limitRef = db.ref(`rateLimits/${key}`);
+  const snap = await limitRef.get();
+  const last = snap.val() || 0;
+  const now = Date.now();
+  if (now - last < cooldownMs) return false;
+  await limitRef.set(now);
+  return true;
+}
+
 // Turn whatever a user typed into their profile into an E.164 number Twilio
 // accepts. Defaults to US (+1) when a bare 10-digit number is given — change
 // the default country code if your users are elsewhere.
@@ -233,6 +248,15 @@ exports.sendReminderPush = onCall(async (request) => {
     );
   }
 
+  // One reminder per friend per minute — enough for every legitimate flow,
+  // but stops a "friend" hammering someone's lock screen.
+  if (!(await passesCooldown(db, `reminder/${callerUid}/${friendUid}`, 60_000))) {
+    throw new HttpsError(
+      "resource-exhausted",
+      "You just reminded them — give it a minute before sending another."
+    );
+  }
+
   // Put the requester's name on the notification so the recipient knows who's
   // asking (the message body says "you owe me…" — this makes "me" concrete).
   const callerProfileSnap = await db.ref(`users/${callerUid}/profile`).get();
@@ -276,10 +300,59 @@ exports.deleteAccount = onCall(async (request) => {
     throw new HttpsError("unauthenticated", "You must be signed in.");
   }
   const uid = request.auth.uid;
+  const db = admin.database();
   try {
-    await admin.database().ref(`users/${uid}`).remove();
+    // Gather everything that references this user BEFORE deleting their node:
+    // their friend code, plus every uid they have any relationship with
+    // (friends, and both directions of pending requests). Without this pass,
+    // deletion used to leave a permanently unclaimable friendCodes entry and
+    // ghost friends/requests in other users' lists.
+    const [codeSnap, friendsSnap, sentSnap, pendingSnap] = await Promise.all([
+      db.ref(`users/${uid}/profile/friendCode`).get(),
+      db.ref(`users/${uid}/friendsList`).get(),
+      db.ref(`users/${uid}/sentRequests`).get(),
+      db.ref(`users/${uid}/pendingRequests`).get(),
+    ]);
+
+    const relatedUids = new Set();
+    if (friendsSnap.exists()) {
+      friendsSnap.forEach((child) => {
+        const friendUid = child.val()?.userId;
+        if (friendUid) relatedUids.add(friendUid);
+      });
+    }
+    if (sentSnap.exists()) Object.keys(sentSnap.val()).forEach((k) => relatedUids.add(k));
+    if (pendingSnap.exists()) Object.keys(pendingSnap.val()).forEach((k) => relatedUids.add(k));
+
+    const cleanups = [];
+    const code = codeSnap.val();
+    if (code) cleanups.push(db.ref(`friendCodes/${code}`).remove());
+
+    for (const otherUid of relatedUids) {
+      cleanups.push(db.ref(`users/${otherUid}/friendUids/${uid}`).remove());
+      cleanups.push(db.ref(`users/${otherUid}/pendingRequests/${uid}`).remove());
+      cleanups.push(db.ref(`users/${otherUid}/sentRequests/${uid}`).remove());
+      cleanups.push(db.ref(`users/${otherUid}/autoReminders/${uid}`).remove());
+      // friendsList entries are push-keyed, so find the one(s) pointing at us.
+      cleanups.push(
+        db
+          .ref(`users/${otherUid}/friendsList`)
+          .get()
+          .then((snap) => {
+            const removals = [];
+            snap.forEach((child) => {
+              if (child.val()?.userId === uid) removals.push(child.ref.remove());
+            });
+            return Promise.all(removals);
+          })
+      );
+    }
+    // Best-effort: a failed cross-user cleanup shouldn't block the deletion.
+    await Promise.allSettled(cleanups);
+
+    await db.ref(`users/${uid}`).remove();
     await admin.auth().deleteUser(uid);
-    logger.info(`Account deleted: ${uid}`);
+    logger.info(`Account deleted: ${uid} (cleaned ${relatedUids.size} related users)`);
     return { success: true };
   } catch (err) {
     logger.error("Account delete failed:", err);
@@ -361,6 +434,12 @@ exports.sendFriendEventPush = onCall(async (request) => {
     if (!snap.exists()) {
       throw new HttpsError("permission-denied", "Not friends with that user.");
     }
+  }
+
+  // A request/accept pair only ever needs one push each — a short cooldown
+  // stops a caller replaying the callable to spam the other user's devices.
+  if (!(await passesCooldown(db, `friendEvent/${callerUid}/${toUid}`, 30_000))) {
+    return { delivered: false, reason: "rate-limited", successCount: 0 };
   }
 
   // Respect the recipient's notification preferences (Manage Notifications →

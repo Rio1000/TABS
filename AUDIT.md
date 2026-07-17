@@ -1,5 +1,30 @@
 # TABS Interior App Audit — July 2026
 
+> **Resolution status:** every finding below has been fixed on this branch
+> except the three that need decisions/credentials only the owner has:
+>
+> 1. **AdMob production IDs (§1)** — the iOS app still uses Google's test
+>    IDs. Swap in your real app/unit IDs from the AdMob console
+>    (`Info.plist` → `GADApplicationIdentifier`, `WebViewController.swift` →
+>    `bannerAdUnitID`); until then iOS serves $0 test/house ads.
+> 2. **GDPR/UK consent banner (§1.3)** — gating `adsbygoogle.push()` on
+>    consent needs a CMP vendor choice (Google's certified CMP list, or
+>    Funding Choices). The ad code paths are otherwise unchanged, so a CMP
+>    can be added around the single `push()` call in `index.html`.
+> 3. **The giant `:not()` selector / `!important` CSS architecture (§4.3)** —
+>    duplicates and dead rules were removed, but a full restyle to a
+>    class-based button system is a design-level refactor left for a
+>    dedicated pass (high regression risk for zero user-visible gain now).
+>
+> Notes on two fixes that changed behavior slightly:
+> - Friend requests no longer carry the sender's phone number (§3.3). For
+>   friendships made after this change, reminder SMS prefill falls back to
+>   the friend-scoped profile read, which works once the other side has
+>   logged in and synced `friendUids` (pushes are unaffected).
+> - The web landing ad now swaps to a first-party "Support TABS" card when
+>   AdSense is blocked or unfilled (§1), instead of a labeled empty box —
+>   verified headless with the ad script blocked.
+
 A full review of the web app (`index.html`, `script.js`, `firebase-setup.js`,
 `currency.js`, `styles.css`), the database rules, the Cloud Functions, and the
 ads setup. Findings are grouped by severity. File/line references are to the

@@ -30,12 +30,15 @@
         "spending":     { ".write": "$uid === auth.uid" },
         "settings":     { ".write": "$uid === auth.uid" },
         "notifications": {
-          // Owner can read/manage; anyone signed in may push a notification
-          // (friend request/accept, reminder) into someone else's inbox.
+          // Owner can read/manage everything (mark read, clear all, etc.).
           ".write": "$uid === auth.uid",
           "$notif_id": {
-            ".write": "auth != null",
-            ".validate": "!newData.exists() || (newData.hasChild('message') && newData.hasChild('timestamp'))"
+            // Other signed-in users may only CREATE a notification (friend
+            // request/accept, reminder) — never overwrite or delete an
+            // existing one — and must stamp it with their own uid so the
+            // recipient can tell who sent it and the sender can't spoof.
+            ".write": "auth != null && !data.exists() && newData.exists() && newData.child('fromUid').val() === auth.uid",
+            ".validate": "!newData.exists() || (newData.hasChild('message') && newData.hasChild('timestamp') && newData.child('message').isString() && newData.child('message').val().length <= 500 && newData.child('timestamp').isNumber())"
           }
         },
         "autoReminders": { ".write": "$uid === auth.uid" },
@@ -68,9 +71,14 @@
           }
         },
         "sentRequests": {
-           // Only the profile owner can manage their own sent requests
+           // The owner manages their own sent requests; additionally, the
+           // request's RECIPIENT may DELETE (only) the entry addressed to
+           // them, so rejecting/declining a request clears the sender's
+           // "request sent" state too (this used to be denied, which broke
+           // the whole reject flow client-side).
            ".write": "$uid === auth.uid",
            "$receiver_uid": {
+             ".write": "auth.uid === $receiver_uid && !newData.exists()",
              ".validate": "!newData.exists() || (newData.hasChild('toUserId') && newData.hasChild('firstName') && newData.hasChild('lastName'))"
            }
         },
@@ -83,8 +91,11 @@
       }
     },
     "friendCodes": {
-      ".read": "auth != null",
+      // Reads are scoped to a single, exact code — you can look up the code a
+      // friend gave you, but you can no longer download the whole node and
+      // enumerate every user's name/uid/code.
       "$code": {
+        ".read": "auth != null",
         ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid)",
         ".validate": "!newData.exists() || (newData.hasChild('userId') && newData.child('userId').val() === auth.uid)"
       }

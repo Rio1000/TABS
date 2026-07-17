@@ -51,25 +51,6 @@ body {
   width: 100%;
 }
 
-/* Input Box Styles */
-#friendInputBox {
-  display: none;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  padding: 20px;
-  background-color: rgba(0, 0, 0, 0.61);
-  border: 2px solid #fff;
-  border-radius: 10px;
-  text-align: center;
-  transition: 0.3s;
-  -webkit-backdrop-filter: blur(30px);
-  backdrop-filter: blur(30px);
-  z-index: 10000;
-
-}
-
 /* Login/Signup now use the shared full-screen .modal style (see the big
    .modal rule below); this card holds the actual form content. */
 .login-content,
@@ -108,7 +89,7 @@ body {
   text-align: center;
   transition: 0.3s;
   display: block;
-  overflow-y: scroll;
+  overflow-y: auto;
   /* Items scrolling under the top edge dissolve instead of getting hard-clipped */
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 48px);
   mask-image: linear-gradient(to bottom, transparent 0, #000 48px);
@@ -357,10 +338,6 @@ button:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-.hidden {
-  display: none;
-}
-
 #add-person-btn,
 #clear-list-btn {
   margin-top: 10px;
@@ -571,11 +548,6 @@ button:hover {
   background-color: #cc0000;
 }
 
-#addFriendIcon {
-  z-index: 10px;
-  background-color: #cc0000;
-}
-
 .dropdown-container a {
   text-align: left;
   background-color: #4a2f2a;
@@ -597,15 +569,6 @@ button:hover {
   color: #7fbac5;
 }
 
-
-#currency-select {
-  margin: 10px;
-  padding: 10px;
-  border-radius: 5px;
-  cursor: pointer;
-  border: 1px solid #5bc5c772;
-  background-color: #1F5C61b0;
-  color: #bbebec;}
 
 #Profile {
   border: 1px solid #5bc5c772;
@@ -746,15 +709,6 @@ input {
   padding: 0;
 }
 
-/* Special Sections */
-#Special,
-#Special2 {
-  font-size: 50px;
-  display: none;
-  margin-bottom: 170px;
-  transition: 0.3s;
-}
-
 /* Logo Styles */
 .Logo {
   position: absolute;
@@ -786,7 +740,6 @@ input {
 .name-amount-container {
   display: flex;
   justify-content: space-between;
-  align-items: left;
   text-align: left;
   margin-top: 10px;
   border-radius: 8px;
@@ -832,7 +785,11 @@ input {
 }
 
 .friend-icon {
-  font-size: 100px;
+  /* Explicit 24px: this used to say 100px and only rendered sanely because
+     the Material Icons stylesheet happened to load after this file and
+     re-set the size — reordering the <link> tags would have blown up every
+     friend row. */
+  font-size: 24px;
   font-weight: bold;
   color: #e7c23c;
   vertical-align: top;
@@ -845,27 +802,6 @@ input {
   font-weight:normal;
   font-size: 26px;
   transition: 0.3s;
-}
-
-#Subscript {
-  transition: 0.3s;
-  text-align: left;
-  margin-left: 10px;
-  font-size: 10x;
-}
-
-#closeSignup,
-#closeLogin {
-  top: 0;
-  right: 10px;
-  position: absolute;
-  margin-top: 10px;
-  color: white;
-  background-color: red;
-  border: none;
-  padding: 10px 20px;
-  cursor: pointer;
-  font-size: 18px;
 }
 
 #ProfileModal {
@@ -1207,35 +1143,26 @@ input {
 
 }
 
+/* One consolidated rule — this used to be declared three separate times with
+   conflicting colors/margins, and only the accidental cascade order made it
+   look right. top:-80px keeps it aligned with the .sideNavA links, which
+   carry the same offset. */
 #currency-select {
+  position: relative;
   top: -80px;
   right: -2px;
-  position: relative;
-  color: #061e22;
-  text-decoration: none;
-  border-style: hidden;
-  padding: 10px;
-  margin: 12px;
-  border-radius: 7px;
-  font-size: 20px;
-  cursor: pointer;
-  transition: 0.3s;
-  z-index: 20;
-  display: flex;
-  transition: 1s;
   width: 90%;
-  text-indent: 5px;
-}
-
-#currency-select {
   margin: 10px;
   padding: 10px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
   border: 1px solid rgba(80, 202, 211, 0.45);
+  border-radius: 5px;
   background-color: rgba(80, 202, 211, 0.16);
   color: #c2e9e8;
+  font-size: 20px;
+  text-indent: 5px;
+  cursor: pointer;
+  z-index: 20;
+  transition: 0.3s;
 }
 
 .button-container {
@@ -1289,7 +1216,8 @@ input {
 }
 
 
-#closeEditMoney,
+#closeEditMoneyAdd,
+#closeEditMoneyRemove,
 #closeEditName,
 #close-extra-info,
 #RemovefriendBtn,
@@ -1453,7 +1381,7 @@ input {
 }
 
 
-#google-icon{
+.google-icon{
   width: 20px;
   height: 20px;
   margin-left: 10px;
@@ -1822,12 +1750,34 @@ body.payments-enabled .pay-request-btn {
   text-align: center;
 }
 
-/* Make sure the AdSense <ins> inside the person-list ad box actually gets
-   layout width — a zero-width container makes AdSense skip filling it. */
-.ad-box > div,
-.ad-box .adsbygoogle {
+/* First-party house card shown in #landing-ad when AdSense is blocked (ad
+   blocker) or unfilled — see the landingAdFallback logic in script.js. */
+#house-ad {
+  box-sizing: border-box;
   width: 100%;
-  min-width: 250px;
+  padding: 14px 16px;
+  border: 1px solid rgba(80, 202, 211, 0.35);
+  border-radius: 12px;
+  background: rgba(80, 202, 211, 0.08);
+  text-align: center;
+}
+#house-ad-title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: rgb(194, 233, 232);
+}
+#house-ad-text {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #9fc2c6;
+}
+#house-ad-btn {
+  margin: 0;
+  width: auto;
+  padding: 8px 16px;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 #close-prompt {
@@ -1859,7 +1809,8 @@ body.payments-enabled .pay-request-btn {
 #name-input,
 #money-input,
 #item-input,
-#editMoneyInput,
+#editMoneyAddInput,
+#editMoneyRemoveInput,
 #editNameInput,
 #extra-info-input,
 #editItemInput,
@@ -2146,16 +2097,6 @@ body.payments-enabled .pay-request-btn {
 .scroll-buttons button:hover {
   background-color: #525252; 
 }
-.ad-box {
-  border: 1px dashed #555; /* Differentiates it from real people */
-  min-height: 80px;
-  cursor: cursor;
-  color: #a8a39d;
-}
-
-.ad-box:hover {
-  transform: none; /* Disable the hover lift effect if you have one */
-}
 .switch {
   display: inline-block;
 }
@@ -2325,16 +2266,6 @@ body.payments-enabled .pay-request-btn {
   }
 }
 
-@media screen and (max-height: 450px) {
-  .sidenav {
-    padding-top: 15px;
-  }
-
-  .sidenav a {
-    font-size: 18px;
-  }
-}
-
 @media screen and (max-height: 700px) {
   #add-person-btn {
     width: 100%;
@@ -2355,14 +2286,6 @@ body.payments-enabled .pay-request-btn {
   .personlist-item {
     width: 100%;
     margin-left: -6px;
-  }
-
-  #friendslist {
-    display: flex;
-    position: absolute;
-    background-color: rgba(211, 80, 80, 0.8);
-    top: 0;
-    width: 100%;
   }
 
   .scroll-buttons {
@@ -2955,8 +2878,7 @@ body.payments-enabled .pay-request-btn {
 #add-extra-info-box,
 #editNameBox,
 #RemovefriendBox,
-#interest-container,
-#friendInputBox{
+#interest-container {
   background: linear-gradient(150deg, #05434c 0%, #022a30 100%) !important;
   border: 1px solid rgba(80, 202, 211, 0.22) !important;
   border-radius: 18px !important;
@@ -3363,6 +3285,23 @@ button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request
    click to them so their real teardown still runs — but hide them. */
 .close-btn {
   display: none !important;
+}
+
+/* EXCEPT on destructive confirmations: a "Delete / Remove / Clear?" dialog
+   whose only visible button is the destructive one (with escape relegated to
+   a small corner ✕) railroads people into the dangerous choice. These three
+   keep a real, visible Cancel/No. The id selectors outweigh the .close-btn
+   class above, and they wear the neutral teal so the red stays reserved for
+   the destructive action next to them. */
+#close-delete-account,
+#closeRemovefriend,
+#cancelClearHistory {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(var(--btn-accent), 0.16) !important;
+  border: 1px solid rgba(var(--btn-accent), 0.7) !important;
+  color: rgb(var(--btn-text)) !important;
 }
 
 /* Top-right ✕ on every modal card — same round shape as the add-person

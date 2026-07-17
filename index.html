@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>  TABS  </title>
+    <title>TABS</title>
     <link rel="icon" type="image/x-icon" href="loawdgo.ico">
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet"
@@ -33,15 +33,24 @@
                 <!-- Web ads live only on this sparse login/signup landing page.
                      A single responsive AdSense banner; the label is required by
                      AdSense policy. Hidden inside the native app (AdSense doesn't
-                     fill in a WebView — the app shows a native AdMob banner). -->
+                     fill in a WebView — the app shows a native AdMob banner).
+                     When the AdSense script is blocked (ad blocker) or the slot
+                     goes unfilled, script.js swaps in the first-party house card
+                     below instead of leaving a labeled empty hole. -->
                 <div id="landing-ad" style="width:100%;margin-top:14px;text-align:center;">
-                    <p style="margin:0 0 4px;font-size:11px;color:#8aa;">ADVERTISEMENT</p>
+                    <p id="landing-ad-label" style="margin:0 0 4px;font-size:11px;color:#9fc2c6;">ADVERTISEMENT</p>
                     <ins class="adsbygoogle" style="display:block"
                         data-ad-client="ca-pub-7825788728707782"
                         data-ad-slot="8944873686"
                         data-ad-format="auto"
                         data-full-width-responsive="true"></ins>
                     <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+                    <div id="house-ad" style="display:none">
+                        <p id="house-ad-title">Enjoying TABS? 💚</p>
+                        <p id="house-ad-text">Ads help keep the servers running. If yours are blocked,
+                            you can still support us — or just invite a friend.</p>
+                        <button type="button" id="house-ad-btn" data-support-coffee>☕ Support TABS</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -70,7 +79,8 @@
         </div>
 
         <!-- Dropdown Menu -->
-        <span class="open-btn " id="openButton" onclick="openNav()">...
+        <span class="open-btn " id="openButton" role="button" tabindex="0" aria-label="Open menu"
+            onclick="openNav()">...
             <span id="folderNotificationBadge" class="badge" title="Unread notifications"
                 style="display: none;">0</span></span>
 
@@ -82,7 +92,6 @@
 
         <div class="personlist">
             <div id="people-list">
-                <div id="extra-info-container"></div>
                 <!-- Dynamic .personlist-item elements will be appended here -->
             </div>
 
@@ -132,7 +141,7 @@
                     <input class="login-input" id="login-password" type="password" placeholder="Password"
                         required /><br />
                     <div class="login-buttons">
-                        <button id="googleSignInBtn">Sign In with Google <img id="google-icon"
+                        <button id="googleSignInBtn">Sign In with Google <img class="google-icon"
                                 src="google-icon-logo-svgrepo-com.svg" alt="google"></button>
                         <button id="login-btn">Login</button>
                         <button id="reset-password">Reset Password</button>
@@ -150,14 +159,14 @@
                     <h2>Signup</h2>
                     <input class="login-input" id="first-name" type="text" placeholder="First Name" required /><br />
                     <input class="login-input" id="last-name" type="text" placeholder="Last Name" required /><br />
-                    <input class="login-input" id="phonenumber" type="tel" pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" required
+                    <input class="login-input" id="phonenumber" type="tel" pattern="\(\d{3}\) \d{3}-\d{4}" required
                         placeholder="Phone Number" maxlength="14" /><br />
                     <input class="login-input" id="signup-email" type="email" placeholder="Email" required /><br />
                     <input class="login-input" id="signup-password" type="password" placeholder="Password"
                         required /><br />
                     <div class="login-buttons">
                         <button id="signup-btn">Sign Up</button>
-                        <button id="googleSignUpBtn"> Sign Up with Google <img id="google-icon"
+                        <button id="googleSignUpBtn"> Sign Up with Google <img class="google-icon"
                                 src="google-icon-logo-svgrepo-com.svg" alt="google"></button>
                     </div>
                     <button id="Back-btn2">⬅️</button>
@@ -187,7 +196,7 @@
                         <span class="owe-toggle-label">They Owe</span>
                     </div>
                 </div>
-                <button type="button" class="danger-btn" id="interest-btn">Interest</button>
+                <button type="button" id="interest-btn">Interest</button>
 
                 <button class="close-btn" id="close-prompt">Close</button>
             </div>
@@ -227,7 +236,7 @@
                 <input id="friend-code" type="text" placeholder="Friend Code" required />
                 <div>
                     <button id="addFriendBtn2">Add</button>
-                    <button id="closeAddFriend" class="close-btn">cancel</button>
+                    <button id="closeAddFriend" class="close-btn">Cancel</button>
                 </div>
             </div>
         </div>
@@ -244,18 +253,18 @@
         <div class="modal modal-fx" id="editMoneyModal">
             <div id="editMoneyAdd">
                 <h2>Add Money</h2>
-                <input id="editMoneyInput" type="number" placeholder="Amount" required />
+                <input id="editMoneyAddInput" type="number" placeholder="Amount" required />
                 <div class="AddOrCancleButtons">
                     <button id="editMoneyBtnAdd">Add</button>
-                    <button id="closeEditMoney" class="close-btn">cancel</button>
+                    <button id="closeEditMoneyAdd" class="close-btn">Cancel</button>
                 </div>
             </div>
             <div id="editMoneyRemove">
                 <h2>Remove Money</h2>
-                <input id="editMoneyInput" type="number" placeholder="Amount" required />
+                <input id="editMoneyRemoveInput" type="number" placeholder="Amount" required />
                 <div class="AddOrCancleButtons">
                     <button id="editMoneyBtnRemove">Remove</button>
-                    <button id="closeEditMoney" class="close-btn">cancel</button>
+                    <button id="closeEditMoneyRemove" class="close-btn">Cancel</button>
                 </div>
             </div>
         </div>
@@ -265,13 +274,13 @@
                 <input id="editNameInput" type="text" placeholder="Name" required />
                 <div class="AddOrCancleButtons">
                     <button id="editNameBtn">Done</button>
-                    <button id="closeEditName" class="close-btn">cancel</button>
+                    <button id="closeEditName" class="close-btn">Cancel</button>
                 </div>
             </div>
         </div>
         <div class="modal modal-fx" id="add-extra-info-modal">
             <div id="add-extra-info-box">
-                <h2>Add an Note</h2>
+                <h2>Add a Note</h2>
                 <textarea id="extra-info-input" placeholder="Note Message" required></textarea>
                 <div class="AddOrCancleButtons">
                     <button id="add-extra-info">Add</button>
@@ -284,7 +293,7 @@
                 <p id="removeFriendPrompt">Remove this friend?</p>
                 <div id="Removefriend" class="AddOrCancleButtons">
                     <button id="removeFriendBtn">Remove</button>
-                    <button id="closeRemovefriend" class="close-btn">cancel</button>
+                    <button id="closeRemovefriend" class="close-btn">Cancel</button>
                 </div>
             </div>
         </div>
@@ -505,11 +514,11 @@
             </div>
         </div>
 
-        <!-- Firebase -->
-        <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js"></script>
+        <!-- Firebase is loaded as v10 ES modules by firebase-setup.js (see the
+             <head>); the old v9 script tags here were ESM builds loaded as
+             classic scripts — they only threw console errors. Chart.js was
+             loaded but never used (no chart code exists), so it's gone too. -->
         <script src="script.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 
 
