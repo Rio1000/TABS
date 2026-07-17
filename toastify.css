@@ -1,7 +1,7 @@
 .toastify {
   font-size: 16px;
   position: fixed;
-  width: 85%;
+  width: auto;
   border-radius: 12px;
   padding: 12px 20px;
   color: #fff;
@@ -16,6 +16,9 @@
      shifts them down past the status bar / notch on iOS without overriding that
      inline position; env() is 0 in a browser, so web is unchanged. */
   margin-top: env(safe-area-inset-top);
+  text-align: center;
+  align-items: center;
+  justify-content: center;
 }
 .toastify.on {
   opacity: 1;
