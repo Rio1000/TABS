@@ -5,6 +5,7 @@ import FirebaseCore
 import GoogleSignIn
 import StoreKit
 import GoogleMobileAds
+import UserMessagingPlatform
 import AppTrackingTransparency
 
 /// Full-screen wrapper around tabsonfriends.com.
@@ -36,8 +37,9 @@ final class WebViewController: UIViewController {
     /// Height currently reserved for the banner (0 when hidden). Drives the
     /// web view's bottom inset in `viewWillLayoutSubviews`.
     private var bannerHeight: CGFloat = 0
-    /// ATT is requested once, the first time the app becomes visible.
-    private var didRequestTracking = false
+    /// The consent → ATT → load-ad sequence runs once, the first time the app
+    /// becomes visible.
+    private var didStartAdFlow = false
 
     // MARK: - Status bar
 
@@ -78,7 +80,7 @@ final class WebViewController: UIViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        requestTrackingThenLoadAd()
+        gatherConsentThenLoadAd()
     }
 
     // MARK: - Web view construction
@@ -261,12 +263,53 @@ final class WebViewController: UIViewController {
         bannerView = banner
     }
 
-    /// Ask for App Tracking Transparency once, then load the first ad. AdMob
-    /// serves either way — authorization only decides personalized vs. not —
-    /// so we load the banner regardless of the user's choice.
-    private func requestTrackingThenLoadAd() {
-        guard !didRequestTracking else { return }
-        didRequestTracking = true
+    /// Gates ad loading behind GDPR consent (Google's UMP SDK), THEN App
+    /// Tracking Transparency, THEN the actual ad request — in that order,
+    /// per Google's guidance. UMP decides whether an EEA/UK user needs to see
+    /// a consent form at all (geo-targeted server-side, same message you
+    /// configure once in AdMob console → Privacy & messaging → GDPR); users
+    /// outside scope sail through with no form. `canRequestAds` is the single
+    /// source of truth for whether we're allowed to load anything afterward —
+    /// it covers "consent required and given", "consent required and denied
+    /// but a non-personalized ad is still allowed under the chosen message",
+    /// and "consent not required at all" in one check.
+    private func gatherConsentThenLoadAd() {
+        guard !didStartAdFlow else { return }
+        didStartAdFlow = true
+
+        let parameters = RequestParameters()
+        // Uncomment while testing outside the EEA to force the form to appear:
+        // let debugSettings = DebugSettings()
+        // debugSettings.geography = .EEA
+        // debugSettings.testDeviceIdentifiers = ["YOUR_TEST_DEVICE_ID"]
+        // parameters.debugSettings = debugSettings
+
+        ConsentInformation.shared.requestConsentInfoUpdate(with: parameters) { [weak self] error in
+            guard let self else { return }
+            if let error {
+                // Couldn't refresh consent state (e.g. offline). Fall back to
+                // whatever was already stored from a previous session — if
+                // nothing was ever stored, canRequestAds is false and no ad
+                // loads, which is the safe default.
+                print("UMP consent info update failed: \(error.localizedDescription)")
+                self.proceedPastConsent()
+                return
+            }
+
+            ConsentForm.loadAndPresentIfRequired(from: self) { [weak self] formError in
+                if let formError {
+                    print("UMP consent form failed: \(formError.localizedDescription)")
+                }
+                self?.proceedPastConsent()
+            }
+        }
+    }
+
+    /// Runs after the UMP consent step has resolved (form shown & answered,
+    /// or not required for this user). Requests ATT, then loads the banner
+    /// only if consent state actually permits an ad request.
+    private func proceedPastConsent() {
+        guard ConsentInformation.shared.canRequestAds else { return }
 
         if #available(iOS 14, *) {
             ATTrackingManager.requestTrackingAuthorization { [weak self] _ in

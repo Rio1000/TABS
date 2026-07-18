@@ -1,21 +1,30 @@
 # Security Policy
 
-## Supported Versions
-
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
-
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+TABS is a small ledger app — it never holds money or payment credentials, but
+it does store names, emails, phone numbers, and friend relationships, so we
+take reports about data exposure seriously.
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+Please report vulnerabilities privately — do **not** open a public issue with
+exploit details.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+- Preferred: use GitHub's private vulnerability reporting on this repository
+  (**Security → Report a vulnerability**).
+- Include what you found, the affected file/endpoint (e.g. a database rule or
+  Cloud Function), and steps to reproduce.
+
+You can expect an acknowledgement within a week. Once a fix ships, we're happy
+to credit you in the release notes if you'd like.
+
+## Scope
+
+- The web app (this repository) at `tabsonfriends.com`
+- The Firebase Realtime Database rules (`database.rules.json`)
+- The Cloud Functions (`functions/`)
+- The iOS wrapper app (`ios/`) and Expo app (`mobile/`)
+
+The Firebase web API key in the client code is intentionally public (that is
+how Firebase web apps work); reports about its presence alone are not
+considered vulnerabilities. Reports about what that key *allows* (rule
+bypasses, cross-user reads/writes) absolutely are.

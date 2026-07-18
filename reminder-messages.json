@@ -3,8 +3,8 @@
   "messages": [
     "Hey {name}, your {amount} tab misses you. Pay It? Now? 🥹",
     "{name}, this is your {amount} speaking. I want to go home. 🏠",
-    "Knock knock. Who's there? Your {amount} debt. Pay up {name}, Or else . 👀",
-    "{name}, I know you owe {amount}. Don't make me blow you up 💣",
+    "Knock knock. Who's there? Your {amount} debt, {name}. It says hi. 👀",
+    "{name}, your {amount} tab and I have started a support group. Please free us both. 🫂",
     "Friendly reminder, {name}: {amount}. Emphasis on 'friendly'… for now. 😊",
     "{name}, {amount} isn't going to pay itself. Believe me, I asked. 💸",
     "GIVE ME MY {amount}, {name}, PLEASE. 🌹",
@@ -26,9 +26,7 @@
     "Ok {name} empty the piggy bank, I want my {amount} 🐷",
     "What happened to the good times me, you, and {amount} had together? I miss those days. 🥲",
     "Remember how we did that one thing that one time {name}? Yeah, that was fun. Haha. I need my {amount} back. Now. 😅",
-    "Hey {name} could I get the time? Maybe also my {amount} back? ⏰",
-    ""
-
+    "Hey {name} could I get the time? Maybe also my {amount} back? ⏰"
   ]
 }
 

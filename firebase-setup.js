@@ -83,9 +83,7 @@ function showToast(message, type = "success") {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 const auth = getAuth(app);
-// Callable that sends SMS through Twilio server-side (see functions/index.js).
 const functionsClient = getFunctions(app);
-const sendReminderSmsFn = httpsCallable(functionsClient, "sendReminderSms");
 // Callable that delivers a reminder as a real push notification to the
 // friend's device via Firebase Cloud Messaging — free, no carrier, no spam
 // flagging. This is what the reminder buttons use now instead of Twilio/SMS.
@@ -293,29 +291,6 @@ async function sendReminderPushViaFCM(friendUid, message) {
   }
 }
 
-// Sends a reminder text via the Twilio Cloud Function. Returns true on
-// success; on failure shows a toast and returns false so the caller can fall
-// back to the device's messaging app.
-async function sendReminderSmsViaTwilio(friendUid, message) {
-  if (!friendUid) return false;
-  try {
-    await sendReminderSmsFn({ friendUid, message });
-    return true;
-  } catch (error) {
-    console.error("Twilio SMS failed:", error);
-    // functions/not-found means the function isn't deployed yet.
-    const notDeployed = error?.code === "functions/not-found" ||
-      error?.code === "functions/internal";
-    showToast(
-      notDeployed
-        ? "Auto-texting isn't set up yet — opening your messaging app."
-        : error?.message || "Couldn't send the text automatically.",
-      "error"
-    );
-    return false;
-  }
-}
-
 // Reference to DOM elements
 const peopleList = document.getElementById("people-list");
 const addPersonBtn = document.getElementById("add-person-btn");
@@ -402,14 +377,16 @@ function renderTotals() {
     }
   });
 
+  // Labels match the Stats tab's HTML ("Total Money" / "Amount Spent" /
+  // "Earned Back") — the JS used to write different label text over them.
   if (totalSpendingEl) {
-    totalSpendingEl.innerText = `Total Spent: ${symbol}${usdToDisplay(amountSpent + amountEarned).toFixed(2)}`;
+    totalSpendingEl.innerText = `Total Money: ${symbol}${usdToDisplay(amountSpent + amountEarned).toFixed(2)}`;
   }
   if (amountSpentEl) {
     amountSpentEl.innerText = `Amount Spent: ${symbol}${usdToDisplay(amountSpent).toFixed(2)}`;
   }
   if (amountEarnedEl) {
-    amountEarnedEl.innerText = `Amount Earned: ${symbol}${usdToDisplay(amountEarned).toFixed(2)}`;
+    amountEarnedEl.innerText = `Earned Back: ${symbol}${usdToDisplay(amountEarned).toFixed(2)}`;
   }
 }
 
@@ -528,6 +505,19 @@ onAuthStateChanged(auth, async (user) => {
     peopleListUnsub = onValue(peopleListRef, (snapshot) => {
       latestPeopleData = snapshot.exists() ? snapshot.val().peopleData || [] : [];
       renderTotals();
+
+      // Live-sync the list itself: if this snapshot isn't just the echo of
+      // our own save (or of the initial load), another device/tab changed the
+      // data — re-render so this screen matches. Every save used to rewrite
+      // the whole array from the DOM with no listener, so two open sessions
+      // silently clobbered each other. Skipped while an editing modal is open
+      // (currentListItem points into the DOM a re-render would replace); the
+      // next remote change re-syncs after it closes.
+      const incoming = canonicalPeopleJson(latestPeopleData);
+      if (incoming !== lastKnownPeopleJson) {
+        lastKnownPeopleJson = incoming;
+        if (!currentListItem) renderPeopleList(latestPeopleData);
+      }
     });
 
     const friendsRef = ref(database, `users/${user.uid}/friendsList`);
@@ -570,6 +560,11 @@ onAuthStateChanged(auth, async (user) => {
 
     logoutButton.style.display = "none";
     loginSignup.style.display = "flex";
+
+    // The loader defaults to visible on page load; nothing else dismisses it
+    // on the logged-out path, so it used to keep animating behind the
+    // landing modal forever.
+    document.getElementById("loader").style.display = "none";
 
     // Clear UI when logged out
     peopleList.innerHTML = "";
@@ -637,7 +632,7 @@ async function provisionGoogleUser(user, verb) {
     const [firstName, ...rest] = displayName.split(" ");
     const lastName = rest.join(" ") || "";
 
-    const friendCode = generateFriendCode();
+    const friendCode = await allocateFriendCode();
 
     await set(profileRef, {
       firstName: firstName,
@@ -770,6 +765,24 @@ loginButton.addEventListener("click", async () => {
 function generateFriendCode() {
   return Math.random().toString(36).substring(2, 10).toUpperCase(); // Example: 'A1B2C3D4'
 }
+
+// Picks a friend code that isn't already claimed. Collisions are unlikely
+// (8 base-36 chars) but used to surface as a bogus "Signup failed" toast
+// AFTER the account had been created, because the rules refuse to overwrite
+// someone else's code.
+async function allocateFriendCode() {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = generateFriendCode();
+    try {
+      const snap = await get(ref(database, `friendCodes/${candidate}`));
+      if (!snap.exists()) return candidate;
+    } catch (error) {
+      // Read failed (offline blip) — the write itself will still validate.
+      return candidate;
+    }
+  }
+  return generateFriendCode();
+}
 document.getElementById("FriendsTab").addEventListener("click", async () => {
   if (!currentUser) return;
   populateFriendsList();
@@ -797,10 +810,9 @@ signupButton.addEventListener("click", async () => {
     const user = userCredential.user;
 
     // Generate a unique friend code
-    const friendCode = generateFriendCode();
+    const friendCode = await allocateFriendCode();
 
     // Save additional user info along with friend code to Realtime Database
-    // Save profile data excluding friend code
     await set(ref(database, `users/${user.uid}/profile`), {
       firstName: nameFirst,
       lastName: nameLast,
@@ -809,9 +821,12 @@ signupButton.addEventListener("click", async () => {
       friendCode: friendCode,
     });
 
-    // Save friend code in the friendCodes node
+    // Save friend code in the friendCodes node. Uses user.uid from the
+    // credential we just got — currentUser is set asynchronously by
+    // onAuthStateChanged and could still be null here (it used to be read
+    // here, which was a crash-y race).
     await set(ref(database, `friendCodes/${friendCode}`), {
-      userId: currentUser.uid,
+      userId: user.uid,
       firstName: nameFirst,
       lastName: nameLast,
     });
@@ -832,7 +847,14 @@ signupButton.addEventListener("click", async () => {
 changePassword.addEventListener("click", resetUserPassword);
 resetPassword.addEventListener("click", resetUserPassword);
 async function resetUserPassword() {
-  const email = signupEmail.value || loginEmail.value;
+  // Signed in (Profile → Reset Password): use the account's own email — the
+  // login/signup fields aren't even visible there, and reading leftovers out
+  // of them used to send the reset link to whatever was last typed.
+  // Signed out (login page): prefer the login field over stale signup input.
+  const email =
+    (currentUser && currentUser.email) ||
+    loginEmail.value.trim() ||
+    signupEmail.value.trim();
 
   if (!email) {
     showToast("Please enter your email.", "error");
@@ -868,6 +890,34 @@ logoutButton.addEventListener("click", async () => {
   closeNav();
 });
 
+// The list is now kept in sync across devices by the peopleList onValue
+// listener (see onAuthStateChanged): every save rewrites the whole array, so
+// this canonical serialization lets the listener tell "echo of my own save"
+// apart from "another device changed the data" — RTDB prunes nulls and empty
+// arrays/objects, so a naive JSON compare of what we wrote vs what comes back
+// would always look different.
+function pruneEmpty(value) {
+  if (Array.isArray(value)) {
+    const arr = value.map(pruneEmpty).filter((v) => v !== undefined);
+    return arr.length ? arr : undefined;
+  }
+  if (value && typeof value === "object") {
+    const out = {};
+    // Sorted keys: RTDB snapshots come back with alphabetical child order,
+    // while the objects we save are built in insertion order — without
+    // sorting, every echo would stringify differently and look like a
+    // remote change.
+    Object.keys(value).sort().forEach((key) => {
+      const pruned = pruneEmpty(value[key]);
+      if (pruned !== undefined) out[key] = pruned;
+    });
+    return Object.keys(out).length ? out : undefined;
+  }
+  return value === null || value === undefined ? undefined : value;
+}
+const canonicalPeopleJson = (data) => JSON.stringify(pruneEmpty(data) ?? []);
+let lastKnownPeopleJson = null;
+
 // Save list to Firebase instead of localStorage
 async function saveListToFirebase() {
   if (!currentUser) return;
@@ -876,9 +926,7 @@ async function saveListToFirebase() {
   const peopleData = [];
 
   listItems.forEach((item) => {
-    if (item.classList.contains('ad-box')) {
-      return;
-    }
+    if (item.classList.contains("ad-box")) return; // not a person — nothing to save
     const name = item.querySelector(".name-span").textContent;
     // .value (not .textContent) holds the canonical USD amount — .textContent
     // is just its converted display in whatever currency is selected.
@@ -909,7 +957,9 @@ async function saveListToFirebase() {
     });
   });
 
-  // Get interest data
+  // Remember what we wrote so the realtime listener can ignore the echo of
+  // this save instead of re-rendering the list we just built it from.
+  lastKnownPeopleJson = canonicalPeopleJson(peopleData);
 
   try {
     await set(ref(database, `users/${currentUser.uid}/peopleList`), {
@@ -921,6 +971,114 @@ async function saveListToFirebase() {
   }
 }
 
+// Rebuild the on-screen list from a peopleData array. Shared by the initial
+// load and the realtime listener that mirrors changes from other devices.
+function renderPeopleList(peopleData) {
+  if (!peopleList) return;
+  peopleList.innerHTML = "";
+
+  (peopleData || []).forEach((person) => {
+    const extraInfoArray = person.extraInfo ?? [];
+    const listItem = addPerson(
+      person.name,
+      person.amount,
+      extraInfoArray,
+      person.interest,
+      person.isFriend
+    );
+
+    if (listItem) {
+      if (person.status === "owesMe") {
+        listItem.setAttribute("data-status", "owesMe");
+        listItem.querySelector(".amount-input").style.color =
+          "rgb(73, 255, 97)"; // Green
+      } else if (person.status === "iOwe") {
+        listItem.setAttribute("data-status", "iOwe");
+        listItem.querySelector(".amount-input").style.color =
+          "rgb(255, 73, 73)"; // Red
+      }
+    }
+  });
+
+  addAdBox();
+}
+
+// In-list AdSense unit, styled as a normal .personlist-item card (same
+// gradient/border/hover as every other row) so it sits in the list without
+// looking bolted-on — with a small "Advertisement" label, which AdSense
+// policy requires on any ad placed among real content. Reuses the same ad
+// unit as the landing page for now; create a dedicated "in-list" ad unit in
+// the AdSense console for better reporting once this is live (see
+// ADS_SETUP.md). Always pinned to the END of the list: appendChild on an
+// existing node moves it rather than duplicating it, so every call after an
+// add/reload just re-parks it at the bottom instead of creating a second box.
+// Hidden entirely inside the native app — AdSense doesn't fill inside a
+// WebView there (the native AdMob banner is the only ad on iOS).
+function addAdBox() {
+  if (!peopleList || IS_NATIVE_APP) return;
+
+  let adBox = peopleList.querySelector(".ad-box");
+  if (!adBox) {
+    adBox = document.createElement("div");
+    adBox.classList.add("personlist-item", "ad-box");
+    adBox.innerHTML = `
+      <p class="ad-box-label">Advertisement</p>
+      <ins class="adsbygoogle" style="display:block"
+        data-ad-client="ca-pub-7825788728707782"
+        data-ad-slot="8944873686"
+        data-ad-format="auto"
+        data-full-width-responsive="true"></ins>
+    `;
+    watchInListAdFill(adBox);
+  }
+  peopleList.appendChild(adBox);
+
+  // Request a fill only once per box (AdSense throws if push() runs twice on
+  // the same <ins>); re-parking an existing box on later renders must not
+  // re-push.
+  if (!adBox.dataset.adsPushed) {
+    adBox.dataset.adsPushed = "1";
+    try {
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (error) {
+      console.warn("AdSense push failed (likely blocked):", error);
+    }
+  }
+}
+
+// Hides the whole card if the ad never actually renders (ad blocker, or
+// AdSense has no fill). Unlike the landing page's #landing-ad (which swaps in
+// a "Support TABS" house card — see landingAdFallback in script.js), this box
+// sits inside a list of real people's tabs, where a promo card would read as
+// clutter mixed into someone's ledger; simply not showing the row is the
+// better fallback here. Called once per freshly-created <ins> (re-parking an
+// existing box doesn't need a second watcher).
+function watchInListAdFill(adBox) {
+  const ins = adBox.querySelector(".adsbygoogle");
+  if (!ins) return;
+
+  function checkFill() {
+    const scriptBlocked = !(window.adsbygoogle && window.adsbygoogle.loaded);
+    const neverFilled = ins.dataset.adStatus !== "filled" && ins.offsetHeight === 0;
+    adBox.style.display = scriptBlocked || neverFilled ? "none" : "";
+  }
+
+  new MutationObserver(checkFill).observe(ins, {
+    attributes: true,
+    attributeFilter: ["data-ad-status"],
+  });
+  setTimeout(checkFill, 3000);
+}
+
+// Guests never run loadListFromFirebase (it bails without a user, since
+// there's nothing to load), so give them the ad box too — this listener is
+// separate from the one in script.js (which just shows the empty list) since
+// addAdBox() lives in this module and script.js is a classic script that
+// can't reach it directly.
+document.getElementById("ContinueasGuest").addEventListener("click", () => {
+  addAdBox();
+});
+
 // Load list and interest data from Firebase
 async function loadListFromFirebase() {
   if (!currentUser) return;
@@ -930,39 +1088,13 @@ async function loadListFromFirebase() {
       ref(database, `users/${currentUser.uid}/peopleList`)
     );
     if (snapshot.exists()) {
-      const data = snapshot.val();
-
-      // Load people list
-      const peopleData = data.peopleData || [];
-      if (peopleList) peopleList.innerHTML = "";
-
-      peopleData.forEach((person) => {
-        const extraInfoArray = person.extraInfo ?? [];
-        const listItem = addPerson(
-          person.name,
-          person.amount,
-          extraInfoArray,
-          person.interest,
-          person.isFriend
-        );
-
-        if (listItem) {
-          if (person.status === "owesMe") {
-            listItem.setAttribute("data-status", "owesMe");
-            listItem.querySelector(".amount-input").style.color =
-              "rgb(73, 255, 97)"; // Green
-          } else if (person.status === "iOwe") {
-            listItem.setAttribute("data-status", "iOwe");
-            listItem.querySelector(".amount-input").style.color =
-              "rgb(255, 73, 73)"; // Red
-          }
-        }
-      });
+      const peopleData = snapshot.val().peopleData || [];
+      lastKnownPeopleJson = canonicalPeopleJson(peopleData);
+      renderPeopleList(peopleData);
     }
   } catch (error) {
     console.error("❌ Error loading data:", error);
   } finally {
-    addAdBox();
     document.getElementById("loader").style.display = "none";
   }
 }
@@ -1219,7 +1351,9 @@ function addPerson(
   }
   amountSpan.classList.add("amount-input");
   amountSpan.value = amount || 0;
-  amountSpan.addEventListener("input", debounce(saveListToFirebase, 300));
+  // (No "input" listener here — amounts live in a plain <span>, which never
+  // fires input events; edits go through the Add/Remove Money modals, which
+  // save explicitly.)
   amountContainer.appendChild(amountSpan);
 
   const personItem = document.createElement("div");
@@ -1333,20 +1467,6 @@ function addPerson(
 
 }
 
-function addAdBox() {
-  // The in-list ad has been retired. Ads now live only on the login/signup
-  // landing (web AdSense banner in #landing-ad) and, inside the iOS app, as a
-  // native AdMob banner rendered by the wrapper. Keep this as a cleanup no-op so
-  // any ad box left over from an older session/cache is removed from the list.
-  const existingAd = peopleList.querySelector(".ad-box");
-  if (existingAd) existingAd.remove();
-}
-
-// Guests never run loadListFromFirebase (it bails without a user), so give
-// them the ad box in the person list too.
-document.getElementById("ContinueasGuest").addEventListener("click", () => {
-  addAdBox();
-});
 function checkAmountOrItem() {
   const amountSpan = currentListItem.querySelector(".amount-input");
   const text = amountSpan.textContent.trim();
@@ -1500,15 +1620,6 @@ document
   .getElementById("interestSelect")
   .addEventListener("change", updateInterest);
 
-let debounceTimer;
-
-function debounce(fn, delay) {
-  return function () {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(fn, delay);
-  };
-}
-
 const COMPOUNDING_FREQUENCY_BY_PERIOD = {
   weekly: 52,
   monthly: 12,
@@ -1629,10 +1740,10 @@ async function applyInterestToAll() {
 }
 
 
-document.querySelectorAll("#closeEditMoney").forEach((button) => {
-  button.addEventListener("click", function () {
-    document.getElementById("editMoneyModal").style.display = "none";
-  });
+// One Cancel per pane (the ids used to be duplicated, which is invalid HTML
+// and made getElementById a coin flip) — both run the same full teardown.
+["closeEditMoneyAdd", "closeEditMoneyRemove"].forEach((id) => {
+  document.getElementById(id).addEventListener("click", closeEditMoneyModal);
 });
 
 document
@@ -1714,11 +1825,6 @@ document
 
     closeEditMoneyModal();
   });
-
-document
-  .getElementById("closeEditMoney")
-  .addEventListener("click", closeEditMoneyModal);
-const addInfoBtn = document.getElementById("add-info-btn");
 
 function closeEditMoneyModal() {
   document.getElementById("editMoneyModal").style.display = "none";
@@ -1996,6 +2102,7 @@ document.getElementById("add").addEventListener("click", () => {
   const extraInfo = hasMoney && itemRaw ? [{ text: itemRaw }] : [];
 
   addPerson(name, amount, extraInfo, undefined, false, true);
+  addAdBox(); // re-park it at the bottom, below the row just added
   saveListToFirebase();
 
   // Clear inputs and hide modal after adding
@@ -2012,17 +2119,24 @@ document.addEventListener("DOMContentLoaded", loadListFromFirebase);
 
 const clearListBtn = document.getElementById("clearListBtn");
 clearListBtn.addEventListener("click", async () => {
-  if (peopleList.innerHTML === "") {
+  // Count actual rows — comparing innerHTML to "" broke whenever any stray
+  // node (whitespace, leftovers) sat in the container. The ad box isn't a
+  // person, so it doesn't count toward "already empty" (and clearing wipes
+  // it along with everyone else — addAdBox() below puts it right back).
+  const realItems = peopleList.querySelectorAll(
+    ".personlist-item:not(.ad-box)"
+  ).length;
+  if (realItems === 0) {
     showToast("The list is already empty.", "info");
     closeActionSheet();
     return;
-  } else {
-    peopleList.innerHTML = ""; // Clear the list
-    saveListToFirebase();
-    await logUserAction("Cleared people list");
-    showToast("People list cleared successfully.", "success");
-    closeActionSheet();
   }
+  peopleList.innerHTML = ""; // Clear the list
+  addAdBox();
+  saveListToFirebase();
+  await logUserAction("Cleared people list");
+  showToast("People list cleared successfully.", "success");
+  closeActionSheet();
 });
 
 async function addFriend() {
@@ -2139,6 +2253,13 @@ async function populateFriendsList() {
   // Clear the current list
   friendsListUl.innerHTML = "";
 
+  // Guests / not-yet-signed-in: say so instead of throwing on a null uid and
+  // rendering "Error loading friends list."
+  if (!currentUser) {
+    friendsListUl.innerHTML = "<li>Log in to add friends.</li>";
+    return;
+  }
+
   try {
     // Fetch the user's friends list from Firebase
     const friendsListRef = ref(
@@ -2180,7 +2301,7 @@ async function populateFriendsList() {
           if (removeFriendPrompt) {
             const friendName = `${friendData.firstName || ""} ${friendData.lastName || ""}`.trim();
             removeFriendPrompt.textContent = friendName
-              ? `Are you sure you want to remove ${friendName}? They will be upset..`
+              ? `Are you sure you want to remove ${friendName}? They will be upset.`
               : "Remove this friend?";
           }
 
@@ -2213,6 +2334,7 @@ async function populateFriendsList() {
             `${friendData.firstName} has been added to your tabs list.`,
             "success"
           );
+          addAdBox(); // re-park it at the bottom, below the row just added
           windowClosed();
           saveListToFirebase();
           document.getElementById("addFriendModal").style.display = "none";
@@ -2242,12 +2364,9 @@ document.getElementById('closeRemovefriend').addEventListener('click', () => {
   RFModal.style.display = "none";
 });
 
-// document.getElementById("RemovefriendModal").style.display = "flex";
-
-// Call this function to populate the list when the page loads
-window.onload = () => {
-  populateFriendsList();
-};
+// (No window.onload populate here — auth hasn't resolved at load time, so it
+// only ever rendered an error; onAuthStateChanged populates the list once the
+// user is actually signed in.)
 document.getElementById("pendingRequestsBtn").addEventListener("click", () => {
   document.getElementById("pendingRequestsModal").style.display = "flex";
   loadFriendRequests();
@@ -2259,24 +2378,6 @@ document
     document.getElementById("pendingRequestsModal").style.display = "none";
   });
 
-async function getFriendCodeByUserId(userId) {
-  const friendCodesRef = ref(database, "friendCodes");
-  const snapshot = await get(friendCodesRef);
-
-  if (snapshot.exists()) {
-    const codes = snapshot.val();
-    for (const [code, data] of Object.entries(codes)) {
-      if (data.userId === userId) {
-        return code;
-      }
-    }
-  }
-  return null;
-}
-
-
-
-
 export async function sendFriendRequest(friendUserId, friendData) {
   const db = getDatabase();
 
@@ -2287,15 +2388,15 @@ export async function sendFriendRequest(friendUserId, friendData) {
   const myProfileSnap = await get(ref(db, `users/${currentUserId}/profile`));
   const myProfile = myProfileSnap.val();
 
+  // NOTE: the sender's phone number is intentionally NOT carried on the
+  // request — that used to hand your number to anyone you merely *sent* a
+  // request to, before they accepted. After acceptance, reminders resolve the
+  // phone via the friend-scoped profile read rule (friendUids) instead.
   await set(theirPendingRef, {
     fromUserId: currentUserId,
     firstName: myProfile.firstName,
     lastName: myProfile.lastName,
     friendCode: myProfile.friendCode,
-    // Carried along so the recipient can store our number on their own
-    // friendsList entry for us when they accept — that way SMS reminders read
-    // the phone from their own subtree instead of cross-reading our profile.
-    phoneNumber: myProfile.phoneNumber ?? null,
   });
 
   // Add a request to the current user's sent requests
@@ -2347,20 +2448,33 @@ async function loadFriendRequests() {
 
       const acceptBtn = document.createElement("button");
       acceptBtn.textContent = "✔️";
+      acceptBtn.setAttribute("aria-label", `Accept ${req.firstName}'s friend request`);
+      acceptBtn.title = "Accept";
       acceptBtn.onclick = () => approveFriendRequest(id, req);
 
       const rejectBtn = document.createElement("button");
       rejectBtn.textContent = "❌";
+      rejectBtn.setAttribute("aria-label", `Reject ${req.firstName}'s friend request`);
+      rejectBtn.title = "Reject";
       rejectBtn.onclick = async () => {
-        await Promise.all([
-          remove(ref(database, `users/${currentUser.uid}/pendingRequests/${id}`)),
-          // Also clear it from the sender's sentRequests, otherwise they'd
-          // see "request sent" forever with no way to know it was rejected.
-          remove(ref(database, `users/${id}/sentRequests/${currentUser.uid}`)),
-        ]);
-        showToast("Request rejected.", "info");
-        loadFriendRequests();
-        updatePendingCount();
+        try {
+          await Promise.all([
+            remove(ref(database, `users/${currentUser.uid}/pendingRequests/${id}`)),
+            // Also clear it from the sender's sentRequests, otherwise they'd
+            // see "request sent" forever with no way to know it was rejected.
+            // (Allowed by the recipient-may-delete rule on sentRequests.)
+            remove(ref(database, `users/${id}/sentRequests/${currentUser.uid}`)),
+          ]);
+          showToast("Request rejected.", "info");
+        } catch (error) {
+          console.error("❌ Error rejecting request:", error);
+          showToast("Could not fully reject the request.", "error");
+        } finally {
+          // Refresh even on partial failure so the UI reflects whatever state
+          // the database actually reached.
+          loadFriendRequests();
+          updatePendingCount();
+        }
       };
 
       li.appendChild(acceptBtn);
@@ -2378,16 +2492,24 @@ async function loadFriendRequests() {
 
       const cancelBtn = document.createElement("button");
       cancelBtn.textContent = "❌";
+      cancelBtn.setAttribute("aria-label", `Cancel the request to ${req.firstName}`);
+      cancelBtn.title = "Cancel request";
       cancelBtn.onclick = async () => {
-        await Promise.all([
-          remove(ref(database, `users/${currentUser.uid}/sentRequests/${id}`)),
-          // Also clear it from the recipient's pendingRequests, otherwise
-          // they'd keep seeing a request that was already canceled.
-          remove(ref(database, `users/${id}/pendingRequests/${currentUser.uid}`)),
-        ]);
-        showToast("Request canceled.", "info");
-        loadFriendRequests();
-        updatePendingCount();
+        try {
+          await Promise.all([
+            remove(ref(database, `users/${currentUser.uid}/sentRequests/${id}`)),
+            // Also clear it from the recipient's pendingRequests, otherwise
+            // they'd keep seeing a request that was already canceled.
+            remove(ref(database, `users/${id}/pendingRequests/${currentUser.uid}`)),
+          ]);
+          showToast("Request canceled.", "info");
+        } catch (error) {
+          console.error("❌ Error canceling request:", error);
+          showToast("Could not fully cancel the request.", "error");
+        } finally {
+          loadFriendRequests();
+          updatePendingCount();
+        }
       };
 
       li.appendChild(cancelBtn);
@@ -2543,20 +2665,6 @@ async function reconcileAcceptedRequests() {
   }
 }
 
-// Function to check if the list is empty and show "No Friends Added"
-function checkEmptyList() {
-  const friendsList = document.getElementById("friendsList");
-  if (friendsList.children.length === 0) {
-    const noFriendsMessage = document.createElement("li");
-    noFriendsMessage.id = "noFriendsMessage";
-    noFriendsMessage.textContent = "No Friends Added";
-    friendsList.appendChild(noFriendsMessage);
-  }
-}
-
-// Run checkEmptyList on page load to show the message initially
-document.addEventListener("DOMContentLoaded", checkEmptyList);
-
 // Attach the addFriend function to the "Add Friend" link
 document
   .getElementById("addFriendBtn")
@@ -2705,6 +2813,10 @@ function notificationAllowed(type) {
 async function addNotification(targetUid, notification) {
   try {
     await push(ref(database, `users/${targetUid}/notifications`), {
+      // Database rules require cross-user notifications to be stamped with
+      // the real sender uid (so recipients know who wrote it and senders
+      // can't spoof each other).
+      fromUid: currentUser ? currentUser.uid : null,
       ...notification,
       read: false,
       timestamp: Date.now(),
@@ -3211,14 +3323,18 @@ async function copyPaymentLink(link, name) {
 
 async function openPaymentRequestModal(listItem) {
   const name = listItem.querySelector(".name-span").textContent.trim();
-  const amountText = listItem.querySelector(".amount-input").textContent.trim();
-  const amount = parseFloat(amountText);
+  // .value is the canonical USD amount; .textContent is its converted display
+  // in whatever currency is selected. Payment platforms (Venmo / PayPal.Me /
+  // Cash App links) interpret the amount as USD, so the link must carry the
+  // USD figure — using the converted display number used to send e.g. a
+  // €-converted value as dollars.
+  const amount = parseFloat(listItem.querySelector(".amount-input").value);
   const amountValid = !isNaN(amount) && amount > 0;
   const amt = amountValid ? amount : null;
 
   document.getElementById("paymentRequestTitle").textContent = `Request from ${name}`;
   document.getElementById("paymentRequestSubtitle").textContent = amountValid
-    ? `They owe you ${getSymbol(getSelectedCurrency())}${amount.toFixed(2)}`
+    ? `They owe you ${getSymbol(getSelectedCurrency())}${usdToDisplay(amount).toFixed(2)}`
     : "Choose how to request payment";
 
   const optionsEl = document.getElementById("paymentRequestOptions");

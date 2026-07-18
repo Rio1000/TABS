@@ -112,11 +112,13 @@ architecture (callable function, friendship check, E.164 normalization) stays.
 
 Current setup (see `ADS_SETUP.md` for the full reference):
 
-- **Web** — one Google **AdSense** banner on the login/signup landing
-  (`#landing-ad` in `index.html`; client `ca-pub-7825788728707782`, slot
-  `8944873686`). No in-list ad and no About Us ad — web ads are login/signup
-  only. The landing banner is hidden inside the app (`IS_NATIVE_APP` check in
-  `firebase-setup.js`).
+- **Web** — a Google **AdSense** banner on the login/signup landing
+  (`#landing-ad` in `index.html`) plus one card at the bottom of the tab list
+  (`.ad-box`, added by `addAdBox()` in `firebase-setup.js`), styled to match a
+  real tab row. Both currently use client `ca-pub-7825788728707782`, slot
+  `8944873686` — worth splitting into separate ad units per placement for
+  reporting (see `ADS_SETUP.md`). No About Us ad. Both placements are hidden
+  inside the app (`IS_NATIVE_APP` check in `firebase-setup.js`).
 - **iOS** — a native **AdMob** adaptive banner anchored to the bottom safe area
   (`WebViewController.swift`), since AdMob can't render inline in the WebView.
   SDK started in `AppDelegate.swift`; keys in `Info.plist`.
@@ -139,11 +141,15 @@ This roadmap is about making that **reliable, compliant, and higher-yielding**.
   refresh the banner on a timer (respecting AdMob's refresh policy).
 
 ### Phase 2 — Consent & compliance
-- Add a **consent banner / CMP** (Google's UMP SDK on iOS, a web CMP on the
-  site) for GDPR/UK users, and gate ad requests / `adsbygoogle.push()` on
-  consent — required for EEA traffic and protects both accounts.
-- Keep **App Tracking Transparency** (already prompted on iOS) and the App
-  Store **privacy nutrition labels** accurate for what AdMob collects.
+- **Code is done on both platforms** — iOS gates ad loading behind Google's
+  UMP SDK (`gatherConsentThenLoadAd` in `WebViewController.swift`); web reads
+  consent through the existing `adsbygoogle.js` loader, no code changes
+  needed. **What's left is two console steps** (see `ADS_SETUP.md`): publish
+  the GDPR consent message in the AdSense console (web) and separately in the
+  AdMob console (iOS) — they're independent messages on independent products.
+- Keep **App Tracking Transparency** (already prompted on iOS, and now runs
+  *after* the UMP consent step) and the App Store **privacy nutrition
+  labels** accurate for what AdMob collects.
 - Respect a **premium / ad-free** flag on the user profile
   (`users/{uid}/profile/adsDisabled`): hide `#landing-ad` and skip the AdMob
   banner load when set — groundwork for a paid "remove ads" upgrade.
