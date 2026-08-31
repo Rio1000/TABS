@@ -62,7 +62,11 @@ const firebaseConfig = {
 function showToast(message, type = "success") {
   Toastify({
     text: `${message}`, // Prepend icon to message
-    duration: 2.5,
+    // Milliseconds. This used to read `2.5`, which Toastify took literally —
+    // every toast in this file was removed 2.5ms after it mounted, i.e. it
+    // never actually rendered. Errors linger longer than successes since
+    // they carry something the user has to read and act on.
+    duration: type === "error" ? 6000 : 4000,
     close: true,
     gravity: "top",
     position: "right",

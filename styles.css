@@ -36,7 +36,11 @@ body {
   top: calc(10px + env(safe-area-inset-top));
   visibility: visible;
   font-size: 50px;
-  z-index: 901;
+  /* Only needs to sit above the logo (98) and the menu button (99). It used to
+     be 901, which put it above the action sheet's backdrop (850) and dock
+     (900) — the heading stayed sharp and fully lit on top of the blurred
+     overlay while the add/clear sheet was open. */
+  z-index: 100;
   transition: 0.3s;
   text-decoration: underline;
   color: #a0e8f3;
@@ -377,7 +381,6 @@ button:hover {
 .sidenav {
   margin-top: 10px;
   height: auto;
-  width: 0px;
   position: fixed;
   z-index: 500;
   top: 0;
@@ -385,7 +388,6 @@ button:hover {
   background-color: #0b09109f;
   box-shadow: #011d1d 0px 0px 10px 0px;
   overflow-x: hidden;
-  transition: 0.5s;
   /* Extra top padding so the close button / nav links clear the status bar and
      notch on iOS. env() is 0 in a browser, so web spacing is unchanged. */
   padding-top: calc(60px + env(safe-area-inset-top));
@@ -854,7 +856,7 @@ input {
   overflow-y: auto;
   /* Change from 'scroll' to 'auto' */
   z-index: 9999;
-  transition: backdrop-filter 0.3s ease, background-color 0.3s ease;
+  transition: background-color 0.3s ease;
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
 }
@@ -929,6 +931,15 @@ input {
    .modal-fx child: otherwise, when a swap finishes and .modal-fx-swap-in is
    removed, this slide-up would re-trigger — producing a second animation
    right after the swap's horizontal slide. */
+.modal-fx.modal-fx-open > *,
+.modal-fx.modal-fx-closing > *,
+.modal-fx.modal-fx-swap-in > *,
+.modal-fx.modal-fx-swap-out > * {
+  will-change: transform, opacity;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
 .modal-fx.modal-fx-open > * {
   animation: modalCardIn 0.34s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -1009,30 +1020,49 @@ input {
   align-items: center;
   text-align: center;
   z-index: 0;
-  background-color: rgba(0, 0, 0, 0);
-  transition: backdrop-filter 0.4s ease, background-color 0.4s ease, visibility 0s linear 0.4s;
-  -webkit-backdrop-filter: blur(0px);
-  backdrop-filter: blur(0px);
+  background-color: transparent;
+  transition: visibility 0s linear 0.4s;
   visibility: hidden;
 }
 
-#sideNavModal.active {
+/* The dim + blur lives on a pseudo-element so only its OPACITY animates.
+   Transitioning `backdrop-filter` itself (blur(0) -> blur(8px)) made iOS
+   recompute a full-screen gaussian blur on every frame of the 0.4s open,
+   which is what made the side nav stutter on device. The blur is a fixed
+   8px now and the compositor just fades the finished layer in. */
+#sideNavModal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.3);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
-  background-color: rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  will-change: opacity;
+  pointer-events: none;
+}
+
+#sideNavModal.active::before {
+  opacity: 1;
+}
+
+#sideNavModal.active {
   visibility: visible;
   z-index: 10000;
-  transition: backdrop-filter 0.4s ease, background-color 0.4s ease;
+  transition: visibility 0s linear 0s;
 }
 
 #mySidenav {
-  width: 0;
-  transition: width 0.4s ease;
+  width: 250px;
+  transform: translateX(100%);
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
   overflow-x: hidden;
 }
 
 #mySidenav.open {
-  width: 250px;
+  transform: translateX(0);
 }
 
 #donate {
@@ -1509,6 +1539,20 @@ input {
   margin: 2px;
   font-weight: bold;
   border-width: 1px !important;
+}
+#pendingRequestsCount{
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  margin-left: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: left;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  background-color: #237e29;
+  width: auto;
 }
 #addFriendBtn,
 #pendingRequestsBtn{
@@ -2059,10 +2103,6 @@ body.payments-enabled .pay-request-btn {
   width: 50%;
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
-}
-
-#editMoneyModal {
-  z-index: 50;
 }
 
 #editMoneyAdd,
@@ -3078,6 +3118,7 @@ body.action-open #action-backdrop {
   box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
   transition: max-height 0.34s cubic-bezier(0.22, 1, 0.36, 1),
     opacity 0.24s ease, padding 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: max-height, opacity;
 }
 #action-sheet[data-open="add"],
 #action-sheet[data-open="clear"] {
@@ -3085,6 +3126,7 @@ body.action-open #action-backdrop {
   opacity: 1;
   padding: 48px 22px 22px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 #action-sheet-close,

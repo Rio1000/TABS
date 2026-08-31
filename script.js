@@ -3,7 +3,8 @@
 function showToast(message, type = "success") {
   Toastify({
     text: `${message}`,
-    duration: 2500,
+    // Keep these in step with the showToast in firebase-setup.js.
+    duration: type === "error" ? 6000 : 4000,
     close: true,
     gravity: "top",
     position: "right",

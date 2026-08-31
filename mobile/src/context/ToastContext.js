@@ -19,13 +19,16 @@ export function ToastProvider({ children }) {
       useNativeDriver: true,
     }).start();
 
+    // Matches the web showToast (4s / 6s). These toasts are pointerEvents:
+    // "none", so there is no way to dismiss one early — it has to stay up long
+    // enough to actually be read.
     hideTimer.current = setTimeout(() => {
       Animated.timing(opacity, {
         toValue: 0,
         duration: 200,
         useNativeDriver: true,
       }).start(() => setToast(null));
-    }, 2200);
+    }, type === "error" ? 6000 : 4000);
   }, [opacity]);
 
   return (
