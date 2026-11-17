@@ -3,7 +3,12 @@ body {
   scroll-behavior: smooth;
   margin: 0;
   height: 100%;
-  font-family: "Montserrat", sans-serif;
+  /* Was "Montserrat", which is never loaded anywhere in this project, so it
+     resolved to plain sans-serif while 18 other rules used the system stack —
+     two different typefaces on screen at once. Unified on the stack already
+     used by the rest of the UI. */
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   color: rgb(241, 241, 241);
   background: rgb(0, 0, 0);
   background: -moz-linear-gradient(319deg,
@@ -193,6 +198,10 @@ body {
   text-decoration: none;
   font-weight: bold;
   line-height: 1;
+  /* Match .remove-btn / .pay-request-btn, which both set padding:0. Without
+     this it picked up the base button rule's 10px and rendered a different
+     size from the button sitting right next to it. */
+  padding: 0;
 }
 
 /* Button Styles */
@@ -224,7 +233,7 @@ body {
   margin-bottom: 5px;
   word-wrap: break-word;
   background-color: rgba(255, 255, 255, 0.2);
-  border-radius: 5px;
+  border-radius: 8px;
   width: 100%;
   margin-bottom: 10px;
   overflow-y:scroll;
@@ -289,7 +298,9 @@ body {
   background-color: #8fadbd;
   color: #fff;
   border: none;
-  border-radius: 5px;
+  /* Button tier. 31 buttons already used 12px; this legacy 5px default left
+     every un-restyled button a different shape from them. */
+  border-radius: 12px;
   cursor: pointer;
   font-weight: bold;
   font-size: 20px;
@@ -319,6 +330,18 @@ button,
 button:active,
 .btn:active {
   transform: scale(0.96);
+}
+
+/* Form controls do not inherit font-family, so any input/select/button without
+   an explicit rule fell back to the UA default (Arial) next to text that did
+   not. Icon spans inside buttons keep their own Material font. */
+input,
+select,
+textarea,
+button,
+.btn {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
 }
 
 #Back-btn,
@@ -415,7 +438,7 @@ button:hover {
   border-style: hidden;
   padding: 10px;
   margin: 12px;
-  border-radius: 7px;
+  border-radius: 12px;
   font-size: 20px;
   cursor: pointer;
   transition: 0.3s;
@@ -488,7 +511,7 @@ button:hover {
   height: auto;
   color: #b6c5b9;
   border-style: hidden;
-  border-radius: 7px;
+  border-radius: 12px;
   font-size: 20px;
   display: flex;
   flex-direction: column;
@@ -622,6 +645,9 @@ button:hover {
   color: #e4dcbf;
 }
 #closeButton {
+  /* width:90% + 10px padding is content-box by default, which pushed this 7px
+     past the nav's right edge while every nav link sits 12px in. */
+  box-sizing: border-box;
   margin-top: 30px;
   color: #ececec;
   text-decoration: none;
@@ -696,6 +722,9 @@ input {
   border-color: #6da765 !important;
   background-color: #6da7654d;
   border: solid;
+  /* It is an <a>, so it defaults to content-box while the <button> next to it
+     is border-box — identical declared size rendered 2px larger each way. */
+  box-sizing: border-box;
   border-radius: 10px;
   border-width: 1px;
   font-size: 16px;
@@ -1205,14 +1234,16 @@ input {
    look right. top:-80px keeps it aligned with the .sideNavA links, which
    carry the same offset. */
 #currency-select {
+  box-sizing: border-box;
   position: relative;
   top: -80px;
-  right: -2px;
-  width: 90%;
-  margin: 10px;
+  /* Was nudged 2px right, which left it sitting 15px/11px in while every nav
+     link above it is 12px/12px. Matches their 226px box exactly. */
+  width: calc(100% - 24px);
+  margin: 10px 12px;
   padding: 10px;
   border: 1px solid rgba(80, 202, 211, 0.45);
-  border-radius: 5px;
+  border-radius: 8px;
   background-color: rgba(80, 202, 211, 0.16);
   color: #c2e9e8;
   font-size: 20px;
@@ -1259,7 +1290,7 @@ input {
   margin-top: 10px;
   background-color: rgba(51, 78, 80, 0.415);
   border: 2px solid transparent;
-  border-radius: 5px;
+  border-radius: 8px;
   color: rgb(194, 233, 232);
   font-size: 20px;
   width: 100%;
@@ -1385,6 +1416,9 @@ input {
   background-color: rgba(56, 138, 147, 0.686);
   width: auto;
   height:auto;
+  /* Matches the 8px of the #friend-code field it is fused to; the two squared
+     corners below are intentional and stay. */
+  border-radius: 8px;
   text-align: center;
   justify-content: center;
   border-top-right-radius: 0px;
@@ -1465,9 +1499,6 @@ input {
   border-radius: 50%;
   box-shadow: 0px 0px 10px 0px #000000
 }
-#clearAccountHistoryBox {
-  width: 70%;
-}
 .login-buttons{
   display: flex;
   flex-direction: column;
@@ -1481,7 +1512,7 @@ input {
   margin: 10px;
   padding: 10px;
   border: none;
-  border-radius: 5px;
+  border-radius: 12px;
   cursor: pointer;
   background-color: #4c98afde;
   width: 100%;
@@ -1759,7 +1790,7 @@ input {
    shown once the user has enabled payment requests in settings. */
 .pay-request-btn {
   display: none;
-  margin-left: 8px;
+  margin-left: 10px;
   height: 30px;
   align-items: center;
   justify-content: center;
@@ -2128,7 +2159,7 @@ body.payments-enabled .pay-request-btn {
   justify-content: space-between;
   width: auto;
   padding: 10px 10px 10px 0px;
-  border-radius: 7px;;
+  border-radius: 12px;
 }
 
 #interestRange,
@@ -2354,7 +2385,7 @@ body.payments-enabled .pay-request-btn {
     background-color: #8fadbd;
     color: #fff;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
     font-weight: bold;
     font-size: 24px;
@@ -2400,7 +2431,6 @@ body.payments-enabled .pay-request-btn {
 
   .personlist-item {
     width: 100%;
-    margin-left: -6px;
   }
 
   .scroll-buttons {
@@ -2738,7 +2768,7 @@ body.payments-enabled .pay-request-btn {
     margin: 0;
     padding: 16px 18px;
     justify-content: center;
-    border-radius: 16px;
+    border-radius: 18px;
     border: 1px solid rgba(80, 202, 211, 0.22);
     background: linear-gradient(150deg, #05434c 0%, #022a30 100%);
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
@@ -2890,7 +2920,7 @@ body.payments-enabled .pay-request-btn {
     margin-bottom: 0;
     padding: 14px 14px;
     justify-content: center;
-    border-radius: 16px;
+    border-radius: 18px;
     border: 1px solid rgba(80, 202, 211, 0.22);
     background: linear-gradient(150deg, #05434c 0%, #022a30 100%);
     box-shadow: 0 5px 16px rgba(0, 0, 0, 0.3);
@@ -2944,7 +2974,7 @@ body.payments-enabled .pay-request-btn {
     width: 44px;
     height: 40px;
     margin: 0;
-    border-radius: 11px;
+    border-radius: 12px;
   }
 
   /* Slightly rounder, bolder Add / Clear in the bottom bar. */
@@ -2993,6 +3023,7 @@ body.payments-enabled .pay-request-btn {
 #add-extra-info-box,
 #editNameBox,
 #RemovefriendBox,
+#editItemBox,
 #interest-container {
   background: linear-gradient(150deg, #05434c 0%, #022a30 100%) !important;
   border: 1px solid rgba(80, 202, 211, 0.22) !important;
@@ -3006,6 +3037,7 @@ body.payments-enabled .pay-request-btn {
    read as proper cards like the rest. */
 #delete-account-box,
 #clear-list-box,
+#clearAccountHistoryBox,
 #addFriendBox {
   display: flex;
   flex-direction: column;
@@ -3036,6 +3068,27 @@ body.payments-enabled .pay-request-btn {
 #pendingRequestsBox ul {
   width: 100%;
   box-sizing: border-box;
+}
+
+/* Every remaining dialog title: same metrics as the group below, without
+   touching colour. These previously used the browser default h2 margin. */
+#addFriendBox h2,
+#pendingRequestsBox h2,
+#editMoneyAdd h2,
+#editMoneyRemove h2,
+#editNameBox h2,
+#editItemBox h2,
+#add-extra-info-box h2,
+#RemovefriendBox h2,
+#delete-account-box h2,
+#clearAccountHistoryBox h2,
+#clear-list-box h2,
+#interest-container h2,
+.modal-content h2 {
+  margin-top: 0;
+  margin-bottom: 4px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
 }
 
 /* Consistent modal headings across every pop-up, so the type feels like
@@ -3241,7 +3294,7 @@ body.action-open #action-backdrop {
   overflow: hidden;
   background: linear-gradient(150deg, #05434c 0%, #022a30 100%);
   border: 1px solid rgba(80, 202, 211, 0.22);
-  border-radius: 16px 16px 16px 16px;
+  border-radius: 18px;
   box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.4);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
