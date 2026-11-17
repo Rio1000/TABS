@@ -1,6 +1,12 @@
 // Matches the showToast in firebase-setup.js (same duration/colors) so toasts
 // look identical no matter which file fired them.
 function showToast(message, type = "success") {
+  // Toastify comes from a CDN; if it failed to load (e.g. offline), log
+  // instead of throwing so callers like the boot failsafe keep working.
+  if (typeof Toastify !== "function") {
+    console[type === "error" ? "error" : "log"](message);
+    return;
+  }
   Toastify({
     text: `${message}`,
     // Keep these in step with the showToast in firebase-setup.js.
