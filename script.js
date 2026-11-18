@@ -1,24 +1,103 @@
 // Matches the showToast in firebase-setup.js (same duration/colors) so toasts
 // look identical no matter which file fired them.
 function showToast(message, type = "success") {
-  Toastify({
+  // Toastify comes from a CDN; if it failed to load (e.g. offline), log
+  // instead of throwing so callers like the boot failsafe keep working.
+  if (typeof Toastify !== "function") {
+    console[type === "error" ? "error" : "log"](message);
+    announceToast(message, type);
+    return null;
+  }
+  const toast = Toastify({
     text: `${message}`,
     // Keep these in step with the showToast in firebase-setup.js.
     duration: type === "error" ? 6000 : 4000,
     close: true,
     gravity: "top",
     position: "right",
+    // Announced through announceToast's live regions instead; a live region
+    // that is created already filled is often skipped by screen readers.
+    ariaLive: "off",
     className:
       type === "error"
         ? "toastify toastify-error"
         : "toastify toastify-success",
     style: {
-      background: type === "error" ? "#bc3838" : "#52bc38",
+      // #2e7d32, not the old #52bc38: white text on that green was 2.4:1,
+      // below the 4.5:1 WCAG AA minimum. This is 5.1:1.
+      background: type === "error" ? "#bc3838" : "#2e7d32",
       display: "flex",
       alignItems: "center",
       gap: "8px",
     },
   }).showToast();
+  enhanceToast(toast, message, type);
+  return toast;
+}
+
+// Screen readers: two live regions that exist from page load, so writes to
+// them are reliably announced. Errors interrupt (assertive); everything else
+// waits its turn (polite).
+const toastLiveRegions = {};
+["polite", "assertive"].forEach((level) => {
+  const region = document.createElement("div");
+  region.className = "toast-live-region";
+  region.setAttribute("role", level === "assertive" ? "alert" : "status");
+  region.setAttribute("aria-live", level);
+  region.setAttribute("aria-atomic", "true");
+  document.body.appendChild(region);
+  toastLiveRegions[level] = region;
+});
+function announceToast(message, type = "success", actionLabel = "") {
+  const region = toastLiveRegions[type === "error" ? "assertive" : "polite"];
+  const text = actionLabel ? `${message} ${actionLabel} available.` : `${message}`;
+  // Clear first so the same message twice in a row is still announced.
+  region.textContent = "";
+  setTimeout(() => {
+    region.textContent = text;
+  }, 100);
+}
+
+// Shared by both showToast functions once the toast is on screen:
+// announce it, pause its timer while it has keyboard focus (Toastify only
+// pauses on mouse hover), and enforce the on-screen limit.
+function enhanceToast(toast, message, type, actionLabel = "") {
+  announceToast(message, type, actionLabel);
+  const el = toast.toastElement;
+  const duration = toast.options.duration;
+  // Toasts that stay until dismissed (duration -1) are never auto-bumped.
+  if (duration <= 0) el.dataset.persistent = "true";
+  el.addEventListener("focusin", () => clearTimeout(el.timeOutValue));
+  el.addEventListener("focusout", (event) => {
+    if (el.contains(event.relatedTarget) || duration <= 0) return;
+    clearTimeout(el.timeOutValue);
+    el.timeOutValue = setTimeout(() => toast.hideToast(), duration);
+  });
+  capToasts();
+}
+window.enhanceToast = enhanceToast;
+
+// At most two toasts on screen at once, so a burst of them can't cover the
+// list. When a new one pushes past the limit, the oldest success/info toasts
+// give way; errors and toasts meant to stay until dismissed are never
+// bumped. They stay until they time out or are closed, since they carry
+// something the user has to read or act on.
+const MAX_VISIBLE_TOASTS = 2;
+function capToasts() {
+  // Toastify inserts the newest toast first, so walk the list backwards to
+  // bump the oldest ones first. ".on" is dropped the moment a toast starts
+  // fading out, so toasts already leaving don't count.
+  const visible = [...document.querySelectorAll(".toastify.on")];
+  let excess = visible.length - MAX_VISIBLE_TOASTS;
+  for (let i = visible.length - 1; i >= 0 && excess > 0; i--) {
+    if (visible[i].classList.contains("toastify-error")) continue;
+    if (visible[i].dataset.persistent) continue;
+    // Don't yank a toast out from under someone who is on it.
+    if (visible[i].contains(document.activeElement)) continue;
+    // The close button runs Toastify's own fade-out and timer cleanup.
+    visible[i].querySelector(".toast-close")?.click();
+    excess--;
+  }
 }
 
 
@@ -206,6 +285,19 @@ document.getElementById("ContinueasGuest").addEventListener("click", () => {
   document.getElementById("loader").style.display = "none";
   setPersonListVisible(true);
   setListControlsVisible(true);
+  showToast("Guest mode: your tabs won't be saved after you leave.", "info");
+});
+
+// Connection status. Firebase queues writes while offline and sends them on
+// reconnect, so tell people their edits are not lost, just waiting.
+let offlineToast = null;
+window.addEventListener("offline", () => {
+  offlineToast = showToast("You're offline. Changes will sync when you reconnect.", "error");
+});
+window.addEventListener("online", () => {
+  offlineToast?.hideToast();
+  offlineToast = null;
+  showToast("Back online.");
 });
 
 // Failsafe: firebase-setup.js is the module that reveals the login / guest
@@ -429,6 +521,108 @@ function copyText() {
 // the header elements are all < 1000), so the blurred backdrop already sits on
 // top of them: they show through blurred but can't be tapped.
 
+/* =====================================================================
+   Dialog accessibility
+   -------------------------------------------------------------------
+   Every .modal-fx is marked role="dialog" by the animation code below,
+   which also calls onDialogOpen / onDialogClose on each real open/close.
+   • Name: screen readers announce a dialog by its name. Taken from the
+     heading that is visible when it opens (the money modal swaps between
+     "Add Money" and "Remove Money"), or from DIALOG_LABELS where there
+     is no heading or the heading isn't a title.
+   • Focus: on open, focus moves to the dialog itself (not its first
+     field, which would pop the phone keyboard), so screen readers read
+     its name and Tab starts inside it. Tab and Shift+Tab stay inside the
+     open dialog. On close, focus returns to whatever opened it.
+   • Escape closes the dialog on top through its ✕ button, so the
+     modal's own close logic runs. */
+const DIALOG_LABELS = {
+  loginorsignupmodal: "Welcome to TABS",
+  interestModal: "Interest",
+  friendModal: "Friends",
+  RFModal: "Remove friend",
+  adsModal: "About TABS",
+  ProfileModal: "Profile",
+  "delete-account-modal": "Delete account",
+  clearAccountHistoryModal: "Clear account history",
+};
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const isShown = (el) => el.getClientRects().length > 0;
+const openDialogs = []; // [{ el, returnTo }], most recent last
+
+function nameDialog(el) {
+  if (DIALOG_LABELS[el.id]) {
+    el.removeAttribute("aria-labelledby");
+    el.setAttribute("aria-label", DIALOG_LABELS[el.id]);
+    return;
+  }
+  const headings = [...el.querySelectorAll("h1, h2, h3")].filter((h) => h.textContent.trim());
+  const heading = headings.find(isShown) || headings[0];
+  if (!heading) return;
+  if (!heading.id) heading.id = `${el.id || "dialog"}-title-${headings.indexOf(heading)}`;
+  el.removeAttribute("aria-label");
+  el.setAttribute("aria-labelledby", heading.id);
+}
+
+function onDialogOpen(el) {
+  if (el.id === "loader") return;
+  nameDialog(el);
+  openDialogs.push({ el, returnTo: document.activeElement });
+  requestAnimationFrame(() => {
+    // Leave focus alone if the code that opened the dialog already put it
+    // somewhere inside (e.g. a field it wants typed into).
+    if (!el.contains(document.activeElement)) el.focus({ preventScroll: true });
+  });
+}
+
+function onDialogClose(el) {
+  const i = openDialogs.findIndex((d) => d.el === el);
+  if (i === -1) return;
+  const [{ returnTo }] = openDialogs.splice(i, 1);
+  const focusLost = el.contains(document.activeElement) || document.activeElement === document.body;
+  if (!focusLost) return;
+  // Back to the opener, or to whichever dialog is still open underneath.
+  const under = openDialogs[openDialogs.length - 1];
+  if (returnTo && returnTo.isConnected && isShown(returnTo) && !(under && !under.el.contains(returnTo))) {
+    returnTo.focus({ preventScroll: true });
+  } else if (under) {
+    under.el.focus({ preventScroll: true });
+  }
+}
+
+document.addEventListener("keydown", (event) => {
+  const top = openDialogs[openDialogs.length - 1];
+  if (!top || !isShown(top.el)) return;
+  if (event.key === "Escape") {
+    const closeX = [...top.el.querySelectorAll(".modal-close-x")].find(isShown);
+    if (closeX) {
+      event.preventDefault();
+      closeX.click();
+    }
+    return;
+  }
+  if (event.key !== "Tab") return;
+  const items = [...top.el.querySelectorAll(FOCUSABLE)].filter(isShown);
+  if (items.length === 0) {
+    event.preventDefault();
+    return;
+  }
+  const first = items[0];
+  const last = items[items.length - 1];
+  const active = document.activeElement;
+  if (!top.el.contains(active) || active === top.el) {
+    event.preventDefault();
+    (event.shiftKey ? last : first).focus();
+  } else if (event.shiftKey && active === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
+  }
+});
+
 // Animate modals in/out instead of an abrupt display:none <-> flex flip.
 // Every modal open/close elsewhere in script.js and firebase-setup.js
 // toggles visibility by setting `element.style.display` directly (~150
@@ -531,8 +725,16 @@ function copyText() {
   document.querySelectorAll(".modal-fx").forEach((el) => {
     // Baseline dialog semantics for assistive tech — these are all
     // full-screen overlays acting as dialogs.
-    el.setAttribute("role", "dialog");
-    el.setAttribute("aria-modal", "true");
+    if (el.id === "loader") {
+      // A spinner, not a dialog: announce it as a status instead.
+      el.setAttribute("role", "status");
+      el.setAttribute("aria-label", "Loading");
+    } else {
+      el.setAttribute("role", "dialog");
+      el.setAttribute("aria-modal", "true");
+      el.tabIndex = -1; // focus target on open (see onDialogOpen)
+      nameDialog(el);
+    }
     const initialDisplay = getComputedStyle(el).display;
     wasVisible.set(el, initialDisplay !== "none");
     if (initialDisplay !== "none") lastVisibleDisplay.set(el, initialDisplay);
@@ -552,6 +754,8 @@ function copyText() {
       const before = wasVisible.get(el);
       wasVisible.set(el, visible);
       if (visible === before) return;
+      if (visible) onDialogOpen(el);
+      else onDialogClose(el);
 
       if (visible) {
         lastVisibleDisplay.set(el, el.style.display || getComputedStyle(el).display);

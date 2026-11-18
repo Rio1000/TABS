@@ -59,28 +59,75 @@ const firebaseConfig = {
   appId: "1:295362517303:web:fbd0037e697eade181a2b2",
   measurementId: "G-Y9CWXD96D9",
 };
-function showToast(message, type = "success") {
-  Toastify({
+// `action` adds an icon button inside the toast:
+//   { label: "Undo", icon: "undo", ariaLabel: "Undo settling Sam's tab", onClick }
+// `icon` is a Material Symbols name; it must also be listed in the font's
+// icon_names in index.html, which loads only the icons the app uses. Without
+// `icon` the button shows `label` as text. Tapping the button runs onClick and
+// dismisses the toast. Toasts with an action stay up as long as errors do, so
+// there's time to reach the button; pass { duration: -1 } as `options` to keep
+// one up until it is dismissed.
+function showToast(message, type = "success", action = null, options = {}) {
+  if (typeof Toastify !== "function") {
+    console[type === "error" ? "error" : "log"](message);
+    return null;
+  }
+  const toast = Toastify({
     text: `${message}`, // Prepend icon to message
     // Milliseconds. This used to read `2.5`, which Toastify took literally —
     // every toast in this file was removed 2.5ms after it mounted, i.e. it
     // never actually rendered. Errors linger longer than successes since
     // they carry something the user has to read and act on.
-    duration: type === "error" ? 6000 : 4000,
+    duration: options.duration ?? (type === "error" || action ? 6000 : 4000),
     close: true,
     gravity: "top",
     position: "right",
+    // Screen readers get the text from script.js's live regions instead (see
+    // announceToast there); keep in step with the showToast in script.js.
+    ariaLive: "off",
     className:
       type === "error"
         ? "toastify toastify-error"
         : "toastify toastify-success", // Set class dynamically
     style: {
-      background: type === "error" ? "#bc3838" : "#52bc38",
+      // #2e7d32 meets WCAG AA contrast with white text (5.1:1); the old
+      // #52bc38 was 2.4:1.
+      background: type === "error" ? "#bc3838" : "#2e7d32",
       display: "flex",
       alignItems: "center",
       gap: "8px", // Space between icon & text
     },
   }).showToast();
+
+  if (action) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "toast-action";
+    btn.setAttribute("aria-label", action.ariaLabel || action.label);
+    btn.title = action.label; // tooltip for mouse users
+    if (action.icon) {
+      btn.classList.add("toast-action-icon");
+      const icon = document.createElement("span");
+      icon.className = "material-symbols-outlined";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = action.icon;
+      btn.appendChild(icon);
+    } else {
+      btn.textContent = action.label;
+    }
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toast.hideToast();
+      action.onClick();
+    });
+    const closeBtn = toast.toastElement.querySelector(".toast-close");
+    toast.toastElement.insertBefore(btn, closeBtn);
+  }
+
+  // Screen-reader announcement, keyboard-focus pause and the two-toast limit
+  // all live in script.js so both showToast functions behave the same.
+  window.enhanceToast?.(toast, message, type, action?.label);
+  return toast;
 }
 
 // Lets script.js tell "this module never loaded" (CDN blocked/offline, in
@@ -229,24 +276,14 @@ async function initPush(user) {
 // that lets registerPushToken() call Notification.requestPermission().
 function showEnableNotificationsPrompt() {
   localStorage.setItem("tabsPushReprompt", "1");
-  Toastify({
-    text: "🔔 Turn on notifications to get payment reminders here — tap to enable.",
-    duration: -1, // stay until tapped or closed
-    close: true,
-    gravity: "top",
-    position: "right",
-    className: "toastify toastify-success",
-    style: {
-      background: "#50c444",
-      display: "flex",
-      alignItems: "center",
-      gap: "8px",
-      cursor: "pointer",
-    },
-    onClick: () => {
-      registerPushToken();
-    },
-  }).showToast();
+  // A real "Enable" button rather than "tap anywhere on the toast": a tappable
+  // <div> can't be reached by keyboard or switch users.
+  showToast(
+    "🔔 Turn on notifications to get payment reminders here.",
+    "success",
+    { label: "Enable", ariaLabel: "Enable notifications", onClick: registerPushToken },
+    { duration: -1 } // stays until enabled or closed
+  );
 }
 
 // --- Native (mobile WebView) push bridge -----------------------------------
@@ -418,6 +455,7 @@ function refreshCurrencyDisplay() {
 currencySelectEl.addEventListener("change", () => {
   setSelectedCurrency(currencySelectEl.value);
   refreshCurrencyDisplay();
+  showToast(`Amounts now shown in ${currencySelectEl.value}.`);
 });
 
 // Fetch live rates as soon as the page loads (independent of auth) so
@@ -926,6 +964,7 @@ function pruneEmpty(value) {
 }
 const canonicalPeopleJson = (data) => JSON.stringify(pruneEmpty(data) ?? []);
 let lastKnownPeopleJson = null;
+let lastSaveErrorToastAt = 0;
 
 // Save list to Firebase instead of localStorage
 async function saveListToFirebase() {
@@ -977,6 +1016,13 @@ async function saveListToFirebase() {
     console.log("✅ Data saved to Firebase:", { peopleData });
   } catch (error) {
     console.error("❌ Error saving data:", error);
+    // Every edit saves the whole list, so a dead connection would fail every
+    // click — warn once per burst instead of stacking a toast per edit.
+    const now = Date.now();
+    if (now - lastSaveErrorToastAt > 15000) {
+      lastSaveErrorToastAt = now;
+      showToast("Couldn't save your changes. Check your connection and try again.", "error");
+    }
   }
 }
 
@@ -1103,6 +1149,7 @@ async function loadListFromFirebase() {
     }
   } catch (error) {
     console.error("❌ Error loading data:", error);
+    showToast("Couldn't load your tabs. Try refreshing the page.", "error");
   } finally {
     document.getElementById("loader").style.display = "none";
   }
@@ -1397,8 +1444,20 @@ function addPerson(
 
   // Remove Button
   const removeBtn = document.createElement("a");
-  removeBtn.innerHTML = "<img src='check_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg' alt='Remove'/>";
+  removeBtn.innerHTML = "<img src='check_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg' alt=''/>";
   removeBtn.classList.add("remove-btn");
+  // An <a> with no href can't be reached by keyboard, so give it button
+  // semantics, a tab stop, and Enter/Space activation. (Kept as an <a> so the
+  // existing .remove-btn styles still apply.)
+  removeBtn.setAttribute("role", "button");
+  removeBtn.tabIndex = 0;
+  removeBtn.title = "Settle tab";
+  removeBtn.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      removeBtn.click();
+    }
+  });
   removeBtn.addEventListener("click", () => {
     const removedName = nameSpan.textContent;
     // Play the exit animation before actually removing the row — saving
@@ -1409,9 +1468,40 @@ function addPerson(
     listItem.addEventListener(
       "animationend",
       () => {
+        // Remember where the row was so Undo can put it back in place.
+        const parent = listItem.parentNode;
+        const nextSibling = listItem.nextSibling;
         listItem.remove();
         saveListToFirebase();
         logUserAction(`Removed ${removedName}'s tab`);
+        showToast(`Settled ${removedName}'s Tab.`, "success", {
+          label: "Undo",
+          icon: "undo",
+          ariaLabel: `Undo settling ${removedName}'s tab`,
+          onClick: () => {
+            // The list may have been rebuilt since (e.g. a change synced from
+            // another device), in which case the old row can't be put back.
+            if (!parent?.isConnected) {
+              showToast(`Couldn't restore ${removedName}'s tab.`, "error");
+              return;
+            }
+            listItem.classList.remove("item-leave");
+            listItem.classList.add("item-enter");
+            listItem.addEventListener(
+              "animationend",
+              () => listItem.classList.remove("item-enter"),
+              { once: true }
+            );
+            parent.insertBefore(
+              listItem,
+              nextSibling && nextSibling.parentNode === parent ? nextSibling : null
+            );
+            addAdBox(); // keep the ad parked at the bottom
+            saveListToFirebase();
+            logUserAction(`Restored ${removedName}'s tab`);
+            showToast(`Restored ${removedName}'s tab.`);
+          },
+        });
       },
       { once: true }
     );
@@ -1420,8 +1510,9 @@ function addPerson(
   // More Button (Expand/Collapse)
   const addInfoBtn = document.createElement("button");
   addInfoBtn.innerHTML =
-    '<span class="material-symbols-outlined">more_horiz</span>';
+    '<span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>';
   addInfoBtn.classList.add("add-info-btn");
+  addInfoBtn.title = "More options";
   addInfoBtn.addEventListener("click", () => openModal(listItem)); // Pass the specific listItem
 
   const extraBox = document.createElement("div");
@@ -1434,9 +1525,9 @@ function addPerson(
     // reminding someone over SMS needs a real linked account (and phone
     // number) behind the row.
     const smsBtn = document.createElement("button");
-    smsBtn.innerHTML = '<span class="material-icons">sms</span>';
+    smsBtn.innerHTML = '<span class="material-icons" aria-hidden="true">sms</span>';
     smsBtn.classList.add("sms-remind-btn");
-    smsBtn.title = "Send a payment reminder over SMS";
+    smsBtn.title = "Send a payment reminder";
     smsBtn.addEventListener("click", () => openSmsReminderModal(listItem));
     extraBox.appendChild(smsBtn);
   }
@@ -1447,13 +1538,14 @@ function addPerson(
   // friend's handle, which openPaymentRequestModal resolves when available.)
   // Hidden unless payment requests are enabled (body.payments-enabled in CSS).
   const payBtn = document.createElement("button");
-  payBtn.innerHTML = '<span class="material-icons">payments</span>';
+  payBtn.innerHTML = '<span class="material-icons" aria-hidden="true">payments</span>';
   payBtn.classList.add("pay-request-btn");
   payBtn.title = "Request payment via Venmo / PayPal / Cash App";
   payBtn.addEventListener("click", () => openPaymentRequestModal(listItem));
   extraBox.appendChild(payBtn);
   nameAmountContainer.appendChild(personItem);
   nameAmountContainer.appendChild(extraBox);
+  labelRowButtons(listItem, name);
 
   peopleList.appendChild(listItem);
   listItem.dataset.interest = JSON.stringify(interest);
@@ -1474,6 +1566,18 @@ function addPerson(
 
   return listItem;
 
+}
+
+// Screen-reader names for a row's icon buttons. They include the person's
+// name, so a list read aloud says "Settle Jordan's tab", not just "Settle".
+// Called again on rename.
+function labelRowButtons(listItem, name) {
+  const label = (selector, text) =>
+    listItem.querySelector(selector)?.setAttribute("aria-label", text);
+  label(".remove-btn", `Settle ${name}'s tab`);
+  label(".add-info-btn", `More options for ${name}`);
+  label(".sms-remind-btn", `Send ${name} a payment reminder`);
+  label(".pay-request-btn", `Request payment from ${name}`);
 }
 
 function checkAmountOrItem() {
@@ -1508,12 +1612,15 @@ oweToggle.addEventListener("change", () => {
   if (!currentListItem) return;
   const amountInput = currentListItem.querySelector(".amount-input");
 
+  const who = currentListItem.querySelector(".name-span").textContent;
   if (oweToggle.checked) {
     currentListItem.setAttribute("data-status", "owesMe");
     amountInput.style.color = "rgb(73, 255, 97)";
+    showToast(`${who} owes you.`);
   } else {
     currentListItem.setAttribute("data-status", "iOwe");
     amountInput.style.color = "rgb(255, 73, 73)";
+    showToast(`You owe ${who}.`);
   }
 
   saveListToFirebase();
@@ -1631,6 +1738,13 @@ function openModal(listItem) {
 document
   .getElementById("interestToggle")
   .addEventListener("change", updateInterest);
+// Toast only on the on/off switch — the rate slider fires on every drag step
+// and already shows its value live.
+document.getElementById("interestToggle").addEventListener("change", (e) => {
+  if (!currentListItem) return;
+  const who = currentListItem.querySelector(".name-span").textContent;
+  showToast(e.target.checked ? `Interest turned on for ${who}.` : `Interest turned off for ${who}.`);
+});
 document
   .getElementById("interestRange")
   .addEventListener("input", updateInterest);
@@ -1878,6 +1992,7 @@ editNameBtn.addEventListener("click", () => {
 
     if (newName !== "" && newName !== oldName) {
       nameSpan.textContent = newName; // Update the name in the UI
+      labelRowButtons(currentListItem, newName);
       saveListToFirebase(); // Save the updated name to Firebase
       logUserAction(`Renamed ${oldName} to: ${newName}`);
       showToast("Name updated successfully.");
@@ -2012,6 +2127,7 @@ function createExtraInfoElement(container, text) {
   removeExtraBtn.addEventListener("click", () => {
     extraInfoElement.remove();
     saveListToFirebase();
+    showToast("Extra info removed.");
   });
 
   extraInfoElement.appendChild(editExtraInfoBtn);
@@ -2052,8 +2168,14 @@ document.getElementById("closeEditinffo").addEventListener("click", () => {
 const actionSheet = document.getElementById("action-sheet");
 const actionButtonsBar = document.getElementById("buttons");
 
+// While closed, the sheet sits off-screen but its fields and Close button were
+// still in the Tab order; `inert` takes them out (and hides them from screen
+// readers) until it opens.
+actionSheet.inert = !["add", "clear"].includes(actionSheet.dataset.open);
+
 function openActionPane(pane) {
   actionSheet.dataset.open = pane;
+  actionSheet.inert = false;
   actionButtonsBar.classList.toggle("active-add", pane === "add");
   actionButtonsBar.classList.toggle("active-clear", pane === "clear");
   actionButtonsBar.classList.add("sheet-open");
@@ -2064,7 +2186,17 @@ function openActionPane(pane) {
 }
 
 function closeActionSheet() {
+  // Hand focus back to the tab that opened the sheet, rather than letting it
+  // fall to <body> when the sheet goes inert.
+  if (actionSheet.contains(document.activeElement)) {
+    const opener =
+      actionSheet.dataset.open === "clear"
+        ? document.getElementById("clear-list-btn")
+        : addPersonBtn;
+    opener?.focus();
+  }
   actionSheet.dataset.open = "none";
+  actionSheet.inert = true;
   actionButtonsBar.classList.remove("active-add", "active-clear", "sheet-open");
   document.body.classList.remove("action-open");
 }
@@ -2127,6 +2259,7 @@ document.getElementById("add").addEventListener("click", () => {
   nameInput.value = "";
   moneyInput.value = "";
   itemInput.value = "";
+  showToast(`Added a tab for ${name}.`);
   logUserAction(`Added a tab for: ${name}`);
 
   closeActionSheet();
@@ -2243,15 +2376,22 @@ document.getElementById("removeFriendBtn").addEventListener("click", async () =>
   if (!friendPendingRemoval) return;
   const { friendId, friendData } = friendPendingRemoval;
 
-  await remove(
-    ref(database, `users/${currentUser.uid}/friendsList/${friendId}`)
-  );
-  // Also drop the UID-keyed index entry so this ex-friend can no longer read
-  // our phone number (friendData.userId is the friend's UID).
-  if (friendData.userId) {
+  try {
     await remove(
-      ref(database, `users/${currentUser.uid}/friendUids/${friendData.userId}`)
+      ref(database, `users/${currentUser.uid}/friendsList/${friendId}`)
     );
+    // Also drop the UID-keyed index entry so this ex-friend can no longer read
+    // our phone number (friendData.userId is the friend's UID).
+    if (friendData.userId) {
+      await remove(
+        ref(database, `users/${currentUser.uid}/friendUids/${friendData.userId}`)
+      );
+    }
+  } catch (error) {
+    console.error("❌ Error removing friend:", error);
+    showToast(`Couldn't remove ${friendData.firstName}. Try again.`, "error");
+    populateFriendsList();
+    return;
   }
   showToast(
     `${friendData.firstName} has been removed from your friends list.`,
@@ -2375,6 +2515,7 @@ async function populateFriendsList() {
   } catch (error) {
     console.error("❌ Error fetching friends list:", error);
     friendsListUl.innerHTML = "<li>Error loading friends list.</li>";
+    showToast("Couldn't load your friends list. Check your connection.", "error");
   }
 }
 document.getElementById('closeRemovefriend').addEventListener('click', () => {
@@ -3152,14 +3293,26 @@ document.getElementById("markAllReadBtn").addEventListener("click", () => {
   Object.entries(latestNotifications).forEach(([key, notif]) => {
     if (!notif.read) updates[`${key}/read`] = true;
   });
-  if (Object.keys(updates).length > 0) {
-    update(ref(database, `users/${currentUser.uid}/notifications`), updates);
+  if (Object.keys(updates).length === 0) {
+    showToast("You're all caught up — nothing unread.", "info");
+    return;
   }
+  update(ref(database, `users/${currentUser.uid}/notifications`), updates)
+    .then(() => showToast("All notifications marked as read."))
+    .catch(() => showToast("Couldn't mark notifications as read.", "error"));
 });
 document.getElementById("clearNotificationsBtn").addEventListener("click", async () => {
   if (!currentUser) return;
-  await remove(ref(database, `users/${currentUser.uid}/notifications`));
-  showToast("Notifications cleared.", "success");
+  if (Object.keys(latestNotifications).length === 0) {
+    showToast("No notifications to clear.", "info");
+    return;
+  }
+  try {
+    await remove(ref(database, `users/${currentUser.uid}/notifications`));
+    showToast("Notifications cleared.", "success");
+  } catch (error) {
+    showToast("Couldn't clear notifications.", "error");
+  }
 });
 
 // --- Notification settings (the Profile "Manage Notifications" button) ---
@@ -3193,6 +3346,7 @@ async function saveNotificationPrefs() {
       ref(database, `users/${currentUser.uid}/settings/notifications`),
       notificationPrefs
     );
+    showToast("Notification settings saved.");
   } catch (error) {
     showToast("Could not save notification settings.", "error");
   }
@@ -3663,19 +3817,29 @@ async function saveAutoReminderSettings() {
     `users/${currentUser.uid}/autoReminders/${friendUserId}`
   );
 
-  if (!toggle.checked) {
-    await remove(reminderRef);
-    return;
-  }
+  try {
+    if (!toggle.checked) {
+      await remove(reminderRef);
+      showToast(`Auto reminders turned off for ${name}.`);
+      return;
+    }
 
-  const existing = await get(reminderRef);
-  await set(reminderRef, {
-    enabled: true,
-    frequencyDays: parseInt(document.getElementById("autoRemindRange").value, 10),
-    friendName: name,
-    phone: phone ?? null,
-    lastSent: existing.exists() ? existing.val().lastSent || Date.now() : Date.now(),
-  });
+    const frequencyDays = parseInt(document.getElementById("autoRemindRange").value, 10);
+    const existing = await get(reminderRef);
+    await set(reminderRef, {
+      enabled: true,
+      frequencyDays,
+      friendName: name,
+      phone: phone ?? null,
+      lastSent: existing.exists() ? existing.val().lastSent || Date.now() : Date.now(),
+    });
+    showToast(
+      `${name} will be reminded every ${frequencyDays} day${frequencyDays === 1 ? "" : "s"}.`
+    );
+  } catch (error) {
+    console.error("❌ Error saving auto-reminder settings:", error);
+    showToast("Couldn't save auto reminder settings.", "error");
+  }
 }
 
 document.getElementById("autoRemindToggle").addEventListener("change", () => {

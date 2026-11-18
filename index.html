@@ -8,7 +8,7 @@
     <link rel="icon" type="image/x-icon" href="loawdgo.ico">
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=more_horiz" />
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=more_horiz,undo" />
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script type="module" src="firebase-setup.js"></script>
     <link rel="stylesheet" href="toastify.css" />
@@ -19,8 +19,10 @@
 
 <body>
 
-    <div class="container">
-        <img class="Logo" src="logo.svg" alt="logo" />
+    <!-- role="main": everything the app shows lives in .container, so this gives
+         screen readers one main landmark without changing the flex layout. -->
+    <div class="container" role="main">
+        <img class="Logo" src="logo.svg" alt="" />
         <h1 id="TITLE">TABS</h1>
         <div class="modal modal-fx" id="loader">
             <div class="loader"></div>
@@ -324,10 +326,10 @@
             <div id="adsBox">
                 <div id="adsmessages">
                     <div id="info">
-                        <h4>Ads help us keep the server running and allow us to continue supporting the app, but if you
-                            want to donate, you can do so. Any amount is appreciated. 😊</h4>
+                        <p class="info-text">Ads help us keep the server running and allow us to continue supporting the app, but if you
+                            want to donate, you can do so. Any amount is appreciated. 😊</p>
                         <div id="about">
-                            <h4>Designed and Created by:<br />Parker Heikes<br />Marketing: <br />Finley Cryan</h4>
+                            <p class="info-text">Designed and Created by:<br />Parker Heikes<br />Marketing: <br />Finley Cryan</p>
                         </div>
                     </div>
                     <div id="donate">
