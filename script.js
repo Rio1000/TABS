@@ -206,7 +206,37 @@ document.getElementById("ContinueasGuest").addEventListener("click", () => {
   document.getElementById("loader").style.display = "none";
   setPersonListVisible(true);
   setListControlsVisible(true);
-})
+});
+
+// Failsafe: firebase-setup.js is the module that reveals the login / guest
+// screen (it does so from onAuthStateChanged). It is an ES module loaded from a
+// CDN, so if that import fails — offline, blocked network, CDN outage — the
+// callback never runs, the screen is never shown and NOTHING on the page is
+// clickable: no login, no signup, not even "Continue as Guest". This script is
+// a classic script and always runs, so it can hand the user a way in.
+// It only fires when the page is genuinely stuck: both the auth screen and the
+// list are still hidden, meaning the module never got far enough to choose.
+;(function () {
+  const STUCK_AFTER_MS = 6000;
+  setTimeout(() => {
+    // The module sets this the moment it executes. If it is still missing the
+    // import failed outright, which is the only case we rescue — a module that
+    // loaded and is merely slow must be left alone.
+    if (window.__tabsFirebaseBooted) return;
+    const auth = document.getElementById("loginorsignupmodal");
+    if (!auth) return;
+    // Symptom of the failure: the loader overlay stays up over everything.
+    const loader = document.getElementById("loader");
+    if (loader) loader.style.display = "none";
+    auth.style.display = "flex";
+    const signup = document.getElementById("signupPage");
+    const login = document.getElementById("Loginpage");
+    if (signup) signup.style.display = "none";
+    if (login) login.style.display = "none";
+    showToast("Couldn't reach the server — you can still continue as a guest.", "error");
+  }, STUCK_AFTER_MS);
+})();
+
 const scrollToBottomBtn = document.getElementById('scroll-to-bottom');
 const scrollToTopBtn = document.getElementById('scroll-to-top');
 

@@ -83,6 +83,11 @@ function showToast(message, type = "success") {
   }).showToast();
 }
 
+// Lets script.js tell "this module never loaded" (CDN blocked/offline, in
+// which case nothing on the page is clickable) apart from "it loaded and is
+// just slow". See the failsafe in script.js.
+window.__tabsFirebaseBooted = true;
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
@@ -1519,11 +1524,20 @@ if (!interestBox) {
   console.error("Element with ID 'interestTitle' not found.");
 }
 
-// Create and append toggle checkbox
+// Create and append toggle. Built with the same .switch markup the
+// notification and payment settings use (div.switch > input + label), so every
+// on/off control in the app is the same pill switch — this one used to be a
+// bare 24px square checkbox, the only one of its kind.
+const interestSwitch = document.createElement("div");
+interestSwitch.className = "switch";
 const interestToggle = document.createElement("input");
 interestToggle.type = "checkbox";
 interestToggle.id = "interestToggle";
-interestBox.appendChild(interestToggle);
+const interestToggleLabel = document.createElement("label");
+interestToggleLabel.setAttribute("for", "interestToggle");
+interestSwitch.appendChild(interestToggle);
+interestSwitch.appendChild(interestToggleLabel);
+interestBox.appendChild(interestSwitch);
 
 // Create interest indicator
 
