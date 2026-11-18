@@ -2926,6 +2926,17 @@ body.payments-enabled .pay-request-btn {
    ===================================================================== */
 @media screen and (max-width: 599px) {
 
+  /* Keep the list's top edge below the logo and title. The list is centred
+     in .container and grows both ways, so a long list (or a tall in-list ad)
+     used to climb up underneath the header. Now it stops at the header and
+     scrolls there instead, under the existing top fade. */
+  .personlist {
+    --list-top: calc(96px + env(safe-area-inset-top));
+    margin-top: var(--list-top);
+    max-height: calc(100vh - var(--list-top));
+    max-height: calc(100dvh - var(--list-top));
+  }
+
   #people-list {
     /* Was 92%, which (once the base rule stopped centring it with margin:auto)
        left the list 12px in on the left and 41px on the right. The horizontal
