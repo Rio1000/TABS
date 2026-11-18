@@ -104,4 +104,22 @@
     right: 0;
   }
 }
+/* Action button inside a toast (e.g. "Undo" after settling a tab). A plain
+   white outline so it reads as part of the toast, not the app's own buttons. */
+.toastify .toast-action {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border: 1.5px solid #fff;
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  box-shadow: none;
+  cursor: pointer;
+}
+.toastify .toast-action:active {
+  background: rgba(255, 255, 255, 0.2);
+}
 /*# sourceMappingURL=/sm/cb4335d1b03e933ed85cb59fffa60cf51f07567ed09831438c60f59afd166464.map */

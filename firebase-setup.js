@@ -59,14 +59,21 @@ const firebaseConfig = {
   appId: "1:295362517303:web:fbd0037e697eade181a2b2",
   measurementId: "G-Y9CWXD96D9",
 };
-function showToast(message, type = "success") {
-  Toastify({
+// `action` adds a button inside the toast, e.g. { label: "Undo", onClick }.
+// Tapping it runs onClick and dismisses the toast. Toasts with an action stay
+// up as long as errors do, so there's time to reach the button.
+function showToast(message, type = "success", action = null) {
+  if (typeof Toastify !== "function") {
+    console[type === "error" ? "error" : "log"](message);
+    return null;
+  }
+  const toast = Toastify({
     text: `${message}`, // Prepend icon to message
     // Milliseconds. This used to read `2.5`, which Toastify took literally —
     // every toast in this file was removed 2.5ms after it mounted, i.e. it
     // never actually rendered. Errors linger longer than successes since
     // they carry something the user has to read and act on.
-    duration: type === "error" ? 6000 : 4000,
+    duration: type === "error" || action ? 6000 : 4000,
     close: true,
     gravity: "top",
     position: "right",
@@ -81,6 +88,24 @@ function showToast(message, type = "success") {
       gap: "8px", // Space between icon & text
     },
   }).showToast();
+
+  if (action) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "toast-action";
+    btn.textContent = action.label;
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toast.hideToast();
+      action.onClick();
+    });
+    const closeBtn = toast.toastElement.querySelector(".toast-close");
+    toast.toastElement.insertBefore(btn, closeBtn);
+  }
+
+  // Same on-screen limit as script.js (defined there; errors never bumped).
+  window.capToasts?.();
+  return toast;
 }
 
 // Lets script.js tell "this module never loaded" (CDN blocked/offline, in
@@ -1419,10 +1444,38 @@ function addPerson(
     listItem.addEventListener(
       "animationend",
       () => {
+        // Remember where the row was so Undo can put it back in place.
+        const parent = listItem.parentNode;
+        const nextSibling = listItem.nextSibling;
         listItem.remove();
         saveListToFirebase();
-        showToast(`Settled up with ${removedName}.`);
         logUserAction(`Removed ${removedName}'s tab`);
+        showToast(`Settled ${removedName}'s Tab.`, "success", {
+          label: "Undo",
+          onClick: () => {
+            // The list may have been rebuilt since (e.g. a change synced from
+            // another device), in which case the old row can't be put back.
+            if (!parent?.isConnected) {
+              showToast(`Couldn't restore ${removedName}'s tab.`, "error");
+              return;
+            }
+            listItem.classList.remove("item-leave");
+            listItem.classList.add("item-enter");
+            listItem.addEventListener(
+              "animationend",
+              () => listItem.classList.remove("item-enter"),
+              { once: true }
+            );
+            parent.insertBefore(
+              listItem,
+              nextSibling && nextSibling.parentNode === parent ? nextSibling : null
+            );
+            addAdBox(); // keep the ad parked at the bottom
+            saveListToFirebase();
+            logUserAction(`Restored ${removedName}'s tab`);
+            showToast(`Restored ${removedName}'s tab.`);
+          },
+        });
       },
       { once: true }
     );

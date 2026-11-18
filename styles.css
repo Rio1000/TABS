@@ -3417,7 +3417,7 @@ body.action-open #action-backdrop {
   --btn-positive-text: 208, 236, 202;
 }
 
-button:not(.remove-btn):not(.add-info-btn):not(.remove-friend-from-list):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(.close-btn):not(.modal-close-x):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(.toast-close):not(#confirmClearHistory):not(.accept):not(.decline),
+button:not(.remove-btn):not(.add-info-btn):not(.remove-friend-from-list):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(.close-btn):not(.modal-close-x):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(.toast-close):not(.toast-action):not(#confirmClearHistory):not(.accept):not(.decline),
 #profileInfo,
 #profileStats,
 #profileAccount,
@@ -3430,7 +3430,7 @@ button:not(.remove-btn):not(.add-info-btn):not(.remove-friend-from-list):not(.sm
   transition: background-color 0.2s ease, transform 0.15s ease,
     box-shadow 0.2s ease, border-color 0.2s ease !important;
 }
-button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(.close-btn):not(.modal-close-x):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(#confirmClearHistory):not(.toast-close):not(.accept):not(.decline):hover,
+button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(.close-btn):not(.modal-close-x):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(#confirmClearHistory):not(.toast-close):not(.toast-action):not(.accept):not(.decline):hover,
 #profileInfo:hover,
 #profileStats:hover,
 #profileAccount:hover,

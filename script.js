@@ -7,7 +7,7 @@ function showToast(message, type = "success") {
     console[type === "error" ? "error" : "log"](message);
     return null;
   }
-  return Toastify({
+  const toast = Toastify({
     text: `${message}`,
     // Keep these in step with the showToast in firebase-setup.js.
     duration: type === "error" ? 6000 : 4000,
@@ -25,7 +25,30 @@ function showToast(message, type = "success") {
       gap: "8px",
     },
   }).showToast();
+  capToasts();
+  return toast;
 }
+
+// At most two toasts on screen at once, so a burst of them can't cover the
+// list. When a new one pushes past the limit, the oldest success/info toasts
+// give way; errors are never bumped. They stay until they time out or are
+// closed, since they carry something the user has to read. Global so
+// firebase-setup.js's showToast uses the same rule.
+const MAX_VISIBLE_TOASTS = 2;
+function capToasts() {
+  // Toastify inserts the newest toast first, so walk the list backwards to
+  // bump the oldest ones first. ".on" is dropped the moment a toast starts
+  // fading out, so toasts already leaving don't count.
+  const visible = [...document.querySelectorAll(".toastify.on")];
+  let excess = visible.length - MAX_VISIBLE_TOASTS;
+  for (let i = visible.length - 1; i >= 0 && excess > 0; i--) {
+    if (visible[i].classList.contains("toastify-error")) continue;
+    // The close button runs Toastify's own fade-out and timer cleanup.
+    visible[i].querySelector(".toast-close")?.click();
+    excess--;
+  }
+}
+window.capToasts = capToasts;
 
 
 const peopleList = document.getElementById("people-list");
