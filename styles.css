@@ -1134,14 +1134,15 @@ input {
 }
 
 #donate {
+  /* In normal flow under the text, not position:absolute at the bottom of a
+     fixed-height box: on a phone the text was taller than the space left for
+     it and the credits ran underneath the buttons. */
   display: flex;
   flex-direction: row;
-  bottom: 0;
-  position: absolute;
-  left: 0;
-  width: 94%;
+  width: 100%;
+  box-sizing: border-box;
   gap: 10px;
-  padding: 10px;
+  padding: 10px 0 0;
   align-items: center;
   justify-content: center;
   text-align: center;
@@ -1253,8 +1254,6 @@ input {
 }
 
 #info {
-  transform: translateX(-50%);
-  position: absolute;
   width: 100%;
 }
 
@@ -1390,7 +1389,9 @@ input {
   border-width: 1px !important;
   border-radius: 8px !important;
   background: rgba(94, 20, 20, 0.353) !important;
-  color: #cb4337 !important;
+  /* Lighter than the #cb4337 border: the glyph is small text and #cb4337
+     measured ~3:1 on these dark cards (WCAG AA needs 4.5:1). */
+  color: #ff7b70 !important;
   border-color: #cb4337 !important;
   font-size: 15px !important;
 }
@@ -2082,7 +2083,10 @@ body.payments-enabled .pay-request-btn {
   justify-content: center;
 }
 #adsBox{
-  height: 50%;
+  /* Grows with its content (the old fixed 50% height is what forced the
+     overlap); scrolls only if it would run off a short screen. */
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
 }
 #adsmessages{
   margin-top: 30px;
@@ -3078,6 +3082,16 @@ body.payments-enabled .pay-request-btn {
   width: min(460px, 92vw);
   box-sizing: border-box;
 }
+#adsmessages {
+  width: 100%;
+}
+/* Body paragraphs, not titles: they sit below the close X (#adsmessages has a
+   top margin), so they don't need the 40px side padding titles use to clear
+   it. That padding squeezed the text into a narrow column. */
+#adsBox #info .info-text {
+  padding-left: 4px;
+  padding-right: 4px;
+}
 /* Their inner content should span the card width so inputs/lists/buttons
    don't collapse to their intrinsic size inside the newly-sized card. */
 #delete-account-box > div,
@@ -3233,7 +3247,9 @@ body.action-open #action-backdrop {
   border-width: 1px;
   border-radius: 8px;
   background: rgba(94, 20, 20, 0.353);
-  color: #cb4337;
+  /* Glyph lighter than the border: #cb4337 measured ~3:1 against the dark
+     cards, below the 4.5:1 WCAG AA minimum for small text. This is 5.3:1+. */
+  color: #ff7b70;
   border-color: #cb4337;
   font-size: 15px;
   line-height: 1;
