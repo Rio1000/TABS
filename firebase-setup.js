@@ -59,10 +59,15 @@ const firebaseConfig = {
   appId: "1:295362517303:web:fbd0037e697eade181a2b2",
   measurementId: "G-Y9CWXD96D9",
 };
-// `action` adds a button inside the toast, e.g. { label: "Undo", onClick }.
-// Tapping it runs onClick and dismisses the toast. Toasts with an action stay
-// up as long as errors do, so there's time to reach the button.
-function showToast(message, type = "success", action = null) {
+// `action` adds an icon button inside the toast:
+//   { label: "Undo", icon: "undo", ariaLabel: "Undo settling Sam's tab", onClick }
+// `icon` is a Material Symbols name; it must also be listed in the font's
+// icon_names in index.html, which loads only the icons the app uses. Without
+// `icon` the button shows `label` as text. Tapping the button runs onClick and
+// dismisses the toast. Toasts with an action stay up as long as errors do, so
+// there's time to reach the button; pass { duration: -1 } as `options` to keep
+// one up until it is dismissed.
+function showToast(message, type = "success", action = null, options = {}) {
   if (typeof Toastify !== "function") {
     console[type === "error" ? "error" : "log"](message);
     return null;
@@ -73,16 +78,21 @@ function showToast(message, type = "success", action = null) {
     // every toast in this file was removed 2.5ms after it mounted, i.e. it
     // never actually rendered. Errors linger longer than successes since
     // they carry something the user has to read and act on.
-    duration: type === "error" || action ? 6000 : 4000,
+    duration: options.duration ?? (type === "error" || action ? 6000 : 4000),
     close: true,
     gravity: "top",
     position: "right",
+    // Screen readers get the text from script.js's live regions instead (see
+    // announceToast there); keep in step with the showToast in script.js.
+    ariaLive: "off",
     className:
       type === "error"
         ? "toastify toastify-error"
         : "toastify toastify-success", // Set class dynamically
     style: {
-      background: type === "error" ? "#bc3838" : "#52bc38",
+      // #2e7d32 meets WCAG AA contrast with white text (5.1:1); the old
+      // #52bc38 was 2.4:1.
+      background: type === "error" ? "#bc3838" : "#2e7d32",
       display: "flex",
       alignItems: "center",
       gap: "8px", // Space between icon & text
@@ -93,7 +103,18 @@ function showToast(message, type = "success", action = null) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "toast-action";
-    btn.textContent = action.label;
+    btn.setAttribute("aria-label", action.ariaLabel || action.label);
+    btn.title = action.label; // tooltip for mouse users
+    if (action.icon) {
+      btn.classList.add("toast-action-icon");
+      const icon = document.createElement("span");
+      icon.className = "material-symbols-outlined";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = action.icon;
+      btn.appendChild(icon);
+    } else {
+      btn.textContent = action.label;
+    }
     btn.addEventListener("click", (event) => {
       event.stopPropagation();
       toast.hideToast();
@@ -103,8 +124,9 @@ function showToast(message, type = "success", action = null) {
     toast.toastElement.insertBefore(btn, closeBtn);
   }
 
-  // Same on-screen limit as script.js (defined there; errors never bumped).
-  window.capToasts?.();
+  // Screen-reader announcement, keyboard-focus pause and the two-toast limit
+  // all live in script.js so both showToast functions behave the same.
+  window.enhanceToast?.(toast, message, type, action?.label);
   return toast;
 }
 
@@ -254,24 +276,14 @@ async function initPush(user) {
 // that lets registerPushToken() call Notification.requestPermission().
 function showEnableNotificationsPrompt() {
   localStorage.setItem("tabsPushReprompt", "1");
-  Toastify({
-    text: "🔔 Turn on notifications to get payment reminders here — tap to enable.",
-    duration: -1, // stay until tapped or closed
-    close: true,
-    gravity: "top",
-    position: "right",
-    className: "toastify toastify-success",
-    style: {
-      background: "#50c444",
-      display: "flex",
-      alignItems: "center",
-      gap: "8px",
-      cursor: "pointer",
-    },
-    onClick: () => {
-      registerPushToken();
-    },
-  }).showToast();
+  // A real "Enable" button rather than "tap anywhere on the toast": a tappable
+  // <div> can't be reached by keyboard or switch users.
+  showToast(
+    "🔔 Turn on notifications to get payment reminders here.",
+    "success",
+    { label: "Enable", ariaLabel: "Enable notifications", onClick: registerPushToken },
+    { duration: -1 } // stays until enabled or closed
+  );
 }
 
 // --- Native (mobile WebView) push bridge -----------------------------------
@@ -1432,8 +1444,20 @@ function addPerson(
 
   // Remove Button
   const removeBtn = document.createElement("a");
-  removeBtn.innerHTML = "<img src='check_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg' alt='Remove'/>";
+  removeBtn.innerHTML = "<img src='check_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24.svg' alt=''/>";
   removeBtn.classList.add("remove-btn");
+  // An <a> with no href can't be reached by keyboard, so give it button
+  // semantics, a tab stop, and Enter/Space activation. (Kept as an <a> so the
+  // existing .remove-btn styles still apply.)
+  removeBtn.setAttribute("role", "button");
+  removeBtn.tabIndex = 0;
+  removeBtn.title = "Settle tab";
+  removeBtn.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      removeBtn.click();
+    }
+  });
   removeBtn.addEventListener("click", () => {
     const removedName = nameSpan.textContent;
     // Play the exit animation before actually removing the row — saving
@@ -1452,6 +1476,8 @@ function addPerson(
         logUserAction(`Removed ${removedName}'s tab`);
         showToast(`Settled ${removedName}'s Tab.`, "success", {
           label: "Undo",
+          icon: "undo",
+          ariaLabel: `Undo settling ${removedName}'s tab`,
           onClick: () => {
             // The list may have been rebuilt since (e.g. a change synced from
             // another device), in which case the old row can't be put back.
@@ -1484,8 +1510,9 @@ function addPerson(
   // More Button (Expand/Collapse)
   const addInfoBtn = document.createElement("button");
   addInfoBtn.innerHTML =
-    '<span class="material-symbols-outlined">more_horiz</span>';
+    '<span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>';
   addInfoBtn.classList.add("add-info-btn");
+  addInfoBtn.title = "More options";
   addInfoBtn.addEventListener("click", () => openModal(listItem)); // Pass the specific listItem
 
   const extraBox = document.createElement("div");
@@ -1498,9 +1525,9 @@ function addPerson(
     // reminding someone over SMS needs a real linked account (and phone
     // number) behind the row.
     const smsBtn = document.createElement("button");
-    smsBtn.innerHTML = '<span class="material-icons">sms</span>';
+    smsBtn.innerHTML = '<span class="material-icons" aria-hidden="true">sms</span>';
     smsBtn.classList.add("sms-remind-btn");
-    smsBtn.title = "Send a payment reminder over SMS";
+    smsBtn.title = "Send a payment reminder";
     smsBtn.addEventListener("click", () => openSmsReminderModal(listItem));
     extraBox.appendChild(smsBtn);
   }
@@ -1511,13 +1538,14 @@ function addPerson(
   // friend's handle, which openPaymentRequestModal resolves when available.)
   // Hidden unless payment requests are enabled (body.payments-enabled in CSS).
   const payBtn = document.createElement("button");
-  payBtn.innerHTML = '<span class="material-icons">payments</span>';
+  payBtn.innerHTML = '<span class="material-icons" aria-hidden="true">payments</span>';
   payBtn.classList.add("pay-request-btn");
   payBtn.title = "Request payment via Venmo / PayPal / Cash App";
   payBtn.addEventListener("click", () => openPaymentRequestModal(listItem));
   extraBox.appendChild(payBtn);
   nameAmountContainer.appendChild(personItem);
   nameAmountContainer.appendChild(extraBox);
+  labelRowButtons(listItem, name);
 
   peopleList.appendChild(listItem);
   listItem.dataset.interest = JSON.stringify(interest);
@@ -1538,6 +1566,18 @@ function addPerson(
 
   return listItem;
 
+}
+
+// Screen-reader names for a row's icon buttons. They include the person's
+// name, so a list read aloud says "Settle Jordan's tab", not just "Settle".
+// Called again on rename.
+function labelRowButtons(listItem, name) {
+  const label = (selector, text) =>
+    listItem.querySelector(selector)?.setAttribute("aria-label", text);
+  label(".remove-btn", `Settle ${name}'s tab`);
+  label(".add-info-btn", `More options for ${name}`);
+  label(".sms-remind-btn", `Send ${name} a payment reminder`);
+  label(".pay-request-btn", `Request payment from ${name}`);
 }
 
 function checkAmountOrItem() {
@@ -1952,6 +1992,7 @@ editNameBtn.addEventListener("click", () => {
 
     if (newName !== "" && newName !== oldName) {
       nameSpan.textContent = newName; // Update the name in the UI
+      labelRowButtons(currentListItem, newName);
       saveListToFirebase(); // Save the updated name to Firebase
       logUserAction(`Renamed ${oldName} to: ${newName}`);
       showToast("Name updated successfully.");
@@ -2127,8 +2168,14 @@ document.getElementById("closeEditinffo").addEventListener("click", () => {
 const actionSheet = document.getElementById("action-sheet");
 const actionButtonsBar = document.getElementById("buttons");
 
+// While closed, the sheet sits off-screen but its fields and Close button were
+// still in the Tab order; `inert` takes them out (and hides them from screen
+// readers) until it opens.
+actionSheet.inert = !["add", "clear"].includes(actionSheet.dataset.open);
+
 function openActionPane(pane) {
   actionSheet.dataset.open = pane;
+  actionSheet.inert = false;
   actionButtonsBar.classList.toggle("active-add", pane === "add");
   actionButtonsBar.classList.toggle("active-clear", pane === "clear");
   actionButtonsBar.classList.add("sheet-open");
@@ -2139,7 +2186,17 @@ function openActionPane(pane) {
 }
 
 function closeActionSheet() {
+  // Hand focus back to the tab that opened the sheet, rather than letting it
+  // fall to <body> when the sheet goes inert.
+  if (actionSheet.contains(document.activeElement)) {
+    const opener =
+      actionSheet.dataset.open === "clear"
+        ? document.getElementById("clear-list-btn")
+        : addPersonBtn;
+    opener?.focus();
+  }
   actionSheet.dataset.open = "none";
+  actionSheet.inert = true;
   actionButtonsBar.classList.remove("active-add", "active-clear", "sheet-open");
   document.body.classList.remove("action-open");
 }

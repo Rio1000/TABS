@@ -44,7 +44,9 @@
 
 .toastify-error .toast-close {
   background: rgba(94, 20, 20, 0.353);
-  color: #cb4337;
+  /* Light red, not #cb4337: red-on-red measured 1.6:1, below the 3:1 WCAG
+     minimum for icons. This is 5.3:1. */
+  color: #ffcdc7;
   border-color: #cb4337;
 }
 
@@ -104,22 +106,64 @@
     right: 0;
   }
 }
-/* Action button inside a toast (e.g. "Undo" after settling a tab). A plain
-   white outline so it reads as part of the toast, not the app's own buttons. */
+/* Icon button inside a toast (e.g. Undo after settling a tab). A plain white
+   outline so it reads as part of the toast, not the app's own buttons.
+   44x44px so it is easy to hit on a phone (WCAG 2.5.5). */
 .toastify .toast-action {
   margin-left: auto;
   flex-shrink: 0;
-  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 16px;
   border: 1.5px solid #fff;
   border-radius: 999px;
   background: transparent;
   color: #fff;
   font: inherit;
   font-weight: 700;
+  white-space: nowrap;
   box-shadow: none;
   cursor: pointer;
 }
+.toastify .toast-action.toast-action-icon {
+  width: 44px;
+  padding: 0;
+}
+.toastify .toast-action .material-symbols-outlined {
+  font-size: 24px;
+  line-height: 1;
+}
 .toastify .toast-action:active {
   background: rgba(255, 255, 255, 0.2);
+}
+
+/* Visible keyboard focus on everything you can tab to inside a toast. */
+.toastify .toast-action:focus-visible,
+.toastify .toast-close:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+/* Persistent, visually hidden live regions that screen readers announce toast
+   text from (see announceToast in script.js). */
+.toast-live-region {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toastify {
+    transition: opacity 0.01s linear;
+  }
 }
 /*# sourceMappingURL=/sm/cb4335d1b03e933ed85cb59fffa60cf51f07567ed09831438c60f59afd166464.map */
