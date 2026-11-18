@@ -5,9 +5,9 @@ function showToast(message, type = "success") {
   // instead of throwing so callers like the boot failsafe keep working.
   if (typeof Toastify !== "function") {
     console[type === "error" ? "error" : "log"](message);
-    return;
+    return null;
   }
-  Toastify({
+  return Toastify({
     text: `${message}`,
     // Keep these in step with the showToast in firebase-setup.js.
     duration: type === "error" ? 6000 : 4000,
@@ -212,6 +212,19 @@ document.getElementById("ContinueasGuest").addEventListener("click", () => {
   document.getElementById("loader").style.display = "none";
   setPersonListVisible(true);
   setListControlsVisible(true);
+  showToast("Guest mode: your tabs won't be saved after you leave.", "info");
+});
+
+// Connection status. Firebase queues writes while offline and sends them on
+// reconnect, so tell people their edits are not lost, just waiting.
+let offlineToast = null;
+window.addEventListener("offline", () => {
+  offlineToast = showToast("You're offline. Changes will sync when you reconnect.", "error");
+});
+window.addEventListener("online", () => {
+  offlineToast?.hideToast();
+  offlineToast = null;
+  showToast("Back online.");
 });
 
 // Failsafe: firebase-setup.js is the module that reveals the login / guest

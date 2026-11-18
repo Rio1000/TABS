@@ -418,6 +418,7 @@ function refreshCurrencyDisplay() {
 currencySelectEl.addEventListener("change", () => {
   setSelectedCurrency(currencySelectEl.value);
   refreshCurrencyDisplay();
+  showToast(`Amounts now shown in ${currencySelectEl.value}.`);
 });
 
 // Fetch live rates as soon as the page loads (independent of auth) so
@@ -926,6 +927,7 @@ function pruneEmpty(value) {
 }
 const canonicalPeopleJson = (data) => JSON.stringify(pruneEmpty(data) ?? []);
 let lastKnownPeopleJson = null;
+let lastSaveErrorToastAt = 0;
 
 // Save list to Firebase instead of localStorage
 async function saveListToFirebase() {
@@ -977,6 +979,13 @@ async function saveListToFirebase() {
     console.log("✅ Data saved to Firebase:", { peopleData });
   } catch (error) {
     console.error("❌ Error saving data:", error);
+    // Every edit saves the whole list, so a dead connection would fail every
+    // click — warn once per burst instead of stacking a toast per edit.
+    const now = Date.now();
+    if (now - lastSaveErrorToastAt > 15000) {
+      lastSaveErrorToastAt = now;
+      showToast("Couldn't save your changes. Check your connection and try again.", "error");
+    }
   }
 }
 
@@ -1103,6 +1112,7 @@ async function loadListFromFirebase() {
     }
   } catch (error) {
     console.error("❌ Error loading data:", error);
+    showToast("Couldn't load your tabs. Try refreshing the page.", "error");
   } finally {
     document.getElementById("loader").style.display = "none";
   }
@@ -1411,6 +1421,7 @@ function addPerson(
       () => {
         listItem.remove();
         saveListToFirebase();
+        showToast(`Settled up with ${removedName}.`);
         logUserAction(`Removed ${removedName}'s tab`);
       },
       { once: true }
@@ -1508,12 +1519,15 @@ oweToggle.addEventListener("change", () => {
   if (!currentListItem) return;
   const amountInput = currentListItem.querySelector(".amount-input");
 
+  const who = currentListItem.querySelector(".name-span").textContent;
   if (oweToggle.checked) {
     currentListItem.setAttribute("data-status", "owesMe");
     amountInput.style.color = "rgb(73, 255, 97)";
+    showToast(`${who} owes you.`);
   } else {
     currentListItem.setAttribute("data-status", "iOwe");
     amountInput.style.color = "rgb(255, 73, 73)";
+    showToast(`You owe ${who}.`);
   }
 
   saveListToFirebase();
@@ -1631,6 +1645,13 @@ function openModal(listItem) {
 document
   .getElementById("interestToggle")
   .addEventListener("change", updateInterest);
+// Toast only on the on/off switch — the rate slider fires on every drag step
+// and already shows its value live.
+document.getElementById("interestToggle").addEventListener("change", (e) => {
+  if (!currentListItem) return;
+  const who = currentListItem.querySelector(".name-span").textContent;
+  showToast(e.target.checked ? `Interest turned on for ${who}.` : `Interest turned off for ${who}.`);
+});
 document
   .getElementById("interestRange")
   .addEventListener("input", updateInterest);
@@ -2012,6 +2033,7 @@ function createExtraInfoElement(container, text) {
   removeExtraBtn.addEventListener("click", () => {
     extraInfoElement.remove();
     saveListToFirebase();
+    showToast("Extra info removed.");
   });
 
   extraInfoElement.appendChild(editExtraInfoBtn);
@@ -2127,6 +2149,7 @@ document.getElementById("add").addEventListener("click", () => {
   nameInput.value = "";
   moneyInput.value = "";
   itemInput.value = "";
+  showToast(`Added a tab for ${name}.`);
   logUserAction(`Added a tab for: ${name}`);
 
   closeActionSheet();
@@ -2243,15 +2266,22 @@ document.getElementById("removeFriendBtn").addEventListener("click", async () =>
   if (!friendPendingRemoval) return;
   const { friendId, friendData } = friendPendingRemoval;
 
-  await remove(
-    ref(database, `users/${currentUser.uid}/friendsList/${friendId}`)
-  );
-  // Also drop the UID-keyed index entry so this ex-friend can no longer read
-  // our phone number (friendData.userId is the friend's UID).
-  if (friendData.userId) {
+  try {
     await remove(
-      ref(database, `users/${currentUser.uid}/friendUids/${friendData.userId}`)
+      ref(database, `users/${currentUser.uid}/friendsList/${friendId}`)
     );
+    // Also drop the UID-keyed index entry so this ex-friend can no longer read
+    // our phone number (friendData.userId is the friend's UID).
+    if (friendData.userId) {
+      await remove(
+        ref(database, `users/${currentUser.uid}/friendUids/${friendData.userId}`)
+      );
+    }
+  } catch (error) {
+    console.error("❌ Error removing friend:", error);
+    showToast(`Couldn't remove ${friendData.firstName}. Try again.`, "error");
+    populateFriendsList();
+    return;
   }
   showToast(
     `${friendData.firstName} has been removed from your friends list.`,
@@ -2375,6 +2405,7 @@ async function populateFriendsList() {
   } catch (error) {
     console.error("❌ Error fetching friends list:", error);
     friendsListUl.innerHTML = "<li>Error loading friends list.</li>";
+    showToast("Couldn't load your friends list. Check your connection.", "error");
   }
 }
 document.getElementById('closeRemovefriend').addEventListener('click', () => {
@@ -3152,14 +3183,26 @@ document.getElementById("markAllReadBtn").addEventListener("click", () => {
   Object.entries(latestNotifications).forEach(([key, notif]) => {
     if (!notif.read) updates[`${key}/read`] = true;
   });
-  if (Object.keys(updates).length > 0) {
-    update(ref(database, `users/${currentUser.uid}/notifications`), updates);
+  if (Object.keys(updates).length === 0) {
+    showToast("You're all caught up — nothing unread.", "info");
+    return;
   }
+  update(ref(database, `users/${currentUser.uid}/notifications`), updates)
+    .then(() => showToast("All notifications marked as read."))
+    .catch(() => showToast("Couldn't mark notifications as read.", "error"));
 });
 document.getElementById("clearNotificationsBtn").addEventListener("click", async () => {
   if (!currentUser) return;
-  await remove(ref(database, `users/${currentUser.uid}/notifications`));
-  showToast("Notifications cleared.", "success");
+  if (Object.keys(latestNotifications).length === 0) {
+    showToast("No notifications to clear.", "info");
+    return;
+  }
+  try {
+    await remove(ref(database, `users/${currentUser.uid}/notifications`));
+    showToast("Notifications cleared.", "success");
+  } catch (error) {
+    showToast("Couldn't clear notifications.", "error");
+  }
 });
 
 // --- Notification settings (the Profile "Manage Notifications" button) ---
@@ -3193,6 +3236,7 @@ async function saveNotificationPrefs() {
       ref(database, `users/${currentUser.uid}/settings/notifications`),
       notificationPrefs
     );
+    showToast("Notification settings saved.");
   } catch (error) {
     showToast("Could not save notification settings.", "error");
   }
@@ -3663,19 +3707,29 @@ async function saveAutoReminderSettings() {
     `users/${currentUser.uid}/autoReminders/${friendUserId}`
   );
 
-  if (!toggle.checked) {
-    await remove(reminderRef);
-    return;
-  }
+  try {
+    if (!toggle.checked) {
+      await remove(reminderRef);
+      showToast(`Auto reminders turned off for ${name}.`);
+      return;
+    }
 
-  const existing = await get(reminderRef);
-  await set(reminderRef, {
-    enabled: true,
-    frequencyDays: parseInt(document.getElementById("autoRemindRange").value, 10),
-    friendName: name,
-    phone: phone ?? null,
-    lastSent: existing.exists() ? existing.val().lastSent || Date.now() : Date.now(),
-  });
+    const frequencyDays = parseInt(document.getElementById("autoRemindRange").value, 10);
+    const existing = await get(reminderRef);
+    await set(reminderRef, {
+      enabled: true,
+      frequencyDays,
+      friendName: name,
+      phone: phone ?? null,
+      lastSent: existing.exists() ? existing.val().lastSent || Date.now() : Date.now(),
+    });
+    showToast(
+      `${name} will be reminded every ${frequencyDays} day${frequencyDays === 1 ? "" : "s"}.`
+    );
+  } catch (error) {
+    console.error("❌ Error saving auto-reminder settings:", error);
+    showToast("Couldn't save auto reminder settings.", "error");
+  }
 }
 
 document.getElementById("autoRemindToggle").addEventListener("change", () => {
