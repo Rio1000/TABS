@@ -1078,11 +1078,9 @@ function addAdBox() {
     adBox.classList.add("personlist-item", "ad-box");
     adBox.innerHTML = `
       <p class="ad-box-label">Advertisement</p>
-      <ins class="adsbygoogle" style="display:block"
+      <ins class="adsbygoogle"
         data-ad-client="ca-pub-7825788728707782"
-        data-ad-slot="8944873686"
-        data-ad-format="auto"
-        data-full-width-responsive="true"></ins>
+        data-ad-slot="8944873686"></ins>
     `;
     watchInListAdFill(adBox);
   }
@@ -1112,17 +1110,38 @@ function watchInListAdFill(adBox) {
   const ins = adBox.querySelector(".adsbygoogle");
   if (!ins) return;
 
+  // Collapsed (zero height, full width) until AdSense actually fills the slot.
+  // The slot has a fixed 250px height, so showing it while waiting put a large
+  // empty box in the list for ~3s and then yanked it out, jumping the rows.
+  // Not display:none while waiting: AdSense won't fill a slot it measures as
+  // 0px wide.
+  adBox.classList.add("ad-pending");
+
   function checkFill() {
+    const filled = ins.dataset.adStatus === "filled" || !!ins.querySelector("iframe");
+    if (filled && ins.dataset.adStatus !== "unfilled") {
+      adBox.classList.remove("ad-pending");
+      adBox.style.display = "";
+    }
+  }
+  function giveUp() {
     const scriptBlocked = !(window.adsbygoogle && window.adsbygoogle.loaded);
-    const neverFilled = ins.dataset.adStatus !== "filled" && ins.offsetHeight === 0;
-    adBox.style.display = scriptBlocked || neverFilled ? "none" : "";
+    if (scriptBlocked || ins.dataset.adStatus === "unfilled" || adBox.classList.contains("ad-pending")) {
+      adBox.style.display = "none";
+    }
   }
 
-  new MutationObserver(checkFill).observe(ins, {
+  new MutationObserver(() => {
+    if (ins.dataset.adStatus === "unfilled") giveUp();
+    else checkFill();
+  }).observe(ins, {
     attributes: true,
     attributeFilter: ["data-ad-status"],
+    childList: true,
+    subtree: true,
   });
-  setTimeout(checkFill, 3000);
+  // Still nothing after a few seconds: blocked or no fill, so drop the box.
+  setTimeout(giveUp, 4000);
 }
 
 // Guests never run loadListFromFirebase (it bails without a user, since
@@ -1356,6 +1375,14 @@ async function updatePendingCount() {
     const sentBadge = document.getElementById("sentCount");
     sentBadge.textContent = sentCount;
     sentBadge.style.display = sentCount > 0 ? "inline-flex" : "none";
+
+    // The pills are bare numbers; give screen readers the meaning.
+    const parts = [];
+    if (receivedCount) parts.push(`${receivedCount} received`);
+    if (sentCount) parts.push(`${sentCount} sent`);
+    document
+      .getElementById("pendingRequestsBtn")
+      .setAttribute("aria-label", parts.length ? `Pending requests: ${parts.join(", ")}` : "Pending requests");
   } catch (error) {
     console.error("❌ Error updating pending count:", error);
   }

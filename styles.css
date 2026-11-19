@@ -1495,9 +1495,11 @@ input {
    cut-out ring matches the Pending button so each pill reads as a badge. */
 #pendingCount,
 #sentCount {
-  position: absolute;
-  top: -8px;
-  right: -8px;
+  /* Laid out side by side inside #pendingRequestsCount (which is the part
+     pinned to the corner). Both used to be absolutely positioned 3px apart,
+     so with received and sent requests the two numbers were drawn on top of
+     each other. */
+  position: static;
   margin-left: 0;
   min-width: 18px;
   height: 18px;
@@ -1509,12 +1511,12 @@ input {
   pointer-events: none;
 }
 #pendingCount {
-  background-color: #6da765;
+  /* Same green as success toasts: white on the old #6da765 was ~3:1, below
+     the WCAG AA minimum. This is 5.1:1. */
+  background-color: #2e7d32;
   color: #fff;
 }
-/* Tucked just left of the received badge so both can show side by side. */
 #sentCount {
-  right: -5px;
   background-color: rgba(80, 202, 211, 0.92);
   color: #04333a;
 }
@@ -1614,18 +1616,20 @@ input {
   border-width: 1px !important;
 }
 #pendingRequestsCount{
+  /* Holds the received + sent pills in the button's top-right corner. No
+     background of its own: the old green fill showed as a block behind the
+     pills (and on its own when both counts were hidden). */
   position: absolute;
   top: -8px;
   right: -8px;
   margin-left: 0;
   display: flex;
   flex-direction: row;
-  align-items: left;
-  justify-content: center;
-  min-width: 20px;
+  align-items: center;
+  gap: 4px;
   height: 20px;
-  background-color: #237e29;
   width: auto;
+  pointer-events: none;
 }
 #addFriendBtn,
 #pendingRequestsBtn{
@@ -1967,9 +1971,27 @@ body.payments-enabled .pay-request-btn {
 }
 /* Make sure the AdSense <ins> actually gets layout width — a zero-width
    container makes AdSense skip filling it. */
+/* In-list ad waiting for AdSense: no height, but full width so AdSense can
+   measure the slot (see watchInListAdFill). Revealed once it is filled. */
+.personlist-item.ad-box.ad-pending {
+  max-height: 0;
+  min-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: -12px; /* cancel #people-list's row gap for the empty slot */
+  border-width: 0;
+  opacity: 0;
+  overflow: hidden;
+}
 .ad-box .adsbygoogle {
+  /* Fixed slot height (AdSense's documented way to size a responsive unit:
+     exact CSS size, no data-ad-format="auto"). "auto" let Google serve
+     creatives several hundred px tall that dominated the list. 250px fits a
+     standard 300x250 rectangle. Never clip an ad with overflow:hidden. */
+  display: inline-block;
   width: 100%;
   min-width: 250px;
+  height: 250px;
 }
 
 #close-prompt {
