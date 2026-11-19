@@ -161,9 +161,4 @@
   border: 0;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .toastify {
-    transition: opacity 0.01s linear;
-  }
-}
 /*# sourceMappingURL=/sm/cb4335d1b03e933ed85cb59fffa60cf51f07567ed09831438c60f59afd166464.map */
