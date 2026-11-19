@@ -161,4 +161,19 @@
   border: 0;
 }
 
+/* Phones: toasts spanned the whole top edge and sat on the menu button (and
+   its unread badge) for 4-6s after every action, so the menu could not be
+   opened until they cleared. Stop them short of it. */
+@media only screen and (max-width: 599px) {
+  .toastify,
+  .toastify-left,
+  .toastify-right,
+  .toastify-center {
+    left: 8px !important;
+    right: 76px !important;
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
 /*# sourceMappingURL=/sm/cb4335d1b03e933ed85cb59fffa60cf51f07567ed09831438c60f59afd166464.map */

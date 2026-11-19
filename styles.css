@@ -180,7 +180,9 @@ body {
 }
 
 .personlist-item.item-enter {
-  animation: item-enter 0.25s ease-out;
+  /* backwards: a staggered row (Undo after Clear) stays hidden until its turn
+     instead of showing, vanishing and sliding back in. */
+  animation: item-enter 0.25s ease-out backwards;
 }
 
 .personlist-item.item-leave {
@@ -1066,17 +1068,6 @@ input {
   animation: modalCardSwapOut 0.22s ease both;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .modal-fx,
-  .modal-fx > *,
-  .modal-fx.modal-fx-closing,
-  .modal-fx.modal-fx-closing > *,
-  .modal-fx.modal-fx-swap-in > *,
-  .modal-fx.modal-fx-swap-out > * {
-    animation: none !important;
-    transition: none !important;
-  }
-}
 
 #sideNavModal {
   position: fixed;
@@ -3603,4 +3594,188 @@ button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request
    in script.js). The overlay itself needs no focus ring; controls inside keep theirs. */
 .modal-fx:focus {
   outline: none;
+}
+
+/* =====================================================================
+   Long names on list rows
+   -------------------------------------------------------------------
+   The name was nowrap inside a container wider than its column, so a long
+   name ("Finn Alexander-Montgomery") ran underneath the row's buttons.
+   Keep it inside its column and wrap to at most two lines. */
+.name-friend-icon-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
+}
+.name-friend-icon-container .friend-icon {
+  flex-shrink: 0;
+}
+.personlist-item .name-span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+/* Request payment builds "pay me" links, so it only belongs on rows where
+   they owe you. On an "I owe" row it offered your pay-me links to someone
+   you owe; it reappears if the row is flipped back to "They owe". */
+body.payments-enabled .personlist-item[data-status="iOwe"] .pay-request-btn {
+  display: none;
+}
+
+/* Profile: the Profile/Stats/Account tab bar is pinned to the top of the
+   card, but the card centred its content vertically, so a full profile
+   (phone, friend code, payment handles) grew up underneath the tabs. Start
+   the content below the tab bar and scroll if it runs long. */
+#ProfileBox {
+  justify-content: flex-start;
+  padding-top: 64px;
+  overflow-y: auto;
+}
+
+/* =====================================================================
+   Small feedback animations
+   ------------------------------------------------------------------- */
+/* Amount changes (+ $ / - $): a short pop so the new number registers. */
+@keyframes amount-bump {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.amount-input {
+  display: inline-block;
+  transition: color 0.3s ease; /* I owe / They owe flips green <-> red */
+}
+.amount-input.amount-bump {
+  animation: amount-bump 0.35s ease-out;
+}
+
+/* Notes on a row: slide in when added, collapse out when removed. */
+@keyframes note-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes note-leave {
+  from { opacity: 1; max-height: 80px; }
+  to { opacity: 0; max-height: 0; margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; }
+}
+.extra-info-item.note-enter {
+  animation: note-enter 0.22s ease-out;
+}
+.extra-info-item.note-leave {
+  animation: note-leave 0.2s ease-in forwards;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Notes on a row are secondary text: they were 24px, larger than the
+   person's name (20px bold), and overflow-y:scroll drew a permanent
+   scrollbar on every note on Windows. */
+.personlist-item .extra-info-item {
+  font-size: 16px;
+  line-height: 1.35;
+  overflow-y: auto;
+  align-items: center;
+}
+.personlist-item .extra-info-text {
+  font-size: 16px;
+  padding: 6px 10px;
+  overflow-wrap: anywhere;
+}
+
+/* Profile tabs: the selected one now looks selected. script.js sets
+   aria-pressed on it; the shared button style above (with !important) was
+   overriding the old inline highlight, so all three looked identical. */
+#profileInfo[aria-pressed="true"],
+#profileStats[aria-pressed="true"],
+#profileAccount[aria-pressed="true"] {
+  background-color: rgba(var(--btn-accent), 0.55) !important;
+  border-color: rgb(var(--btn-accent)) !important;
+  color: #fff !important;
+}
+
+/* "I Owe" wrapped onto two lines next to a one-line "They Owe". */
+.owe-toggle-label {
+  white-space: nowrap;
+}
+
+/* Notifications: the message and its action buttons (Accept / Decline,
+   Remind now) shared one row, squeezing the message into a narrow column of
+   tiny type. Give the message the full width and put the buttons under it. */
+#notificationsList li {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  row-gap: 8px;
+}
+#notificationsList .notification-message {
+  flex: 1 1 100%;
+  font-size: 15px;
+  line-height: 1.35;
+}
+#notificationsList .notification-action {
+  min-height: 36px;
+  padding: 6px 14px;
+}
+
+/* "Clear account history?" ran its question under the close X. Same
+   clearance the dialog titles use, and buttons big enough to hit. */
+#clearAccountHistoryBox > p {
+  padding: 0 40px;
+  margin-top: 8px;
+}
+#clearAccountHistoryButtons button {
+  min-width: 72px;
+  min-height: 40px;
+}
+
+/* =====================================================================
+   Contrast fixes found with real data loaded (WCAG AA, 4.5:1 for text)
+   ------------------------------------------------------------------- */
+/* Notifications: white text on the light-teal unread fill was ~3.9:1 and
+   the grey timestamps ~2.6:1. Dark fills, light timestamps; unread keeps its
+   accent stripe so it still stands out. */
+#notificationsList li {
+  background-color: #0d2f35;
+  color: #fff;
+}
+#notificationsList li.unread {
+  background-color: #123f47;
+}
+#notificationsList .notification-time {
+  color: #b9d3d7;
+}
+#notificationsList .notification-action {
+  background-color: #1f6fb5 !important;
+  color: #fff !important;
+  border: none !important;
+}
+#notificationsList .notification-action.accept {
+  background-color: #2e7d32 !important;
+}
+#notificationsList .notification-action.decline {
+  background-color: #b23a36 !important;
+}
+
+/* Note edit/remove buttons on a row: white on #8fadbd was 2.4:1. */
+.personlist-item .remove-info-btn {
+  background-color: #4f6f7d;
+}
+
+/* Unread-count badges: white on #ff4d4d was ~4:1. */
+.badge,
+#folderNotificationBadge {
+  background-color: #d32f2f;
+}
+
+/* Remove-friend X: 4.2:1 on the friend row; lighter glyph, same border. */
+#RemoveButton,
+.remove-friend-from-list {
+  color: #ffa59d !important;
 }
