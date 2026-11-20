@@ -579,7 +579,9 @@ onAuthStateChanged(auth, async (user) => {
 
     user.reload().then(() => {
       const creationTime = new Date(user.metadata.creationTime).toLocaleDateString();
-      const lastSignInTime = new Date(user.metadata.lastSignInTime).toLocaleDateString();
+      // Never print "Invalid Date" if the auth record has no sign-in time.
+      const lastSignIn = new Date(user.metadata?.lastSignInTime);
+      const lastSignInTime = isNaN(lastSignIn) ? "—" : lastSignIn.toLocaleDateString();
 
       if (lastLoginEl) lastLoginEl.innerText = `Last Login: ${lastSignInTime}`;
       if (createdEl) createdEl.innerText = `Account Created: ${creationTime}`;
@@ -1078,11 +1080,9 @@ function addAdBox() {
     adBox.classList.add("personlist-item", "ad-box");
     adBox.innerHTML = `
       <p class="ad-box-label">Advertisement</p>
-      <ins class="adsbygoogle" style="display:block"
+      <ins class="adsbygoogle"
         data-ad-client="ca-pub-7825788728707782"
-        data-ad-slot="8944873686"
-        data-ad-format="auto"
-        data-full-width-responsive="true"></ins>
+        data-ad-slot="8944873686"></ins>
     `;
     watchInListAdFill(adBox);
   }
@@ -1112,17 +1112,38 @@ function watchInListAdFill(adBox) {
   const ins = adBox.querySelector(".adsbygoogle");
   if (!ins) return;
 
+  // Collapsed (zero height, full width) until AdSense actually fills the slot.
+  // The slot has a fixed 250px height, so showing it while waiting put a large
+  // empty box in the list for ~3s and then yanked it out, jumping the rows.
+  // Not display:none while waiting: AdSense won't fill a slot it measures as
+  // 0px wide.
+  adBox.classList.add("ad-pending");
+
   function checkFill() {
+    const filled = ins.dataset.adStatus === "filled" || !!ins.querySelector("iframe");
+    if (filled && ins.dataset.adStatus !== "unfilled") {
+      adBox.classList.remove("ad-pending");
+      adBox.style.display = "";
+    }
+  }
+  function giveUp() {
     const scriptBlocked = !(window.adsbygoogle && window.adsbygoogle.loaded);
-    const neverFilled = ins.dataset.adStatus !== "filled" && ins.offsetHeight === 0;
-    adBox.style.display = scriptBlocked || neverFilled ? "none" : "";
+    if (scriptBlocked || ins.dataset.adStatus === "unfilled" || adBox.classList.contains("ad-pending")) {
+      adBox.style.display = "none";
+    }
   }
 
-  new MutationObserver(checkFill).observe(ins, {
+  new MutationObserver(() => {
+    if (ins.dataset.adStatus === "unfilled") giveUp();
+    else checkFill();
+  }).observe(ins, {
     attributes: true,
     attributeFilter: ["data-ad-status"],
+    childList: true,
+    subtree: true,
   });
-  setTimeout(checkFill, 3000);
+  // Still nothing after a few seconds: blocked or no fill, so drop the box.
+  setTimeout(giveUp, 4000);
 }
 
 // Guests never run loadListFromFirebase (it bails without a user, since
@@ -1356,6 +1377,14 @@ async function updatePendingCount() {
     const sentBadge = document.getElementById("sentCount");
     sentBadge.textContent = sentCount;
     sentBadge.style.display = sentCount > 0 ? "inline-flex" : "none";
+
+    // The pills are bare numbers; give screen readers the meaning.
+    const parts = [];
+    if (receivedCount) parts.push(`${receivedCount} received`);
+    if (sentCount) parts.push(`${sentCount} sent`);
+    document
+      .getElementById("pendingRequestsBtn")
+      .setAttribute("aria-label", parts.length ? `Pending requests: ${parts.join(", ")}` : "Pending requests");
   } catch (error) {
     console.error("❌ Error updating pending count:", error);
   }
@@ -1916,6 +1945,7 @@ document
 
     amountSpan.value = newAmount;
     amountSpan.innerHTML = usdToDisplay(newAmount).toFixed(2);
+    bumpAmount(amountSpan);
     saveListToFirebase();
     showToast(
       `Added ${symbol}${amountToAdd.toFixed(2)} to ${currentListItem.querySelector(".name-span").textContent
@@ -1948,6 +1978,7 @@ document
 
     amountSpan.value = newAmount;
     amountSpan.innerHTML = usdToDisplay(newAmount).toFixed(2);
+    bumpAmount(amountSpan);
     saveListToFirebase();
     showToast(
       `Removed ${symbol}${amountToRemove.toFixed(2)} from ${currentListItem.querySelector(".name-span").textContent
@@ -1957,6 +1988,17 @@ document
 
     closeEditMoneyModal();
   });
+
+// Pop the amount after +$ / -$ so the change registers. Delayed until the
+// money dialog has animated away, otherwise it plays behind the overlay.
+function bumpAmount(el) {
+  setTimeout(() => {
+    el.classList.remove("amount-bump");
+    void el.offsetWidth; // restart the animation if it is already applied
+    el.classList.add("amount-bump");
+    el.addEventListener("animationend", () => el.classList.remove("amount-bump"), { once: true });
+  }, 220);
+}
 
 function closeEditMoneyModal() {
   document.getElementById("editMoneyModal").style.display = "none";
@@ -2080,7 +2122,7 @@ addextrainfo.addEventListener("click", () => {
         currentListItem.appendChild(extraInfoContainer);
       }
 
-      createExtraInfoElement(extraInfoContainer, extraInfo);
+      createExtraInfoElement(extraInfoContainer, extraInfo, true);
       saveListToFirebase();
       showToast("Extra info added.");
     } else {
@@ -2101,9 +2143,13 @@ function closeExtraInfoModal() {
 
 let extraInfoElement = null; // 🔧 Declare it here
 
-function createExtraInfoElement(container, text) {
+function createExtraInfoElement(container, text, animate = false) {
   const extraInfoElement = document.createElement("div");
   extraInfoElement.classList.add("extra-info-item");
+  if (animate) {
+    extraInfoElement.classList.add("note-enter");
+    extraInfoElement.addEventListener("animationend", () => extraInfoElement.classList.remove("note-enter"), { once: true });
+  }
 
   // Create a span for the text
   const textSpan = document.createElement("span");
@@ -2115,6 +2161,9 @@ function createExtraInfoElement(container, text) {
   editExtraInfoBtn.innerHTML = '<span class="material-icons">edit</span>';
   editExtraInfoBtn.classList.add("remove-info-btn");
   editExtraInfoBtn.id = "edit-info-btn";
+  editExtraInfoBtn.setAttribute("aria-label", `Edit note: ${text}`);
+  editExtraInfoBtn.title = "Edit note";
+  editExtraInfoBtn.querySelector(".material-icons")?.setAttribute("aria-hidden", "true");
 
   editExtraInfoBtn.addEventListener("click", () => {
     openEditExtraInfoModal(textSpan); // Pass only the textSpan!
@@ -2123,10 +2172,17 @@ function createExtraInfoElement(container, text) {
   const removeExtraBtn = document.createElement("button");
   removeExtraBtn.textContent = "x";
   removeExtraBtn.classList.add("remove-info-btn");
+  removeExtraBtn.setAttribute("aria-label", `Remove note: ${text}`);
+  removeExtraBtn.title = "Remove note";
 
   removeExtraBtn.addEventListener("click", () => {
-    extraInfoElement.remove();
-    saveListToFirebase();
+    // Collapse it first, then remove and save (saving reads the DOM, so the
+    // note has to be gone by then).
+    extraInfoElement.classList.add("note-leave");
+    extraInfoElement.addEventListener("animationend", () => {
+      extraInfoElement.remove();
+      saveListToFirebase();
+    }, { once: true });
     showToast("Extra info removed.");
   });
 
@@ -2282,12 +2338,51 @@ clearListBtn.addEventListener("click", async () => {
     closeActionSheet();
     return;
   }
-  peopleList.innerHTML = ""; // Clear the list
+  closeActionSheet();
+
+  // Rows leave in a quick stagger rather than all vanishing in one frame;
+  // keep them (listeners and all) so Undo can put the whole list back.
+  const rows = [...peopleList.querySelectorAll(".personlist-item:not(.ad-box)")];
+  rows.forEach((row, i) => {
+    row.style.animationDelay = `${Math.min(i, 8) * 35}ms`;
+    row.classList.add("item-leave");
+  });
+  const lastDelay = Math.min(rows.length - 1, 8) * 35;
+  await new Promise((resolve) => setTimeout(resolve, lastDelay + 260));
+  rows.forEach((row) => {
+    row.remove();
+    row.classList.remove("item-leave");
+    row.style.animationDelay = "";
+  });
   addAdBox();
   saveListToFirebase();
-  await logUserAction("Cleared people list");
-  showToast("People list cleared successfully.", "success");
-  closeActionSheet();
+  logUserAction("Cleared people list");
+  showToast(`Cleared ${rows.length} tab${rows.length === 1 ? "" : "s"}.`, "success", {
+    label: "Undo",
+    icon: "undo",
+    ariaLabel: "Undo clearing the list",
+    onClick: () => {
+      // Skip if the list was rebuilt meanwhile (e.g. synced from another
+      // device): restoring would duplicate rows.
+      if (peopleList.querySelector(".personlist-item:not(.ad-box)")) {
+        showToast("Couldn't restore the list: it has changed since.", "error");
+        return;
+      }
+      rows.forEach((row, i) => {
+        row.style.animationDelay = `${Math.min(i, 8) * 35}ms`;
+        row.classList.add("item-enter");
+        row.addEventListener("animationend", () => {
+          row.classList.remove("item-enter");
+          row.style.animationDelay = "";
+        }, { once: true });
+        peopleList.appendChild(row);
+      });
+      addAdBox(); // keep the ad at the bottom
+      saveListToFirebase();
+      logUserAction("Restored cleared list");
+      showToast(`Restored ${rows.length} tab${rows.length === 1 ? "" : "s"}.`);
+    },
+  });
 });
 
 async function addFriend() {
@@ -2447,6 +2542,8 @@ async function populateFriendsList() {
         let removeButton = document.createElement("button");
         removeButton.textContent = "X";
         removeButton.classList.add("remove-friend-from-list");
+        removeButton.setAttribute("aria-label", `Remove ${friendData.firstName} ${friendData.lastName} from friends`);
+        removeButton.title = "Remove friend";
         removeButton.id = "RemoveButton";
 
         removeButton.onclick = () => {
@@ -2477,7 +2574,8 @@ async function populateFriendsList() {
         // "add this friend to my tab list" and can't be mistaken for an
         // accept-request button.
         friendAddButton.innerHTML =
-          '<span class="material-icons">playlist_add</span>';
+          '<span class="material-icons" aria-hidden="true">playlist_add</span>';
+        friendAddButton.setAttribute("aria-label", `Add ${friendData.firstName} ${friendData.lastName} to your tabs list`);
         friendAddButton.title = "Add this friend to your tab list";
         friendAddButton.onclick = () => {
           addPerson(
@@ -3500,14 +3598,19 @@ async function openPaymentRequestModal(listItem) {
   // Cash App links) interpret the amount as USD, so the link must carry the
   // USD figure — using the converted display number used to send e.g. a
   // €-converted value as dollars.
-  const amount = parseFloat(listItem.querySelector(".amount-input").value);
-  const amountValid = !isNaN(amount) && amount > 0;
+  // Number(), not parseFloat(): an item tab like "2 tickets" parsed as 2 and
+  // showed (and linked) a made-up "$2.00".
+  const rawAmount = listItem.querySelector(".amount-input").value;
+  const amount = typeof rawAmount === "number" ? rawAmount : Number(String(rawAmount).trim());
+  const amountValid = Number.isFinite(amount) && amount > 0;
   const amt = amountValid ? amount : null;
 
   document.getElementById("paymentRequestTitle").textContent = `Request from ${name}`;
   document.getElementById("paymentRequestSubtitle").textContent = amountValid
     ? `They owe you ${getSymbol(getSelectedCurrency())}${usdToDisplay(amount).toFixed(2)}`
-    : "Choose how to request payment";
+    : rawAmount && isNaN(Number(rawAmount))
+      ? `For: ${rawAmount}. The link won't include an amount.`
+      : "Choose how to request payment";
 
   const optionsEl = document.getElementById("paymentRequestOptions");
   optionsEl.innerHTML = "";

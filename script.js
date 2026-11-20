@@ -416,11 +416,22 @@ function activateProfileTab(index) {
     btn.style.backgroundColor = i === index
       ? "rgba(89, 192, 199, 0.8)"
       : "rgba(50, 108, 112, 0.8)";
+    btn.setAttribute("aria-pressed", String(i === index));
   });
 }
 
 buttons.forEach((button, index) => {
   button.addEventListener('click', () => activateProfileTab(index));
+  // The tabs are <a> elements with no href, which the keyboard skips: give
+  // them button semantics, a tab stop and Enter/Space.
+  button.setAttribute("role", "button");
+  button.tabIndex = 0;
+  button.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      activateProfileTab(index);
+    }
+  });
 });
 
 // Start on the Profile Info tab so it's already highlighted the first time
