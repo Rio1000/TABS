@@ -1,5 +1,10 @@
 # TABS Mobile
 
+> **Retired for iOS.** The App Store app is the native Swift project in `ios/`
+> (bundle ID `com.tabsonfriends.app`). This Expo app's iOS bundle ID is
+> `com.tabsonfriends.expo` so an EAS build can never be uploaded to the real
+> App Store listing by accident. Don't change it back.
+
 A thin **WebView shell** around the TABS web app, built with Expo + React
 Native. Instead of re-implementing every screen natively, the app loads the
 live website (`https://tabsonfriends.com`) in a full-screen WebView, so the
@@ -61,19 +66,22 @@ npm run android   # requires Android Studio + an emulator or connected device
 
 ## Building a real installable app
 
-Expo Go is fine for development, but to produce an actual `.ipa`/`.apk` (or
-to publish to the App Store / Play Store) use [EAS Build](https://docs.expo.dev/build/introduction/):
+Expo Go is fine for development, but to produce an actual `.apk`/`.aab` (or
+to publish to the Play Store) use [EAS Build](https://docs.expo.dev/build/introduction/).
+Publishing from this project is **Play Store / Android only** — the iOS App
+Store app ships from the native project in `ios/` (see `ios/README.md`), never
+from an EAS build of this one.
 
 ```bash
 npm install -g eas-cli
 eas login
 eas build:configure
-eas build --platform android   # or ios, or --platform all
+eas build --platform android
 ```
 
-That's a hosted build service — it doesn't require a local Xcode/Android
-Studio install, but you will need Apple Developer / Google Play developer
-accounts to sign and submit the result to the respective stores.
+That's a hosted build service — it doesn't require a local Android Studio
+install, but you will need a Google Play developer account to sign and submit
+the result.
 
 ## Push setup (required for reminders to reach the phone)
 
@@ -90,14 +98,13 @@ Then:
    `expo-constants` to the versions matching Expo SDK 54.
 2. `eas init` — creates the EAS project and writes `extra.eas.projectId`
    into `app.json`. Expo needs this to mint push tokens.
-3. `eas credentials` — for iOS, upload an **APNs key** so Expo can deliver to
-   Apple devices.
-4. `eas build` — remote push does **not** work in Expo Go; build a dev or
-   production build to test tokens and delivery. (The WebView itself runs fine
-   in Expo Go for quick UI checks.)
+3. `eas build --platform android` — remote push does **not** work in Expo
+   Go; build a dev or production build to test tokens and delivery. (The
+   WebView itself runs fine in Expo Go for quick UI checks.) iOS push is set
+   up in `ios/README.md` for the native app, not here.
 
 (If you'd rather not install globally, prefix each command with the package
-name: `npx eas-cli init`, `npx eas-cli credentials`, `npx eas-cli build`.)
+name: `npx eas-cli init`, `npx eas-cli build --platform android`.)
 
 ## Project layout
 

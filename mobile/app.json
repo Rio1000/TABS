@@ -10,7 +10,7 @@
     "backgroundColor": "#0b0b10",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tabsonfriends.app"
+      "bundleIdentifier": "com.tabsonfriends.expo"
     },
     "android": {
       "package": "com.tabsonfriends.app",

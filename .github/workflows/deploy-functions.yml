@@ -1,9 +1,13 @@
 name: Deploy Firebase Functions
 
 # Deploys the Cloud Functions AND the Realtime Database rules. Runs when
-# anything under functions/ or database.rules.json changes on the branches
-# below, or on demand from the Actions tab ("Run workflow"). No local Firebase
-# CLI needed — everything runs here.
+# anything under functions/, database.rules.json, or reminder-messages.json
+# (the reminder templates the functions bundle via firebase.json's predeploy
+# hook) changes on the branch below, or on demand from the Actions tab
+# ("Run workflow"). No local Firebase CLI needed — everything runs here.
+#
+# Removing a function from functions/index.js deletes it from the project on
+# the next deploy (--force accepts the deletion non-interactively).
 
 # Deploys run from main only — feature branches must merge before anything
 # reaches production functions or rules (stale claude/* branches used to be
@@ -16,6 +20,7 @@ on:
       - "functions/**"
       - "firebase.json"
       - "database.rules.json"
+      - "reminder-messages.json"
       - ".github/workflows/deploy-functions.yml"
   workflow_dispatch:
 
@@ -37,21 +42,6 @@ jobs:
       - name: Install the Firebase CLI
         run: npm install -g firebase-tools
 
-      # Twilio creds come from GitHub repo Secrets and are written into
-      # functions/.env (gitignored) only inside this runner. Firebase applies
-      # .env values as the deployed function's environment variables.
-      - name: Write Twilio env file
-        env:
-          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
-          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
-          TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
-        run: |
-          {
-            printf 'TWILIO_ACCOUNT_SID=%s\n' "$TWILIO_ACCOUNT_SID"
-            printf 'TWILIO_AUTH_TOKEN=%s\n'  "$TWILIO_AUTH_TOKEN"
-            printf 'TWILIO_FROM_NUMBER=%s\n' "$TWILIO_FROM_NUMBER"
-          } > functions/.env
-
       - name: Deploy the functions and database rules
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
@@ -60,7 +50,9 @@ jobs:
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa-key.json"
           # --force auto-accepts the Artifact Registry cleanup-policy prompt;
           # without it the CLI exits non-zero even after a successful deploy.
-          # database publishes database.rules.json so the pushTokens rule (and
-          # any future rule change) goes live with the function.
+          # database publishes database.rules.json so rule changes go live with
+          # the functions. firebase deploy runs firebase.json's functions
+          # predeploy hook first, which copies reminder-messages.json into
+          # functions/ before the source is packaged.
           firebase deploy --only functions,database --project tabs-4a0eb --force --non-interactive
           rm -f "$RUNNER_TEMP/sa-key.json"

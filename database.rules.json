@@ -7,6 +7,12 @@
         "profile": {
           ".write": "$uid === auth.uid",
 
+          // The display name is the only user-chosen text that reaches
+          // another user (the server templates for friend requests and
+          // reminders include it), so keep it a short string.
+          "firstName": { ".validate": "newData.isString() && newData.val().length <= 60" },
+          "lastName":  { ".validate": "newData.isString() && newData.val().length <= 60" },
+
           "phoneNumber": {
             // A friend may read ONLY this field. The check looks at the
             // profile owner's own friendUids index (which only the owner can
@@ -30,18 +36,41 @@
         "spending":     { ".write": "$uid === auth.uid" },
         "settings":     { ".write": "$uid === auth.uid" },
         "notifications": {
-          // Owner can read/manage everything (mark read, clear all, etc.).
+          // Owner-only. The owner reads/manages everything (mark read,
+          // accept/decline, clear all, their own auto-reminder notes and
+          // the "accepted" note their client writes when it reconciles an
+          // acceptance marker). No other user can write here: cross-user
+          // notifications (friend requests, reminders) are written
+          // server-side by the sendFriendEventPush / sendReminderPush Cloud
+          // Functions (Admin SDK). Their bodies are server templates that
+          // include only the sender's own display name (reminders also carry
+          // a validated amount), and senders the recipient has blocked
+          // (users/{uid}/blocked) are skipped — so no sender-written text
+          // reaches another user's inbox.
           ".write": "$uid === auth.uid",
           "$notif_id": {
-            // Other signed-in users may only CREATE a notification (friend
-            // request/accept, reminder) — never overwrite or delete an
-            // existing one — and must stamp it with their own uid so the
-            // recipient can tell who sent it and the sender can't spoof.
-            ".write": "auth != null && !data.exists() && newData.exists() && newData.child('fromUid').val() === auth.uid",
             ".validate": "!newData.exists() || (newData.hasChild('message') && newData.hasChild('timestamp') && newData.child('message').isString() && newData.child('message').val().length <= 500 && newData.child('timestamp').isNumber())"
           }
         },
         "autoReminders": { ".write": "$uid === auth.uid" },
+
+        "blocked": {
+          // People this user has blocked: { firstName, lastName, blockedAt }
+          // keyed by the blocked uid. Owner-only (read is covered by the
+          // $uid .read above). The pendingRequests rule below consults it so
+          // a blocked user can't write new requests to the owner, and the
+          // Cloud Functions — the only writers of cross-user notifications
+          // and pushes — consult it so a blocked user's requests and
+          // reminders never reach the owner's inbox or devices.
+          ".write": "$uid === auth.uid",
+          "$blocked_uid": {
+            ".validate": "$blocked_uid !== $uid && newData.hasChildren(['firstName', 'lastName', 'blockedAt'])",
+            "firstName": { ".validate": "newData.isString() && newData.val().length <= 100" },
+            "lastName":  { ".validate": "newData.isString() && newData.val().length <= 100" },
+            "blockedAt": { ".validate": "newData.isNumber()" },
+            "$other":    { ".validate": false }
+          }
+        },
 
         "pushTokens": {
           // Each user registers their own device push tokens here. The
@@ -84,11 +113,35 @@
         },
         "pendingRequests": {
           "$requester_uid": {
-            ".write": "auth.uid === $requester_uid || auth.uid === $uid",
+            // The owner manages their own inbox; the requester may write the
+            // entry keyed by their own uid (a request, or the acceptance
+            // marker approveFriend leaves for the original sender) unless the
+            // owner has blocked them. Deletes stay allowed either way, so a
+            // blocked requester can still cancel/clean up their own request.
+            // An acceptance marker (type "accepted") is only allowed when the
+            // owner really sent the writer a request — the owner's own
+            // sentRequests entry for them, which only the owner can create —
+            // so nobody can forge "X accepted your request" to befriend
+            // themselves into someone's list.
+            ".write": "auth.uid === $uid || (auth.uid === $requester_uid && (!newData.exists() || !root.child('users').child($uid).child('blocked').child(auth.uid).exists()) && (!newData.exists() || newData.child('type').val() !== 'accepted' || root.child('users').child($uid).child('sentRequests').child(auth.uid).exists()))",
             ".validate": "!newData.exists() || (newData.hasChild('fromUserId') && newData.hasChild('firstName') && newData.hasChild('lastName') && newData.child('fromUserId').val() === $requester_uid)"
           }
         }
       }
+    },
+    "reports": {
+      // User reports (reportUser Cloud Function, Admin SDK only). No client
+      // may read or write them — stated explicitly rather than relying on
+      // the default deny.
+      ".read": false,
+      ".write": false
+    },
+    "deliveryLog": {
+      // deliveryLog/{senderUid}/{recipientUid}/{pushId} = { type, message,
+      // sentAt }: what the Cloud Functions actually delivered, kept (last 20
+      // per pair) as tamper-proof evidence for reportUser. Admin SDK only.
+      ".read": false,
+      ".write": false
     },
     "friendCodes": {
       // Reads are scoped to a single, exact code — you can look up the code a

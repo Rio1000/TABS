@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#071a1f" />
+    <title>Privacy Policy | TABS</title>
+    <meta name="description"
+        content="What TABS (tabs on friends) collects, why, who can see it, which services process it, and how to export or delete your data." />
+    <link rel="canonical" href="https://tabsonfriends.com/privacy" />
+    <link rel="icon" type="image/x-icon" href="/logo.ico" />
+    <style>
+        :root {
+            --bg-1: #000000;
+            --bg-2: #3a7486;
+            --text: #f1f1f1;
+            --muted: #b8cdd2;
+            --heading: #a0e8f3;
+            --brand: #50c444;
+            --card: rgba(3, 40, 46, 0.72);
+            --card-border: rgba(80, 202, 211, 0.32);
+            --rule: rgba(160, 232, 243, 0.16);
+        }
+
+        * { box-sizing: border-box; }
+
+        html {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+            background: var(--bg-1);
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+                Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+            font-size: 17px;
+            line-height: 1.6;
+            color: var(--text);
+            padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+                max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+        }
+
+        /* Fixed gradient layer: background-attachment: fixed is ignored by iOS
+           Safari / WKWebView, so the site's gradient lives on its own layer. */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: linear-gradient(319deg, var(--bg-1) 0%, var(--bg-2) 55%);
+            opacity: 0.85;
+        }
+
+        a { color: var(--brand); text-underline-offset: 2px; }
+        a:hover { color: #7ddc72; }
+        a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+
+        .topbar {
+            max-width: 760px;
+            margin: 0 auto 16px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px 16px;
+        }
+
+        .back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: 1px solid rgba(80, 196, 68, 0.7);
+            border-radius: 12px;
+            background: rgba(80, 196, 68, 0.12);
+            color: #d6f5d1;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .back:hover { background: rgba(80, 196, 68, 0.22); color: #ffffff; }
+
+        .pages { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 15px; }
+        .pages a { color: var(--muted); text-decoration: none; }
+        .pages a:hover { color: var(--text); text-decoration: underline; }
+        .pages a[aria-current="page"] { color: var(--heading); font-weight: 600; }
+
+        main {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 24px 20px 28px;
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+
+        .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; color: var(--heading); font-weight: 700; letter-spacing: 0.04em; }
+        .brand svg { width: 30px; height: 30px; flex: none; }
+
+        h1 { margin: 0 0 4px; font-size: 30px; line-height: 1.2; color: #ffffff; }
+        h2 { margin: 32px 0 8px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 21px; line-height: 1.3; color: var(--heading); }
+        h3 { margin: 20px 0 4px; font-size: 17px; color: #ffffff; }
+        p, ul, ol { margin: 0 0 12px; }
+        ul, ol { padding-left: 22px; }
+        li { margin-bottom: 6px; }
+        strong { color: #ffffff; }
+        .meta { color: var(--muted); font-size: 15px; margin-bottom: 18px; }
+
+        .summary {
+            margin: 18px 0 8px;
+            padding: 14px 16px;
+            border-left: 4px solid var(--brand);
+            border-radius: 8px;
+            background: rgba(80, 196, 68, 0.1);
+        }
+        .summary ul { margin: 0; }
+
+        .provider { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 10px; background: rgba(0, 0, 0, 0.18); }
+        .provider p { margin: 0 0 4px; }
+        .provider p:last-child { margin: 0; }
+
+        .toc { columns: 2 220px; column-gap: 24px; font-size: 15px; padding-left: 20px; }
+
+        footer {
+            max-width: 760px;
+            margin: 18px auto 0;
+            color: var(--muted);
+            font-size: 14px;
+            text-align: center;
+        }
+        footer nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; margin-bottom: 6px; }
+
+        @media (max-width: 480px) {
+            body { font-size: 16px; }
+            main { padding: 20px 16px 24px; }
+            h1 { font-size: 26px; }
+            h2 { font-size: 19px; }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="topbar">
+        <a class="back" href="/">&larr; Back to TABS</a>
+        <nav class="pages" aria-label="TABS policies and help">
+            <a href="/privacy" aria-current="page">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/support">Support</a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="brand">
+            <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                <rect x="5" y="6" width="16" height="16" fill="none" stroke="#50c444" stroke-width="2.4" />
+                <rect x="11" y="11" width="16" height="16" fill="none" stroke="#a0e8f3" stroke-width="2.4" />
+            </svg>
+            <span>TABS</span>
+        </div>
+        <h1>Privacy Policy</h1>
+        <p class="meta">Effective November 24, 2026 &middot; Last updated November 24, 2026</p>
+
+        <p>TABS ("tabs on friends") is an IOU tracker made and run by Parker Heikes ("we", "us"). It is available as a
+            website at <a href="https://tabsonfriends.com/">tabsonfriends.com</a> and as an iPhone app, which shows the
+            same website and adds native sign-in, notifications, ads and an optional tip. This policy covers both. It
+            explains what we collect, why, who can see it, which companies process it for us, and how to export or
+            delete it.</p>
+
+        <div class="summary">
+            <ul>
+                <li>We do not sell your personal information.</li>
+                <li>TABS never moves or holds money and never sees your bank or card details.</li>
+                <li>Your list of tabs is private to your account. Friends only see your name, friend code, phone number
+                    (if you gave one) and any payment handles you choose to add.</li>
+                <li>You can export or permanently delete your data yourself, at any time, from Profile &rarr; Account.</li>
+            </ul>
+        </div>
+
+        <nav aria-label="On this page">
+            <ol class="toc">
+                <li><a href="#collect">What we collect</a></li>
+                <li><a href="#use">How we use it</a></li>
+                <li><a href="#visible">What other people can see</a></li>
+                <li><a href="#third-parties">Services that process data</a></li>
+                <li><a href="#ads">Ads and tracking</a></li>
+                <li><a href="#retention">Retention and deletion</a></li>
+                <li><a href="#choices">Your choices and rights</a></li>
+                <li><a href="#security">Security</a></li>
+                <li><a href="#children">Children</a></li>
+                <li><a href="#transfers">International transfers</a></li>
+                <li><a href="#changes">Changes</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="collect">1. What we collect and how</h2>
+        <p>Almost everything TABS stores is something you type in or a choice you make in the app. We store it in
+            Google Firebase under your account.</p>
+
+        <h3>Account details</h3>
+        <ul>
+            <li><strong>Email sign-up:</strong> first name, last name, phone number and email address. Your password is
+                handled by Firebase Authentication and stored by Google in hashed form; we never see it.</li>
+            <li><strong>Sign in with Google:</strong> the name and email address on your Google account.</li>
+            <li><strong>Sign in with Apple:</strong> your name (Apple shares it only the first time, and only if you
+                choose to) and an email address, which may be an Apple private relay address if you pick "Hide My
+                Email". Apple also gives us a sign-in token and an authorization code, which are used only to sign you
+                in and, when you delete your account, to revoke TABS's access to your Apple ID.</li>
+            <li><strong>Sign-in records:</strong> Firebase Authentication keeps your account creation time and last
+                sign-in time, which you can see under Profile &rarr; Stats.</li>
+        </ul>
+
+        <h3>Friend code and friends</h3>
+        <ul>
+            <li>A random 8-character <strong>friend code</strong> we generate for you. It is stored in a lookup table
+                with your first and last name so that someone you give the code to can find you.</li>
+            <li>Your <strong>friends list</strong> and <strong>friend requests</strong> (sent and received), including
+                each friend's name, friend code, user ID and phone number.</li>
+        </ul>
+
+        <h3>Your tabs</h3>
+        <ul>
+            <li>The <strong>people you track</strong> (they do not need to use TABS), <strong>amounts</strong>,
+                <strong>items</strong>, <strong>notes</strong>, who owes whom, <strong>interest</strong> settings, your
+                running totals, and when you last cleared your list.</li>
+            <li>You decide what goes into a tab. Please don't put sensitive information about yourself or anyone else
+                in notes.</li>
+        </ul>
+
+        <h3>Payment handles</h3>
+        <ul>
+            <li>If you set up Payment Requests: your <strong>Venmo username, PayPal.Me username and/or Cash App
+                    $cashtag</strong>, and whether the feature is on. TABS uses them only to build links that open those
+                apps. We never receive account numbers, balances or card details.</li>
+        </ul>
+
+        <h3>Reminders and notifications</h3>
+        <ul>
+            <li>Your in-app <strong>notifications</strong> (friend requests, accepted requests, payment reminders),
+                each with the sender's user ID, the message and the time.</li>
+            <li><strong>Auto-reminder settings</strong> for each friend: on/off, how often, and when one was last
+                sent.</li>
+            <li>Reminder and friend-request notifications are written by our server, not by the sender's app. Reminders
+                use a fixed list of friendly messages, filled in with the recipient's first name and the amount, and
+                the only other personal detail they include is the sender's own name. The TABS app has no way to type
+                your own reminder text.</li>
+        </ul>
+
+        <h3>Device push tokens</h3>
+        <ul>
+            <li>If you allow notifications, we store a <strong>push token</strong> for each phone or browser so we can
+                deliver notifications to it. Tokens that stop working are removed automatically.</li>
+        </ul>
+
+        <h3>Safety: blocks and reports</h3>
+        <ul>
+            <li>People you <strong>block</strong>: their name and when you blocked them.</li>
+            <li>If you <strong>report</strong> someone: your user ID and name, their user ID and name, the reason,
+                any details you write, the time, and as evidence up to the 10 most recent reminders, friend requests
+                and request acceptances that person sent you through TABS (message text and time only).</li>
+            <li>A short <strong>delivery log</strong>: for each sender and recipient, our server keeps the last 20
+                reminder, friend-request and request-accepted messages it delivered (type, text and time) so reports
+                can be checked.
+                Only our server can read it.</li>
+            <li>Short <strong>rate-limit records</strong> (two user IDs and a timestamp) that stop people from spamming
+                reminders, friend requests or reports.</li>
+        </ul>
+
+        <h3>Activity and settings</h3>
+        <ul>
+            <li>An <strong>account history</strong> log of actions you take (for example "Sent a reminder to Sam").
+                Only you can see it, under Profile &rarr; Account &rarr; View Account History, and you can clear it.</li>
+            <li>Your <strong>notification preferences</strong> and <strong>payment-request settings</strong>.</li>
+            <li>On your own device only (browser storage, never sent to us): your chosen currency, cached exchange
+                rates, and whether we've already asked you to turn on notifications.</li>
+            <li><strong>Server logs</strong> from our Cloud Functions record user IDs, what action ran and how many
+                notifications were delivered, for debugging and abuse prevention.</li>
+        </ul>
+
+        <h3>Ads and tips</h3>
+        <ul>
+            <li><strong>iPhone app ads:</strong> Google AdMob collects device and usage information to show the banner
+                ad. If you allow tracking, it may also use your device's advertising identifier. See
+                <a href="#ads">Ads and tracking</a>.</li>
+            <li><strong>Website ads:</strong> Google AdSense shows ads on the website's login page and at the bottom of
+                your list, and may use cookies. AdSense is not loaded in the iPhone app.</li>
+            <li><strong>Tips:</strong> the "Buy us a coffee" tip in the iPhone app is an in-app purchase processed
+                entirely by Apple. We receive no card details, name or email, only Apple's aggregate sales reports. On
+                the website, tips go through Buy Me a Coffee on its own site.</li>
+        </ul>
+
+        <h3>What we don't collect</h3>
+        <p>TABS does not use any analytics or crash-reporting tools. It does not access your contacts, photos, camera,
+            microphone or precise location. "Invite to TABS" opens your phone's own share sheet or messaging app; we
+            don't see who you send it to. If you use <strong>Continue as Guest</strong>, nothing you enter is saved to
+            our servers and it is gone when you leave the page.</p>
+
+        <h2 id="use">2. How we use it</h2>
+        <ul>
+            <li><strong>To run TABS:</strong> sign you in, save and sync your tabs across devices, connect you with
+                friends, deliver reminders and notifications, and build payment links.</li>
+            <li><strong>To keep people safe:</strong> enforce blocks, review reports, rate-limit reminders and requests,
+                and suspend accounts that break our <a href="/terms">Terms</a>.</li>
+            <li><strong>To support you:</strong> answer emails and feedback, and fix bugs.</li>
+            <li><strong>To keep TABS free:</strong> show ads (see <a href="#ads">Ads and tracking</a>) and offer an
+                optional tip.</li>
+            <li><strong>To meet legal obligations</strong> and respond to lawful requests.</li>
+        </ul>
+        <p>We never use your tabs, notes, friends or payment handles for advertising, and we never give them to ad
+            networks. We don't make automated decisions about you that have legal or similarly significant effects.</p>
+        <p>If you are in the EEA or UK, our legal bases are: performing our contract with you (running the service);
+            our legitimate interests in keeping TABS safe, secure and free (safety features, logs, non-personalized
+            ads); your consent (personalized ads, push notifications); and legal obligations.</p>
+
+        <h2 id="visible">3. What other people can see</h2>
+        <ul>
+            <li><strong>Anyone who has your friend code</strong> can look up your first and last name, so they can
+                confirm it's you before sending a request.</li>
+            <li><strong>Someone you send a friend request to</strong> sees your name and friend code.</li>
+            <li><strong>Confirmed friends</strong> can see your name, friend code, phone number (if you gave one) and
+                any payment handles you added. They cannot see your email address, your list of tabs, your notes, your
+                other friends or your account history.</li>
+            <li><strong>A friend you remind</strong> receives a notification with your name and the reminder message,
+                which includes the amount.</li>
+            <li><strong>People you track who don't use TABS</strong> see nothing. TABS never contacts them.</li>
+            <li><strong>Blocking is silent.</strong> The blocked person is not told, and a friend request they try to
+                send you looks sent on their side but never reaches you. <strong>Reports are
+                    confidential:</strong> we don't tell the reported person who reported them.</li>
+        </ul>
+
+        <h2 id="third-parties">4. Services that process data for us</h2>
+        <p>We share data only with the providers below, only for the purposes described here, and we rely on each of
+            them to give your data the same or equal protection as this policy. Their own privacy policies are linked.
+            We may also disclose information if required by law, or if needed to protect someone's safety.</p>
+
+        <div class="provider">
+            <p><strong>Google Firebase</strong> (Authentication, Realtime Database, Cloud Functions, Cloud Messaging)</p>
+            <p>Stores your account and app data, runs our server code, and delivers push notifications. Data is stored
+                in the United States.
+                <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase privacy</a> &middot;
+                <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a></p>
+        </div>
+        <div class="provider">
+            <p><strong>Google Sign-In</strong></p>
+            <p>Signs you in if you choose "Sign in with Google".
+                <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a></p>
+        </div>
+        <div class="provider">
+            <p><strong>Sign in with Apple</strong></p>
+            <p>Signs you in if you choose "Sign in with Apple", and revokes access when you delete your account.
+                <a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noopener">Apple Privacy Policy</a></p>
+        </div>
+        <div class="provider">
+            <p><strong>Apple</strong> (App Store, StoreKit in-app purchases, Apple Push Notification service)</p>
+            <p>Distributes the iPhone app, processes the optional coffee tip, and delivers notifications to iPhones.
+                <a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noopener">Apple Privacy Policy</a></p>
+        </div>
+        <div class="provider">
+            <p><strong>Google AdMob and User Messaging Platform</strong> (iPhone app)</p>
+            <p>Shows the banner ad and, in the EEA/UK, asks for your ad consent.
+                <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener">How Google uses data from apps that use its services</a></p>
+        </div>
+        <div class="provider">
+            <p><strong>Google AdSense</strong> (website)</p>
+            <p>Shows ads on the website in a browser. It is not loaded in the iPhone app.
+                <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener">How Google uses cookies in advertising</a></p>
+        </div>
+        <div class="provider">
+            <p><strong>Buy Me a Coffee</strong> (website only)</p>
+            <p>Processes tips made on the website, on its own site.
+                <a href="https://www.buymeacoffee.com/privacy-policy" target="_blank" rel="noopener">Buy Me a Coffee privacy policy</a></p>
+        </div>
+        <div class="provider">
+            <p><strong>GitHub Pages</strong></p>
+            <p>Hosts the tabsonfriends.com website files and receives standard request information such as IP
+                address and browser type.
+                <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub privacy statement</a></p>
+        </div>
+        <div class="provider">
+            <p><strong>Expo</strong> (only for app builds that use Expo push tokens)</p>
+            <p>Relays notifications to those devices.
+                <a href="https://expo.dev/privacy" target="_blank" rel="noopener">Expo privacy policy</a></p>
+        </div>
+        <div class="provider">
+            <p><strong>Content and exchange-rate services</strong> (jsDelivr, Google Fonts, ExchangeRate-API)</p>
+            <p>Deliver page scripts, icons and currency exchange rates. They receive only standard request information
+                such as IP address, never your account data.
+                <a href="https://www.jsdelivr.com/terms/privacy-policy-jsdelivr-net" target="_blank" rel="noopener">jsDelivr</a> &middot;
+                <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google</a> &middot;
+                <a href="https://www.exchangerate-api.com/terms" target="_blank" rel="noopener">ExchangeRate-API</a></p>
+        </div>
+        <div class="provider">
+            <p><strong>Google Forms</strong> (optional)</p>
+            <p>Collects whatever you choose to write in the Feedback form.
+                <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a></p>
+        </div>
+
+        <h2 id="ads">5. Ads and tracking</h2>
+        <ul>
+            <li><strong>iPhone app.</strong> TABS shows one Google AdMob banner at the bottom of the screen. In the EEA
+                and UK, Google's consent form asks for your choice first. Then iOS asks whether TABS may track you
+                (App Tracking Transparency). <strong>If you allow tracking</strong>, AdMob may use your device's
+                advertising identifier (IDFA) to show personalized ads and measure them. <strong>If you don't</strong>,
+                the identifier is not shared and ads are not personalized with cross-app tracking. AdMob still
+                receives basic device information such as model, OS version, IP address and ad interactions so it can
+                serve and count ads.</li>
+            <li><strong>Website.</strong> When you use tabsonfriends.com in a browser, Google AdSense may set cookies to
+                show and measure ads. Visitors in the EEA and UK are asked for consent by Google's consent message.
+                The iPhone app never loads AdSense; its only ads are the AdMob banner above.</li>
+            <li>We never send your name, email, phone number, tabs or friends to any ad network.</li>
+            <li>We don't sell personal information for money. Some US state laws treat personalized advertising that
+                uses an advertising identifier as "sharing". You can opt out at any time by turning tracking off (see
+                <a href="#choices">Your choices</a>).</li>
+        </ul>
+
+        <h2 id="retention">6. Retention and deletion</h2>
+        <p>We keep your data while your account exists. You can clear your notifications, account history and list of
+            tabs yourself at any time.</p>
+        <h3>Deleting your account</h3>
+        <p>In TABS, open the menu, then <strong>Profile &rarr; Account &rarr; Delete Account</strong>. When you
+            confirm, our server immediately and permanently:</p>
+        <ul>
+            <li>deletes everything stored under your account: profile, tabs, notes, friends list, friend requests,
+                notifications, account history, settings, payment handles, push tokens and block list;</li>
+            <li>deletes the delivery-log entries for messages you sent, and for messages your friends and pending
+                requests sent you;</li>
+            <li>releases your friend code;</li>
+            <li>removes you from your friends' lists, their pending and sent requests, and their auto-reminder
+                settings;</li>
+            <li>deletes your sign-in account from Firebase Authentication.</li>
+        </ul>
+        <p>If you signed in with Apple, TABS first asks you to confirm with Apple and then revokes TABS's access to your
+            Apple ID. Deletion cannot be undone.</p>
+        <h3>What stays after deletion</h3>
+        <ul>
+            <li>Notifications you already sent to other people stay in their inbox until they clear them, and information
+                other users added to their own account themselves is theirs.</li>
+            <li>If someone blocked you, your first and last name and the date they blocked you stay in their private
+                block list so the block keeps working. Only they can see it.</li>
+            <li>Reports you made or that were made about you are kept as long as needed to handle the safety issue,
+                and we review and delete old reports at least once a year.</li>
+            <li>Delivery-log entries for messages someone sent you before they stopped being your friend stay (at most
+                the last 20) until that person deletes their account.</li>
+            <li>Rate-limit records (two user IDs and a timestamp) may remain.</li>
+            <li>Server logs are kept by Google Cloud Logging for up to 30 days. Google may keep backup copies for a
+                limited time under its own policies.</li>
+        </ul>
+        <h3>Disabling instead of deleting</h3>
+        <p><strong>Disable Account</strong> (also in Profile &rarr; Account) stops anyone from signing in to your
+            account but keeps your data. Email us to re-enable it or to have it deleted.</p>
+
+        <h2 id="choices">7. Your choices and rights</h2>
+        <ul>
+            <li><strong>Get a copy:</strong> Profile &rarr; Account &rarr; <strong>Export Data</strong> gives you a JSON
+                file of everything stored under your account. On the website it downloads the file; in the iPhone app
+                it opens the share sheet so you can save it to Files or send it. You can also email us and we'll send
+                you a copy.</li>
+            <li><strong>Correct:</strong> edit your tabs and payment handles in the app. For profile details you can't
+                edit in the app, email us.</li>
+            <li><strong>Delete:</strong> Profile &rarr; Account &rarr; Delete Account (see above), or email us.</li>
+            <li><strong>Notifications:</strong> Profile &rarr; Account &rarr; Manage Notifications (muted types are not
+                pushed to your devices and are hidden in your TABS inbox), or turn TABS off in iPhone Settings &rarr;
+                Notifications, or in your browser's site settings.</li>
+            <li><strong>Tracking:</strong> iPhone Settings &rarr; Privacy &amp; Security &rarr; Tracking &rarr; TABS.
+                You can also reset your advertising identifier in iPhone settings, and manage Google ad personalization
+                at <a href="https://myadcenter.google.com/" target="_blank" rel="noopener">myadcenter.google.com</a>.</li>
+            <li><strong>Ad consent (EEA/UK):</strong> in the iPhone app, open the menu and tap
+                <strong>Ad privacy choices</strong> to change or withdraw your answer to Google's consent form at any
+                time. It appears when your region requires it. You can also email us.</li>
+            <li><strong>Block and report:</strong> block anyone who bothers you, and report abuse. See
+                <a href="/support">Support</a>.</li>
+        </ul>
+        <p>Depending on where you live (for example under the GDPR, UK GDPR or US state privacy laws), you may have the
+            right to access, correct, delete or port your data, to object to or restrict processing, and to withdraw
+            consent at any time. Email us to use any of these rights; we reply within 30 days and will not treat you
+            differently for using them. You can also complain to your local data protection authority.</p>
+
+        <h2 id="security">8. Security</h2>
+        <p>All traffic to TABS uses HTTPS. Database security rules let each account read and write only its own data,
+            plus the few friend-only fields described above, and our server checks friendships and blocks before it
+            sends any notification. Passwords are handled by Firebase Authentication. No system is perfectly secure, so
+            please use a strong, unique password and tell us right away if you think your account was misused.</p>
+
+        <h2 id="children">9. Children</h2>
+        <p>TABS is not directed to children under 13, and we do not knowingly collect personal information from them.
+            If you believe a child under 13 has given us information, email us and we will delete it.</p>
+
+        <h2 id="transfers">10. International transfers</h2>
+        <p>TABS is run from the United States, and our providers store and process data in the United States and
+            other countries where they operate. If you use TABS from outside the US, your information is transferred to
+            the US, where privacy laws may differ from yours. Our providers protect these transfers with safeguards
+            such as the European Commission's Standard Contractual Clauses.</p>
+
+        <h2 id="changes">11. Changes to this policy</h2>
+        <p>If we change this policy, we will update this page and the date at the top. If a change materially affects
+            how we use your information, we will also tell you in TABS before it takes effect.</p>
+
+        <h2 id="contact">12. Contact</h2>
+        <p>TABS is operated by Parker Heikes. Questions, requests or complaints about privacy:
+            <!-- TODO(contact-email): confirm or replace before launch -->
+            <a href="mailto:support@tabsonfriends.com">support@tabsonfriends.com</a>.
+        </p>
+        <p>Related: <a href="/terms">Terms of Service</a> &middot; <a href="/support">Support</a></p>
+    </main>
+
+    <footer>
+        <nav aria-label="Footer">
+            <a href="/">TABS</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
+            <a href="/support">Support</a>
+        </nav>
+        <p>&copy; 2026 Parker Heikes</p>
+    </footer>
+</body>
+
+</html>

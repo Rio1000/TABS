@@ -3456,7 +3456,7 @@ body.action-open #action-backdrop {
   --btn-positive-text: 208, 236, 202;
 }
 
-button:not(.remove-btn):not(.add-info-btn):not(.remove-friend-from-list):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(.close-btn):not(.modal-close-x):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(.toast-close):not(.toast-action):not(#confirmClearHistory):not(.accept):not(.decline),
+button:not(.apple-auth-btn):not(.tabs-danger-btn):not(.remove-btn):not(.add-info-btn):not(.remove-friend-from-list):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(.close-btn):not(.modal-close-x):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(.toast-close):not(.toast-action):not(#confirmClearHistory):not(.accept):not(.decline),
 #profileInfo,
 #profileStats,
 #profileAccount,
@@ -3469,7 +3469,7 @@ button:not(.remove-btn):not(.add-info-btn):not(.remove-friend-from-list):not(.sm
   transition: background-color 0.2s ease, transform 0.15s ease,
     box-shadow 0.2s ease, border-color 0.2s ease !important;
 }
-button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(.close-btn):not(.modal-close-x):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(#confirmClearHistory):not(.toast-close):not(.toast-action):not(.accept):not(.decline):hover,
+button:not(.apple-auth-btn):not(.tabs-danger-btn):not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request-btn):not(.add-friend-to-list):not(.remove-info-btn):not(.sideNavA):not(.close-btn):not(.modal-close-x):not(#action-sheet-close):not(#add-person-btn):not(#clear-list-btn):not(#Back-btn):not(#Back-btn2):not(#copy-friend-code):not(#clearListBtn):not(#delete-account):not(#delete-account-btn):not(#remove-money-btn):not(#removeFriendBtn):not(#clearNotificationsBtn):not(#clearAccountHistory):not(#confirmClearHistory):not(.toast-close):not(.toast-action):not(.accept):not(.decline):hover,
 #profileInfo:hover,
 #profileStats:hover,
 #profileAccount:hover,
@@ -3490,6 +3490,7 @@ button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request
 #clearNotificationsBtn,
 #clearAccountHistory,
 #confirmClearHistory,
+.tabs-danger-btn,
 .notification-action.decline {
   background-color: rgba(var(--btn-danger), 0.2) !important;
   border: 2px solid rgba(var(--btn-danger), 0.85) !important;
@@ -3507,6 +3508,7 @@ button:not(.remove-btn):not(.add-info-btn):not(.sms-remind-btn):not(.pay-request
 #clearNotificationsBtn:hover,
 #clearAccountHistory:hover,
 #confirmClearHistory:hover,
+.tabs-danger-btn:hover,
 .notification-action.decline:hover {
   background-color: rgba(var(--btn-danger), 0.36) !important;
   transform: translateY(-2px);
@@ -3777,4 +3779,239 @@ body.payments-enabled .personlist-item[data-status="iOwe"] .pay-request-btn {
 #RemoveButton,
 .remove-friend-from-list {
   color: #ffa59d !important;
+}
+
+/* =====================================================================
+   Sign in with Apple button (App Store Review Guideline 4.8)
+   -------------------------------------------------------------------
+   Apple HIG "white" style for dark backgrounds: white fill, black Apple
+   logo + black system-font label, no extra decoration. Excluded from the
+   app-wide teal button rule (see its :not(.apple-auth-btn)) so nothing
+   tints it. Same width as, and taller than, the Google button so it is at
+   least as prominent. */
+.login-buttons button.apple-auth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 46px;
+  margin: 10px;
+  padding: 0 16px;
+  background-color: #fff;
+  color: #000;
+  border: 1px solid #fff;
+  border-radius: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue",
+    Helvetica, Arial, sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  line-height: 1;
+  cursor: pointer;
+}
+.login-buttons button.apple-auth-btn:hover {
+  background-color: #f2f2f2;
+}
+.login-buttons button.apple-auth-btn:focus-visible {
+  outline: 3px solid #48ceff;
+  outline-offset: 2px;
+}
+.apple-auth-btn .apple-logo {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  /* Optical alignment: the glyph's leaf sits high in its box. */
+  margin-top: -3px;
+  fill: currentColor;
+}
+
+/* "By continuing you agree to the Terms and Privacy Policy" under the login
+   and signup buttons. */
+.legal-consent {
+  margin: 6px 0 0;
+  max-width: 100%;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #b9d3d7;
+  text-align: center;
+}
+.legal-consent a {
+  color: #8fe3ec;
+  text-decoration: underline;
+}
+
+/* Privacy / Terms / Support row in the side menu, under About Us /
+   Feedback. Same -80px offset every .sideNavA carries. */
+.sideNavLegal {
+  position: relative;
+  top: -80px;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 4px 12px 8px;
+}
+.sideNavLegal a {
+  flex: 1 1 0;
+  padding: 8px 4px;
+  border: 1px solid rgba(80, 202, 211, 0.35);
+  border-radius: 10px;
+  background-color: rgba(80, 202, 211, 0.1);
+  color: #bfe7ea;
+  font-size: 14px;
+  text-align: center;
+  text-decoration: none;
+}
+.sidenav .sideNavLegal a:hover {
+  background-color: rgba(80, 202, 211, 0.24);
+  color: #fff;
+}
+
+/* =====================================================================
+   Block / Report dialogs (App Store Review Guideline 1.2)
+   ===================================================================== */
+.safety-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 26px 24px;
+  width: min(380px, 90vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  background: linear-gradient(150deg, #05434c 0%, #022a30 100%) !important;
+  border: 1px solid rgba(80, 202, 211, 0.22) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4) !important;
+}
+.safety-box h2 {
+  margin: 0 0 4px;
+  padding: 0 40px; /* clear of the corner ✕ */
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: rgb(226, 245, 246);
+  word-break: break-word;
+}
+/* :not(.modal-close-x) keeps the corner ✕ (appended by
+   addModalCloseButtons) at its own 39px size. */
+.safety-box > button:not(.modal-close-x),
+.safety-row button {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  font-size: 16px;
+}
+.safety-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+.safety-row button {
+  flex: 1 1 0;
+}
+.safety-hint {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #b9d3d7;
+}
+.safety-label {
+  align-self: flex-start;
+  font-size: 14px;
+  color: #cfe8eb;
+}
+.safety-box select,
+.safety-box textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid #51949d;
+  border-radius: 8px;
+  background-color: rgba(25, 64, 66, 0.8);
+  color: rgb(194, 233, 232);
+  font-size: 16px; /* 16px stops iOS zooming the page on focus */
+}
+.safety-box textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+.safety-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  font-size: 15px;
+  cursor: pointer;
+}
+.safety-check input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  accent-color: #50c444;
+}
+
+/* "⋯" on friend rows and pending requests. */
+.safety-more-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: 30px;
+  min-width: 34px;
+  margin: 0 !important;
+  padding: 0 6px !important;
+  flex-shrink: 0;
+}
+.safety-more-btn .material-symbols-outlined {
+  font-size: 20px;
+  line-height: 1;
+}
+#pendingRequestsList li .safety-more-btn {
+  margin-left: 6px !important;
+}
+
+/* Block / Report on a notification: neutral, not the blue "Remind now". */
+#notificationsList .notification-action.safety-notif-btn {
+  background-color: #3d4f55 !important;
+}
+
+#blockedUsersList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+#blockedUsersList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  background-color: #0d2f35;
+  text-align: left;
+}
+#blockedUsersList li.blocked-empty {
+  justify-content: center;
+  color: #b9d3d7;
+}
+.blocked-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  word-break: break-word;
+}
+.blocked-when {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: #b9d3d7;
+}
+#blockedUsersList li button {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 6px 12px;
 }

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#071a1f" />
+    <title>Terms of Service | TABS</title>
+    <meta name="description"
+        content="The rules for using TABS (tabs on friends): an IOU tracker that records who owes whom and never moves or holds money." />
+    <link rel="canonical" href="https://tabsonfriends.com/terms" />
+    <link rel="icon" type="image/x-icon" href="/logo.ico" />
+    <style>
+        :root {
+            --bg-1: #000000;
+            --bg-2: #3a7486;
+            --text: #f1f1f1;
+            --muted: #b8cdd2;
+            --heading: #a0e8f3;
+            --brand: #50c444;
+            --card: rgba(3, 40, 46, 0.72);
+            --card-border: rgba(80, 202, 211, 0.32);
+            --rule: rgba(160, 232, 243, 0.16);
+        }
+
+        * { box-sizing: border-box; }
+
+        html {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+            background: var(--bg-1);
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+                Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+            font-size: 17px;
+            line-height: 1.6;
+            color: var(--text);
+            padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+                max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+        }
+
+        /* Fixed gradient layer: background-attachment: fixed is ignored by iOS
+           Safari / WKWebView, so the site's gradient lives on its own layer. */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: linear-gradient(319deg, var(--bg-1) 0%, var(--bg-2) 55%);
+            opacity: 0.85;
+        }
+
+        a { color: var(--brand); text-underline-offset: 2px; }
+        a:hover { color: #7ddc72; }
+        a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+
+        .topbar {
+            max-width: 760px;
+            margin: 0 auto 16px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px 16px;
+        }
+
+        .back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: 1px solid rgba(80, 196, 68, 0.7);
+            border-radius: 12px;
+            background: rgba(80, 196, 68, 0.12);
+            color: #d6f5d1;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .back:hover { background: rgba(80, 196, 68, 0.22); color: #ffffff; }
+
+        .pages { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 15px; }
+        .pages a { color: var(--muted); text-decoration: none; }
+        .pages a:hover { color: var(--text); text-decoration: underline; }
+        .pages a[aria-current="page"] { color: var(--heading); font-weight: 600; }
+
+        main {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 24px 20px 28px;
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+
+        .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; color: var(--heading); font-weight: 700; letter-spacing: 0.04em; }
+        .brand svg { width: 30px; height: 30px; flex: none; }
+
+        h1 { margin: 0 0 4px; font-size: 30px; line-height: 1.2; color: #ffffff; }
+        h2 { margin: 32px 0 8px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 21px; line-height: 1.3; color: var(--heading); }
+        h3 { margin: 20px 0 4px; font-size: 17px; color: #ffffff; }
+        p, ul, ol { margin: 0 0 12px; }
+        ul, ol { padding-left: 22px; }
+        li { margin-bottom: 6px; }
+        strong { color: #ffffff; }
+        .meta { color: var(--muted); font-size: 15px; margin-bottom: 18px; }
+
+        .summary {
+            margin: 18px 0 8px;
+            padding: 14px 16px;
+            border-left: 4px solid var(--brand);
+            border-radius: 8px;
+            background: rgba(80, 196, 68, 0.1);
+        }
+        .summary ul { margin: 0; }
+
+        .provider { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 10px; background: rgba(0, 0, 0, 0.18); }
+        .provider p { margin: 0 0 4px; }
+        .provider p:last-child { margin: 0; }
+
+        .toc { columns: 2 220px; column-gap: 24px; font-size: 15px; padding-left: 20px; }
+
+        footer {
+            max-width: 760px;
+            margin: 18px auto 0;
+            color: var(--muted);
+            font-size: 14px;
+            text-align: center;
+        }
+        footer nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; margin-bottom: 6px; }
+
+        @media (max-width: 480px) {
+            body { font-size: 16px; }
+            main { padding: 20px 16px 24px; }
+            h1 { font-size: 26px; }
+            h2 { font-size: 19px; }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="topbar">
+        <a class="back" href="/">&larr; Back to TABS</a>
+        <nav class="pages" aria-label="TABS policies and help">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms" aria-current="page">Terms</a>
+            <a href="/support">Support</a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="brand">
+            <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                <rect x="5" y="6" width="16" height="16" fill="none" stroke="#50c444" stroke-width="2.4" />
+                <rect x="11" y="11" width="16" height="16" fill="none" stroke="#a0e8f3" stroke-width="2.4" />
+            </svg>
+            <span>TABS</span>
+        </div>
+        <h1>Terms of Service</h1>
+        <p class="meta">Effective November 24, 2026 &middot; Last updated November 24, 2026</p>
+
+        <p>These terms are an agreement between you and Parker Heikes ("we", "us"), who makes and runs TABS ("tabs on
+            friends") at <a href="https://tabsonfriends.com/">tabsonfriends.com</a> and in the TABS iPhone app. By
+            creating an account or using TABS, you agree to them. If you don't agree, please don't use TABS. Our
+            <a href="/privacy">Privacy Policy</a> explains how we handle your data.</p>
+
+        <div class="summary">
+            <ul>
+                <li>TABS is a notebook for IOUs. It never moves, holds or collects money.</li>
+                <li>Debts are between you and your friends. We are not part of them.</li>
+                <li>Be kind with reminders. Harassment gets accounts suspended.</li>
+                <li>Tips are optional and buy nothing extra.</li>
+            </ul>
+        </div>
+
+        <h2 id="what">1. What TABS is, and what it isn't</h2>
+        <p>TABS helps you keep a personal record of money or things you and other people owe each other, connect with
+            friends, and send friendly reminders.</p>
+        <ul>
+            <li><strong>TABS never moves, holds, transfers or processes money.</strong> It is not a bank, payment
+                service, money transmitter, lender or debt collector.</li>
+            <li><strong>Payment links only open another app.</strong> If you use Payment Requests, TABS builds a link
+                that opens Venmo, PayPal or Cash App. Any payment happens entirely in that app, under that company's
+                terms, and we never see it.</li>
+            <li><strong>We are not a party to any debt or agreement between you and anyone else.</strong> We are not
+                responsible for whether anyone pays, for the accuracy of the amounts you enter, or for disputes between
+                users. A tab in TABS is your own note. It does not create, prove or settle a legal obligation.</li>
+            <li><strong>The interest feature is a calculator</strong> for your own records. It is not financial, tax or
+                legal advice, and you are responsible for following any laws that apply to lending between you and
+                your friends.</li>
+        </ul>
+
+        <h2 id="account">2. Your account</h2>
+        <ul>
+            <li>You must be at least 13 years old, and old enough to consent to data processing where you live. If you
+                are under 18, you need a parent or guardian's permission.</li>
+            <li>Give accurate information, keep your password private, and tell us if you think someone else is using
+                your account. You are responsible for what happens under your account.</li>
+            <li>Your phone number, if you give one, is visible to the friends you accept. Only accept friend requests
+                from people you know.</li>
+            <li>You can disable or permanently delete your account at any time from Profile &rarr; Account.</li>
+        </ul>
+
+        <h2 id="use">3. Acceptable use</h2>
+        <p>You agree not to:</p>
+        <ul>
+            <li>use reminders, friend requests or any other feature to harass, threaten, bully, shame or spam anyone,
+                including by reminding someone over and over;</li>
+            <li>send friend requests to people who don't know you, or keep contacting someone who has made clear they
+                don't want to hear from you;</li>
+            <li>impersonate anyone, or create an account for someone else without their permission;</li>
+            <li>record other people's sensitive personal information in tabs or notes;</li>
+            <li>use TABS to track or collect on anything illegal;</li>
+            <li>try to get around blocks, rate limits, suspensions or security rules, access other users' data, or
+                interfere with the service (for example by scraping, overloading or attacking it);</li>
+            <li>create a new account after we have suspended yours.</li>
+        </ul>
+        <p>Reminder push notifications are written by TABS from a fixed set of friendly templates, but you are still responsible
+            for whom you remind and how often.</p>
+
+        <h2 id="safety">4. Blocking and reporting</h2>
+        <p>You can block anyone from a friend's menu, a friend request or a reminder notification. A person you block
+            can no longer send you friend requests, reminders or notifications, and is not told that you blocked them.
+            You can unblock people from your Profile.</p>
+        <p>You can also report someone. We review reports within 24 hours. We may remove content, warn, suspend or
+            delete the accounts of people who break these terms.</p>
+
+        <h2 id="suspension">5. Suspension and termination</h2>
+        <p>We may suspend, disable or delete an account, with or without notice, if it breaks these terms, puts other
+            people at risk, or exposes TABS or its users to legal harm. You can stop using TABS at any time and delete
+            your account yourself. These terms keep applying to anything that happened before your account ended.</p>
+
+        <h2 id="tips">6. Tips and purchases</h2>
+        <ul>
+            <li>TABS is free. "Buy us a coffee" is an <strong>optional, voluntary tip</strong>. It unlocks no features
+                and gets you no extra service.</li>
+            <li>In the iPhone app, tips are in-app purchases processed by Apple under Apple's terms. In-app purchases
+                are non-refundable except as required by Apple's policies or by law. To ask for a refund, use Apple's
+                <a href="https://reportaproblem.apple.com/" target="_blank" rel="noopener">Report a Problem</a> page.</li>
+            <li>On the website, tips are processed by Buy Me a Coffee under its own terms.</li>
+        </ul>
+
+        <h2 id="ads">7. Ads</h2>
+        <p>TABS shows ads from Google to help keep it free. Ad networks follow their own policies, described in our
+            <a href="/privacy#ads">Privacy Policy</a>. We aren't responsible for products or services advertised by
+            others.</p>
+
+        <h2 id="content">8. Your content and ours</h2>
+        <p>You own what you put into TABS, such as your tabs, notes and names. You give us permission to store, copy,
+            process and show it only as needed to run TABS for you, for example showing your name to friends and
+            delivering your reminders. The TABS name, logo, design and code belong to us; please don't copy them or
+            use them to suggest we endorse you.</p>
+
+        <h2 id="third-party">9. Other services</h2>
+        <p>TABS works with services run by other companies, including Google, Apple, Venmo, PayPal, Cash App and Buy Me
+            a Coffee. Your use of them is governed by their own terms, and we are not responsible for them.</p>
+
+        <h2 id="disclaimer">10. Disclaimer</h2>
+        <p>TABS is provided "as is" and "as available". To the fullest extent the law allows, we make no warranties,
+            express or implied, including warranties of merchantability, fitness for a particular purpose, accuracy or
+            non-infringement. We don't promise that TABS will always be available, error-free or secure, or that data
+            will never be lost. Keep your own records of anything important.</p>
+
+        <h2 id="liability">11. Limitation of liability</h2>
+        <p>To the fullest extent the law allows, we are not liable for any indirect, incidental, special, consequential
+            or punitive damages, or for lost money, profits or data, arising from your use of TABS. That includes any
+            debt, unpaid amount, payment or dispute between you and anyone else. Our total liability for any claim
+            about TABS is limited to the greater of the amount you paid us in the 12 months before the claim or
+            US&nbsp;$50.</p>
+        <p>Some places don't allow these limits. Nothing in these terms limits rights you have under consumer
+            protection laws that cannot be waived.</p>
+
+        <h2 id="apple">12. If you got TABS from the App Store</h2>
+        <ul>
+            <li>These terms are between you and us, not Apple. We, not Apple, are responsible for TABS and its content.
+            </li>
+            <li>Apple has no obligation to provide maintenance or support for TABS.</li>
+            <li>If TABS fails to meet a warranty that applies, you may notify Apple, and Apple may refund the purchase
+                price (if any). Apple has no other warranty obligation for TABS.</li>
+            <li>We, not Apple, are responsible for handling claims about TABS, including product liability, legal or
+                regulatory compliance, consumer protection, and intellectual property claims.</li>
+            <li>You confirm that you are not in a country subject to a US government embargo or on a US government
+                list of prohibited or restricted parties.</li>
+            <li>Apple and its subsidiaries are third-party beneficiaries of these terms and may enforce them against
+                you.</li>
+        </ul>
+
+        <h2 id="law">13. Governing law</h2>
+        <!-- TODO(governing-law): name the operator's US state here before launch if desired. -->
+        <p>These terms are governed by the laws of the United States and of the US state where the operator lives,
+            without regard to conflict-of-law rules. If you live in another country, you also keep the protection of
+            any mandatory laws of that country.</p>
+
+        <h2 id="changes">14. Changes</h2>
+        <p>We may update these terms. We'll change the date at the top and, for significant changes, tell you in TABS
+            before they take effect. If you keep using TABS after that, you accept the new terms. If any part of these
+            terms can't be enforced, the rest still applies.</p>
+
+        <h2 id="contact">15. Contact</h2>
+        <p>TABS is operated by Parker Heikes. Questions about these terms:
+            <!-- TODO(contact-email): confirm or replace before launch -->
+            <a href="mailto:support@tabsonfriends.com">support@tabsonfriends.com</a>.
+        </p>
+        <p>Related: <a href="/privacy">Privacy Policy</a> &middot; <a href="/support">Support</a></p>
+    </main>
+
+    <footer>
+        <nav aria-label="Footer">
+            <a href="/">TABS</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
+            <a href="/support">Support</a>
+        </nav>
+        <p>&copy; 2026 Parker Heikes</p>
+    </footer>
+</body>
+
+</html>
