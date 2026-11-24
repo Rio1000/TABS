@@ -2,3 +2,7 @@ node_modules/
 .env
 *.local
 firebase-debug.log
+
+# Copied from the repo-root reminder-messages.json by the functions predeploy
+# hook (scripts/copy-reminder-messages.js). Edit the root file, not this one.
+/reminder-messages.json

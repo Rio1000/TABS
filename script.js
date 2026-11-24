@@ -814,6 +814,11 @@ document.addEventListener("keydown", (event) => {
     ["#paymentSettingsBox", "closePaymentSettings"],
     ["#paymentRequestBox", "closePaymentRequest"],
     ["#smsReminderBox", "closeSmsReminder"],
+    // Block / Report dialogs (firebase-setup.js wires their buttons).
+    ["#userActionsBox", "closeUserActions"],
+    ["#blockConfirmBox", "cancelBlockBtn"],
+    ["#reportBox", "cancelReportBtn"],
+    ["#blockedUsersBox", "closeBlockedUsers"],
   ];
 
   cards.forEach(([selector, closeId]) => {
@@ -894,6 +899,9 @@ document.addEventListener("keydown", (event) => {
      • blocked  → window.adsbygoogle never becomes the real processor
        (adsbygoogle.loaded stays unset), checked after a grace period. */
 (function landingAdFallback() {
+  // Inside the iOS app AdSense is never loaded (see index.html) and the slot
+  // is hidden; the native AdMob banner is the only ad there.
+  if (/TABSApp\//.test(navigator.userAgent)) return;
   const landingAd = document.getElementById("landing-ad");
   if (!landingAd) return;
   const ins = landingAd.querySelector(".adsbygoogle");

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#071a1f" />
+    <title>Support | TABS</title>
+    <meta name="description"
+        content="Get help with TABS (tabs on friends): contact us, delete or export your account, reminders, blocking and reporting, sign-in and payment links." />
+    <link rel="canonical" href="https://tabsonfriends.com/support" />
+    <link rel="icon" type="image/x-icon" href="/logo.ico" />
+    <style>
+        :root {
+            --bg-1: #000000;
+            --bg-2: #3a7486;
+            --text: #f1f1f1;
+            --muted: #b8cdd2;
+            --heading: #a0e8f3;
+            --brand: #50c444;
+            --card: rgba(3, 40, 46, 0.72);
+            --card-border: rgba(80, 202, 211, 0.32);
+            --rule: rgba(160, 232, 243, 0.16);
+        }
+
+        * { box-sizing: border-box; }
+
+        html {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+            background: var(--bg-1);
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+                Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+            font-size: 17px;
+            line-height: 1.6;
+            color: var(--text);
+            padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+                max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+        }
+
+        /* Fixed gradient layer: background-attachment: fixed is ignored by iOS
+           Safari / WKWebView, so the site's gradient lives on its own layer. */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: linear-gradient(319deg, var(--bg-1) 0%, var(--bg-2) 55%);
+            opacity: 0.85;
+        }
+
+        a { color: var(--brand); text-underline-offset: 2px; }
+        a:hover { color: #7ddc72; }
+        a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+
+        .topbar {
+            max-width: 760px;
+            margin: 0 auto 16px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px 16px;
+        }
+
+        .back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: 1px solid rgba(80, 196, 68, 0.7);
+            border-radius: 12px;
+            background: rgba(80, 196, 68, 0.12);
+            color: #d6f5d1;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .back:hover { background: rgba(80, 196, 68, 0.22); color: #ffffff; }
+
+        .pages { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 15px; }
+        .pages a { color: var(--muted); text-decoration: none; }
+        .pages a:hover { color: var(--text); text-decoration: underline; }
+        .pages a[aria-current="page"] { color: var(--heading); font-weight: 600; }
+
+        main {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 24px 20px 28px;
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+
+        .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; color: var(--heading); font-weight: 700; letter-spacing: 0.04em; }
+        .brand svg { width: 30px; height: 30px; flex: none; }
+
+        h1 { margin: 0 0 4px; font-size: 30px; line-height: 1.2; color: #ffffff; }
+        h2 { margin: 32px 0 8px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 21px; line-height: 1.3; color: var(--heading); }
+        h3 { margin: 20px 0 4px; font-size: 17px; color: #ffffff; }
+        p, ul, ol { margin: 0 0 12px; }
+        ul, ol { padding-left: 22px; }
+        li { margin-bottom: 6px; }
+        strong { color: #ffffff; }
+        .meta { color: var(--muted); font-size: 15px; margin-bottom: 18px; }
+
+        .summary {
+            margin: 18px 0 8px;
+            padding: 14px 16px;
+            border-left: 4px solid var(--brand);
+            border-radius: 8px;
+            background: rgba(80, 196, 68, 0.1);
+        }
+        .summary ul { margin: 0; }
+
+        .provider { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 10px; background: rgba(0, 0, 0, 0.18); }
+        .provider p { margin: 0 0 4px; }
+        .provider p:last-child { margin: 0; }
+
+        .toc { columns: 2 220px; column-gap: 24px; font-size: 15px; padding-left: 20px; }
+
+        footer {
+            max-width: 760px;
+            margin: 18px auto 0;
+            color: var(--muted);
+            font-size: 14px;
+            text-align: center;
+        }
+        footer nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; margin-bottom: 6px; }
+
+        @media (max-width: 480px) {
+            body { font-size: 16px; }
+            main { padding: 20px 16px 24px; }
+            h1 { font-size: 26px; }
+            h2 { font-size: 19px; }
+        }
+    </style>
+    <style>
+        .contact {
+            margin: 18px 0 8px;
+            padding: 18px 16px;
+            text-align: center;
+            border: 1px solid rgba(80, 196, 68, 0.55);
+            border-radius: 14px;
+            background: rgba(80, 196, 68, 0.1);
+        }
+        .contact p { margin: 0 0 10px; }
+        .contact p:last-child { margin: 0; color: var(--muted); font-size: 15px; }
+        .email-btn {
+            display: inline-block;
+            max-width: 100%;
+            padding: 12px 20px;
+            border-radius: 12px;
+            background: var(--brand);
+            color: #06210a;
+            font-weight: 700;
+            font-size: 18px;
+            text-decoration: none;
+            overflow-wrap: anywhere;
+        }
+        .email-btn:hover { background: #63d457; color: #06210a; }
+
+        details {
+            margin: 0 0 10px;
+            border: 1px solid var(--rule);
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.18);
+        }
+        summary {
+            cursor: pointer;
+            padding: 12px 14px;
+            font-weight: 600;
+            color: #ffffff;
+            list-style-position: inside;
+        }
+        summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 10px; }
+        details[open] summary { border-bottom: 1px solid var(--rule); }
+        .answer { padding: 12px 14px 4px; }
+    </style>
+</head>
+
+<body>
+    <header class="topbar">
+        <a class="back" href="/">&larr; Back to TABS</a>
+        <nav class="pages" aria-label="TABS policies and help">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/support" aria-current="page">Support</a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="brand">
+            <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                <rect x="5" y="6" width="16" height="16" fill="none" stroke="#50c444" stroke-width="2.4" />
+                <rect x="11" y="11" width="16" height="16" fill="none" stroke="#a0e8f3" stroke-width="2.4" />
+            </svg>
+            <span>TABS</span>
+        </div>
+        <h1>TABS Support</h1>
+        <p class="meta">Help for the TABS website and iPhone app &middot; Updated November 24, 2026</p>
+
+        <section class="contact" aria-labelledby="contact-heading">
+            <h2 id="contact-heading" style="margin:0 0 8px;padding:0;border:0;">Contact us</h2>
+            <p>Questions, problems, account requests or safety concerns: email the developer directly.</p>
+            <p>
+                <!-- TODO(contact-email): confirm or replace before launch -->
+                <a class="email-btn" href="mailto:support@tabsonfriends.com?subject=TABS%20support">support@tabsonfriends.com</a>
+            </p>
+            <p>We reply within 2 business days, usually sooner. Reports of harassment or abuse are reviewed within 24
+                hours.</p>
+        </section>
+
+        <p>To help us help you, tell us whether you use the iPhone app or the website, your device and iOS or browser
+            version, what you were doing and what happened. A screenshot helps. Never send us your password.</p>
+
+        <h2 id="faq">Frequently asked questions</h2>
+
+        <h3>Your account</h3>
+
+        <details id="delete-account">
+            <summary>How do I delete my account?</summary>
+            <div class="answer">
+                <ol>
+                    <li>Open the menu (the "..." button) and tap <strong>Profile</strong>.</li>
+                    <li>Tap the <strong>Account</strong> tab, then <strong>Delete Account</strong>.</li>
+                    <li>Tap <strong>Delete</strong> to confirm. If you signed in with Apple, confirm with Apple when
+                        asked.</li>
+                </ol>
+                <p>Your profile, tabs, notes, friends, requests, notifications, history, settings and payment handles
+                    are deleted right away, and so is your sign-in account. This can't be undone. If you signed in with
+                    Apple, TABS's access to your Apple ID is revoked too. See the
+                    <a href="/privacy#retention">Privacy Policy</a> for the few things that remain.</p>
+                <p>Can't sign in? Email us from the address on your account and we'll delete it for you.</p>
+            </div>
+        </details>
+
+        <details id="export">
+            <summary>Can I get a copy of my data?</summary>
+            <div class="answer">
+                <p>Yes. Go to <strong>Profile &rarr; Account &rarr; Export Data</strong>. You get a JSON file with
+                    everything stored under your account.</p>
+                <ul>
+                    <li><strong>On the website,</strong> Export Data downloads the file.</li>
+                    <li><strong>In the iPhone app,</strong> it opens the share sheet so you can save the file to Files
+                        or send it.</li>
+                </ul>
+                <p>You can also email us and we'll send you a copy.</p>
+            </div>
+        </details>
+
+        <details id="disabled">
+            <summary>What's the difference between Disable Account and Delete Account?</summary>
+            <div class="answer">
+                <p><strong>Disable Account</strong> stops anyone, including you, from signing in, but keeps your data.
+                    <strong>Delete Account</strong> erases it. To turn a disabled account back on, or to delete it,
+                    email us from the address on the account.</p>
+            </div>
+        </details>
+
+        <details id="sign-in">
+            <summary>I can't sign in</summary>
+            <div class="answer">
+                <ul>
+                    <li><strong>Email and password:</strong> tap <strong>Reset Password</strong> on the Login screen.
+                        We'll email you a reset link; check your spam folder if it doesn't arrive.</li>
+                    <li><strong>Google:</strong> tap <strong>Sign In with Google</strong> and choose the same Google
+                        account you used before.</li>
+                    <li><strong>Apple:</strong> tap <strong>Sign in with Apple</strong> and use the same Apple ID. If
+                        you chose "Hide My Email", your account is tied to an Apple relay address, not your real email.
+                    </li>
+                    <li>Use the same sign-in method you created your account with. Signing in another way can create a
+                        separate, empty account.</li>
+                    <li>Still stuck? Email us and say which method you used to sign up.</li>
+                </ul>
+            </div>
+        </details>
+
+        <h3>Reminders and notifications</h3>
+
+        <details id="reminders">
+            <summary>How do reminders work?</summary>
+            <div class="answer">
+                <p>Reminders work for people on your Friends list. On a friend's tab, tap the remind button and then
+                    <strong>Send Reminder</strong>. Your friend gets a notification on their devices (if they've turned
+                    notifications on) and a message in their TABS notifications.</p>
+                <p>The reminder notification is written by TABS from a fixed set of friendly messages and filled in with
+                    your friend's first name and the amount. There's no box to type your own reminder text, and you can
+                    remind the same friend at most once a minute.</p>
+                <p><strong>Auto reminders</strong> don't send anything by themselves. When one is due, TABS puts a
+                    "Remind now" note in <em>your own</em> notifications, and you decide whether to send it.</p>
+            </div>
+        </details>
+
+        <details id="mute">
+            <summary>How do I mute reminders or notifications?</summary>
+            <div class="answer">
+                <ul>
+                    <li>In TABS, go to <strong>Profile &rarr; Account &rarr; Manage Notifications</strong> and turn off
+                        <strong>Payment reminders</strong>, <strong>Friend activity</strong>, or <strong>Enable
+                            notifications</strong> for everything. Muted types stop arriving on your devices and are
+                        hidden from your TABS notifications too; turn them back on to see them again.</li>
+                    <li>To stop notifications on your lock screen completely, open iPhone
+                        <strong>Settings &rarr; Notifications &rarr; TABS</strong> and turn off Allow Notifications. On
+                        the website, turn notifications off in your browser's site settings.</li>
+                    <li>To stop one person entirely, block them (see below).</li>
+                </ul>
+            </div>
+        </details>
+
+        <h3>Safety</h3>
+
+        <details id="block-report">
+            <summary>How do I block or report someone?</summary>
+            <div class="answer">
+                <p>You can block or report a person from three places:</p>
+                <ul>
+                    <li>their entry in your <strong>Friends</strong> list (the same menu that has Remove friend),</li>
+                    <li>a <strong>pending friend request</strong> from them,</li>
+                    <li>a <strong>reminder notification</strong> they sent you.</li>
+                </ul>
+                <p><strong>Block</strong> removes them from your friends, clears friend requests between you, and stops
+                    them from sending you new requests, reminders or notifications. They are not told: a friend request
+                    they try to send you looks sent on their side but never reaches you.</p>
+                <p><strong>Report</strong> lets you pick a reason and add details, and blocks them too unless you
+                    untick that box. We review every report within 24 hours and may suspend accounts that break our
+                    <a href="/terms#use">Terms</a>. The reported person isn't told who reported them.</p>
+                <p>To unblock someone, open <strong>Blocked users</strong> in your Profile and tap
+                    <strong>Unblock</strong>.</p>
+                <p>If you are ever in danger, contact your local emergency services first.</p>
+            </div>
+        </details>
+
+        <h3>Money and payments</h3>
+
+        <details id="money">
+            <summary>Does TABS move or hold money?</summary>
+            <div class="answer">
+                <p>No. TABS only keeps a record of who owes what. It never moves, holds or collects money, and it never
+                    sees bank or card details. What people owe each other is between them; TABS isn't part of it.</p>
+            </div>
+        </details>
+
+        <details id="payment-links">
+            <summary>How do payment links work?</summary>
+            <div class="answer">
+                <ol>
+                    <li>Go to <strong>Profile &rarr; Account &rarr; Payment Requests</strong>, turn it on, and add at
+                        least one of your Venmo username, PayPal.Me username or Cash App $cashtag.</li>
+                    <li>On a tab where someone owes you, tap the request button. TABS copies a link to your Venmo,
+                        PayPal or Cash App page (with the amount when possible) for you to send them. If a friend has
+                        shared their Venmo username, you can also open Venmo with a charge request to them.</li>
+                </ol>
+                <p>The payment itself happens in Venmo, PayPal or Cash App. Confirmed friends can see the handles you
+                    add; remove them any time in the same screen.</p>
+            </div>
+        </details>
+
+        <details id="tips">
+            <summary>What is "Buy us a coffee"?</summary>
+            <div class="answer">
+                <p>An optional tip that helps keep TABS free. It unlocks nothing. In the iPhone app it is an in-app
+                    purchase handled by Apple; for refunds, use Apple's
+                    <a href="https://reportaproblem.apple.com/" target="_blank" rel="noopener">Report a Problem</a> page. On the website it goes
+                    through Buy Me a Coffee.</p>
+            </div>
+        </details>
+
+        <h3>Problems and feedback</h3>
+
+        <details id="bugs">
+            <summary>How do I report a bug or suggest a feature?</summary>
+            <div class="answer">
+                <p>Use the <a href="https://forms.gle/G86aVpZWKLvJWjNU6" target="_blank" rel="noopener">Feedback form</a> (also in the
+                    TABS menu under <strong>Feedback</strong>), or email
+                    <!-- TODO(contact-email): confirm or replace before launch -->
+                    <a href="mailto:support@tabsonfriends.com?subject=TABS%20bug%20report">support@tabsonfriends.com</a>
+                    with the details listed at the top of this page.</p>
+            </div>
+        </details>
+
+        <details id="app-offline">
+            <summary>The app says it can't reach TABS</summary>
+            <div class="answer">
+                <p>The iPhone app loads TABS from tabsonfriends.com, so it needs an internet connection. Check Wi-Fi or
+                    mobile data and tap <strong>Retry</strong>. If it keeps happening on a working connection, email us.
+                </p>
+            </div>
+        </details>
+
+        <h2 id="policies">Policies</h2>
+        <p>Read how we handle your data in the <a href="/privacy">Privacy Policy</a> and the rules for using TABS in
+            the <a href="/terms">Terms of Service</a>. TABS is made by Parker Heikes.</p>
+    </main>
+
+    <footer>
+        <nav aria-label="Footer">
+            <a href="/">TABS</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
+            <a href="/support">Support</a>
+        </nav>
+        <p>&copy; 2026 Parker Heikes</p>
+    </footer>
+</body>
+
+</html>

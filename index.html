@@ -13,8 +13,18 @@
     <script type="module" src="firebase-setup.js"></script>
     <link rel="stylesheet" href="toastify.css" />
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7825788728707782"
-        crossorigin="anonymous"></script>
+    <!-- AdSense loads on the website only. The iOS app (which tags its
+         user-agent "TABSApp/") must never load it — AdSense inside an app web
+         view is against Google policy; the app shows a native AdMob banner. -->
+    <script>
+        if (!/TABSApp\//.test(navigator.userAgent)) {
+            var adsenseLoader = document.createElement("script");
+            adsenseLoader.async = true;
+            adsenseLoader.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7825788728707782";
+            adsenseLoader.crossOrigin = "anonymous";
+            document.head.appendChild(adsenseLoader);
+        }
+    </script>
 </head>
 
 <body>
@@ -34,8 +44,9 @@
                 <button id="ContinueasGuest">Continue as Guest<br /> (Nothing will be saved)</button>
                 <!-- Web ads live only on this sparse login/signup landing page.
                      A single responsive AdSense banner; the label is required by
-                     AdSense policy. Hidden inside the native app (AdSense doesn't
-                     fill in a WebView — the app shows a native AdMob banner).
+                     AdSense policy. Never loaded inside the native app (AdSense
+                     in an app web view is against Google policy — the app shows
+                     a native AdMob banner), and the slot is hidden there.
                      When the AdSense script is blocked (ad blocker) or the slot
                      goes unfilled, script.js swaps in the first-party house card
                      below instead of leaving a labeled empty hole. -->
@@ -46,7 +57,11 @@
                         data-ad-slot="8944873686"
                         data-ad-format="auto"
                         data-full-width-responsive="true"></ins>
-                    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+                    <script>
+                        if (!/TABSApp\//.test(navigator.userAgent)) {
+                            (adsbygoogle = window.adsbygoogle || []).push({});
+                        }
+                    </script>
                     <div id="house-ad" style="display:none">
                         <p id="house-ad-title">Enjoying TABS? 💚</p>
                         <p id="house-ad-text">Ads help keep the servers running. If yours are blocked,
@@ -67,6 +82,18 @@
                         id="notificationBadge" class="badge" style="display: none;">0</span></a>
                 <a class="sideNavA" id="Ads">About Us</a>
                 <a class="sideNavA" id="feedback" href="https://forms.gle/G86aVpZWKLvJWjNU6" target="_blank" rel="noopener">Feedback</a>
+                <!-- Same-origin, same-tab links: inside the iOS app the
+                     WKWebView keeps tabsonfriends.com navigations in-app, and
+                     each page has a "Back to TABS" link to "/". -->
+                <nav class="sideNavLegal" aria-label="Legal and support">
+                    <a href="/privacy">Privacy</a>
+                    <a href="/terms">Terms</a>
+                    <a href="/support">Support</a>
+                </nav>
+                <!-- Shown only inside the iOS app when Google's consent (UMP)
+                     says a privacy-options entry point is required; tapping it
+                     asks native to reopen the ad consent form. -->
+                <a class="sideNavA" id="adPrivacyChoices" href="javascript:void(0)" style="display: none;">Ad privacy choices</a>
                 <button id="inviteToTabsBtn" class="sideNavA" title="Invite a friend by text message">Invite to TABS</button>
 
                 <select id="currency-select" title="Select currency">
@@ -143,11 +170,22 @@
                     <input class="login-input" id="login-password" type="password" placeholder="Password"
                         required /><br />
                     <div class="login-buttons">
+                        <!-- Sign in with Apple (App Store Review Guideline 4.8):
+                             white HIG-style button, placed above Google so it is
+                             at least as prominent. See startAppleAuth in
+                             firebase-setup.js. -->
+                        <button type="button" id="appleSignInBtn" class="apple-auth-btn"
+                            aria-label="Sign in with Apple"><svg class="apple-logo" viewBox="0 0 24 24"
+                                aria-hidden="true" focusable="false"><path
+                                    d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.572-2.27 1.206-2.98.804-.94 2.142-1.64 3.248-1.68.03.13.05.28.05.43zm4.565 15.71c-.03.07-.463 1.58-1.518 3.12-.945 1.34-1.94 2.71-3.43 2.71-1.517 0-1.9-.88-3.63-.88-1.698 0-2.302.91-3.67.91-1.377 0-2.332-1.26-3.428-2.8-1.287-1.82-2.323-4.63-2.323-7.28 0-4.28 2.797-6.55 5.552-6.55 1.448 0 2.675.95 3.6.95.865 0 2.222-1.01 3.902-1.01.613 0 2.886.06 4.374 2.19-.13.09-2.383 1.37-2.383 4.19 0 3.26 2.854 4.42 2.955 4.45z" />
+                            </svg><span>Sign in with Apple</span></button>
                         <button id="googleSignInBtn">Sign In with Google <img class="google-icon"
                                 src="google-icon-logo-svgrepo-com.svg" alt="google"></button>
                         <button id="login-btn">Login</button>
                         <button id="reset-password">Reset Password</button>
                     </div>
+                    <p class="legal-consent">By continuing you agree to the
+                        <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>.</p>
                     <button id="Back-btn"><</button>
                 </div>
             </div>
@@ -168,9 +206,16 @@
                         required /><br />
                     <div class="login-buttons">
                         <button id="signup-btn">Sign Up</button>
+                        <button type="button" id="appleSignUpBtn" class="apple-auth-btn"
+                            aria-label="Continue with Apple"><svg class="apple-logo" viewBox="0 0 24 24"
+                                aria-hidden="true" focusable="false"><path
+                                    d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.572-2.27 1.206-2.98.804-.94 2.142-1.64 3.248-1.68.03.13.05.28.05.43zm4.565 15.71c-.03.07-.463 1.58-1.518 3.12-.945 1.34-1.94 2.71-3.43 2.71-1.517 0-1.9-.88-3.63-.88-1.698 0-2.302.91-3.67.91-1.377 0-2.332-1.26-3.428-2.8-1.287-1.82-2.323-4.63-2.323-7.28 0-4.28 2.797-6.55 5.552-6.55 1.448 0 2.675.95 3.6.95.865 0 2.222-1.01 3.902-1.01.613 0 2.886.06 4.374 2.19-.13.09-2.383 1.37-2.383 4.19 0 3.26 2.854 4.42 2.955 4.45z" />
+                            </svg><span>Continue with Apple</span></button>
                         <button id="googleSignUpBtn"> Sign Up with Google <img class="google-icon"
                                 src="google-icon-logo-svgrepo-com.svg" alt="google"></button>
                     </div>
+                    <p class="legal-consent">By continuing you agree to the
+                        <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>.</p>
                     <button id="Back-btn2"><</button>
                 </div>
             </div>
@@ -380,6 +425,7 @@
                     <button id="view-account-history">View Account History</button>
                     <button id="manage-notifications">Manage Notifications</button>
                     <button id="manage-payments">Payment Requests</button>
+                    <button id="manage-blocked">Blocked Users</button>
                     <button id="export-data">Export Data</button>
 
                 </div>
@@ -515,6 +561,64 @@
                     <p id="autoRemindLabel">Once a week</p>
                 </div>
                 <button id="closeSmsReminder" class="close-btn">Close</button>
+            </div>
+        </div>
+
+        <!-- Block / Report (App Store Review Guideline 1.2). Opened from a
+             friend row, a pending request or a received notification; all
+             names are filled in with textContent by firebase-setup.js. -->
+        <div class="modal modal-fx" id="userActionsModal">
+            <div id="userActionsBox" class="safety-box">
+                <h2 id="userActionsTitle">This person</h2>
+                <p class="safety-hint">Blocking stops their friend requests, reminders and notifications.
+                    They won't be told.</p>
+                <button type="button" id="userActionsBlockBtn" class="tabs-danger-btn">Block</button>
+                <button type="button" id="userActionsReportBtn">Report</button>
+                <button type="button" id="closeUserActions" class="close-btn">Close</button>
+            </div>
+        </div>
+
+        <div class="modal modal-fx" id="blockConfirmModal">
+            <div id="blockConfirmBox" class="safety-box">
+                <h2 id="blockConfirmTitle">Block?</h2>
+                <p class="safety-hint">They'll be removed from your friends, and they won't be able to send you
+                    friend requests, reminders or notifications. You can unblock them later from
+                    Profile &rarr; Account &rarr; Blocked Users.</p>
+                <div class="safety-row">
+                    <button type="button" id="confirmBlockBtn" class="tabs-danger-btn">Block</button>
+                    <button type="button" id="cancelBlockBtn">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal modal-fx" id="reportModal">
+            <div id="reportBox" class="safety-box">
+                <h2 id="reportTitle">Report</h2>
+                <label class="safety-label" for="reportReason">What's wrong?</label>
+                <select id="reportReason">
+                    <option value="spam">Spam</option>
+                    <option value="harassment">Harassment or bullying</option>
+                    <option value="inappropriate">Inappropriate content</option>
+                    <option value="other">Something else</option>
+                </select>
+                <label class="safety-label" for="reportDetails">Details (optional)</label>
+                <textarea id="reportDetails" maxlength="1000" placeholder="Tell us what happened"></textarea>
+                <label class="safety-check" for="reportAlsoBlock">
+                    <input type="checkbox" id="reportAlsoBlock" checked />
+                    <span>Also block this person</span>
+                </label>
+                <div class="safety-row">
+                    <button type="button" id="submitReportBtn" class="tabs-danger-btn">Send report</button>
+                    <button type="button" id="cancelReportBtn">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal modal-fx" id="blockedUsersModal">
+            <div id="blockedUsersBox" class="safety-box">
+                <h2>Blocked Users</h2>
+                <ul id="blockedUsersList"></ul>
+                <button type="button" id="closeBlockedUsers" class="close-btn">Close</button>
             </div>
         </div>
 

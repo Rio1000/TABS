@@ -22,7 +22,16 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithCredential
+  signInWithCredential,
+  // Sign in with Apple + Apple token revocation on account deletion. All of
+  // these are exported by the 10.6.0 build (checked against the export list
+  // of https://www.gstatic.com/firebasejs/10.6.0/firebase-auth.js).
+  OAuthProvider,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
+  revokeAccessToken,
+  getAdditionalUserInfo,
+  updateProfile,
 
 } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-auth.js";
 
@@ -144,18 +153,21 @@ const functionsClient = getFunctions(app);
 // friend's device via Firebase Cloud Messaging — free, no carrier, no spam
 // flagging. This is what the reminder buttons use now instead of Twilio/SMS.
 const sendReminderPushFn = httpsCallable(functionsClient, "sendReminderPush");
-// Callable that pushes a friend-request / request-accepted notification to the
-// other user's devices (see functions/index.js). Called right after the
-// request/acceptance is written; best-effort, so a failure never blocks the
-// action (the in-app notification still lands regardless).
+// Callable for friend events (see functions/index.js). Cross-user in-app
+// notifications are server-written only: for "request" it verifies the
+// pending request, writes the recipient's inbox copy and pushes to their
+// devices; for "accept" it verifies the friendship + the original sender's
+// sentRequest and pushes (the sender's own client writes its "accepted" inbox
+// entry when it reconciles the marker). Best-effort: never throws, so a
+// failure never blocks the action that triggered it.
 const sendFriendEventPushFn = httpsCallable(functionsClient, "sendFriendEventPush");
 async function pushFriendEvent(toUid, kind) {
   if (!toUid) return;
   try {
     await sendFriendEventPushFn({ toUid, kind });
   } catch (error) {
-    // Not deployed yet, muted, or a transient error — the in-app notification
-    // already covers the user, so just log and move on.
+    // Not deployed yet, rate-limited, or a transient error — just log and
+    // move on.
     console.warn(`Friend-event push (${kind}) skipped:`, error?.code || error);
   }
 }
@@ -164,6 +176,9 @@ async function pushFriendEvent(toUid, kind) {
 // can't do reliably (delete needs a recent login; disable is admin-only).
 const deleteAccountFn = httpsCallable(functionsClient, "deleteAccount");
 const disableAccountFn = httpsCallable(functionsClient, "disableAccount");
+// Files a block/abuse report for the owner to review (App Store Review
+// Guideline 1.2). Server side validates, rate-limits and attaches evidence.
+const reportUserFn = httpsCallable(functionsClient, "reportUser");
 
 // ---------------------------------------------------------------------------
 // Push notifications (Firebase Cloud Messaging)
@@ -317,10 +332,16 @@ window.__onNativePushToken = async (token, platform) => {
 // Sends a reminder as a push notification via the Cloud Function. Returns
 // { delivered, reason }. delivered=false with reason "no-devices" means the
 // friend hasn't enabled notifications anywhere.
-async function sendReminderPushViaFCM(friendUid, message) {
+//
+// The client never sends the notification text itself: it picks a template
+// (an index into reminder-messages.json, which the server also bundles) and
+// sends the already-formatted amount string (e.g. "$12.50"). The server fills
+// {name} from the recipient's own profile and validates both values, so no
+// arbitrary text can be pushed onto someone else's lock screen.
+async function sendReminderPushViaFCM(friendUid, templateIndex, amount) {
   if (!friendUid) return { delivered: false, reason: "no-friend" };
   try {
-    const result = await sendReminderPushFn({ friendUid, message });
+    const result = await sendReminderPushFn({ friendUid, templateIndex, amount });
     return result.data || { delivered: false, reason: "unknown" };
   } catch (error) {
     console.error("Push reminder failed:", error);
@@ -473,6 +494,32 @@ let peopleListUnsub = null;
 let friendsListUnsub = null;
 let friendPendingRemoval = null;
 let notificationsUnsub = null;
+let pendingRequestsUnsub = null;
+// users/{uid}/blocked, mirrored live: { [blockedUid]: { firstName, lastName, blockedAt } }
+let blockedUsers = {};
+let blockedUnsub = null;
+
+// Profile → Info tab. Built with text nodes: names/emails are user-provided
+// (and an Apple/Google display name could contain markup), so never innerHTML.
+function setLabeledValue(elementId, label, value) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  el.textContent = `${label}: `;
+  el.appendChild(document.createElement("br"));
+  el.appendChild(document.createTextNode(` ${value ?? ""}`));
+}
+
+function renderProfileInfo(profileData) {
+  const p = profileData || {};
+  currentUserName = `${p.firstName || ""} ${p.lastName || ""}`.trim();
+  setLabeledValue("profile-name", "Name", `${p.firstName || ""} ${p.lastName || ""}`.trim());
+  setLabeledValue("profile-email", "Email", p.email || "");
+  setLabeledValue("profile-phone", "Phone Number", p.phoneNumber || "");
+  setLabeledValue("profile-friend-code", "Friend Code", p.friendCode || "N/A");
+  // Expose the current user's friend code so the "Invite to TABS" button
+  // (and anything else) can read it without another Firebase round-trip.
+  window.userFriendCode = p.friendCode || null;
+}
 
 onAuthStateChanged(auth, async (user) => {
   const loginPage = document.getElementById("Loginpage");
@@ -494,6 +541,11 @@ onAuthStateChanged(auth, async (user) => {
     // Settle accrued interest before rendering the list, so the amounts
     // shown on load already reflect it instead of needing a second refresh.
     await applyInterestToAll();
+
+    // Blocked users (live). Loaded before anything that renders or reconciles
+    // requests/notifications so entries from blocked people are filtered from
+    // the start (resolves on the first snapshot).
+    await subscribeToBlockedUsers();
 
     // Pick up friend requests that were accepted while we were offline
     // (see approveFriendRequest's cross-user fallback) before rendering.
@@ -531,15 +583,9 @@ onAuthStateChanged(auth, async (user) => {
 
     const profileRef = ref(database, `users/${user.uid}/profile`);
     get(profileRef).then((snapshot) => {
-      const profileData = snapshot.val();
-      currentUserName = `${profileData.firstName || ""} ${profileData.lastName || ""}`.trim();
-      document.getElementById('profile-name').innerHTML = `Name: <br> ${profileData.firstName} ${profileData.lastName}`;
-      document.getElementById('profile-email').innerHTML = `Email: <br> ${profileData.email}`;
-      document.getElementById('profile-phone').innerHTML = `Phone Number: <br> ${profileData.phoneNumber}`;
-      document.getElementById('profile-friend-code').innerHTML = `Friend Code: <br> ${profileData.friendCode || 'N/A'}`;
-      // Expose the current user's friend code so the "Invite to TABS" button
-      // (and anything else) can read it without another Firebase round-trip.
-      window.userFriendCode = profileData.friendCode || null;
+      // A brand-new Google/Apple account has no profile yet at this point
+      // (provisionOAuthUser writes it right after sign-in and re-renders).
+      if (snapshot.exists()) renderProfileInfo(snapshot.val());
     });
 
 
@@ -575,6 +621,24 @@ onAuthStateChanged(auth, async (user) => {
       if (totalFriendsEl) totalFriendsEl.innerText = `Total Friends: ${totalFriends}`;
     });
 
+    // Live accept: when someone accepts our request while we're online, their
+    // acceptance marker lands in our pendingRequests — turn it into a real
+    // friendship right away instead of waiting for a reload.
+    // (reconcileAcceptedRequests guards against overlapping runs.)
+    const pendingRequestsRef = ref(database, `users/${user.uid}/pendingRequests`);
+    if (pendingRequestsUnsub) pendingRequestsUnsub();
+    pendingRequestsUnsub = onValue(pendingRequestsRef, (snapshot) => {
+      const pending = snapshot.exists() ? snapshot.val() : {};
+      const hasAccepted = Object.values(pending).some(
+        (req) => req && req.type === "accepted"
+      );
+      if (!hasAccepted) return;
+      reconcileAcceptedRequests().then(() => {
+        populateFriendsList();
+        updatePendingCount();
+      });
+    });
+
     updatePendingCount();
 
     user.reload().then(() => {
@@ -606,6 +670,15 @@ onAuthStateChanged(auth, async (user) => {
       notificationsUnsub();
       notificationsUnsub = null;
     }
+    if (pendingRequestsUnsub) {
+      pendingRequestsUnsub();
+      pendingRequestsUnsub = null;
+    }
+    if (blockedUnsub) {
+      blockedUnsub();
+      blockedUnsub = null;
+    }
+    blockedUsers = {};
 
     logoutButton.style.display = "none";
     loginSignup.style.display = "flex";
@@ -662,45 +735,296 @@ document.addEventListener("click", (e) => {
 // Ads by platform:
 //   • Web  → a single AdSense banner on the login/signup landing (#landing-ad).
 //   • iOS  → a native AdMob banner rendered by the app wrapper.
-// AdSense never fills inside a WebView, so hide the web landing ad in the app
-// and let the native AdMob banner be the only ad there.
+// AdSense must not run inside an app web view (Google policy), so index.html
+// never loads it in the app; hide the empty slot too and let the native AdMob
+// banner be the only ad there.
 if (IS_NATIVE_APP) {
   const landingAd = document.getElementById("landing-ad");
   if (landingAd) landingAd.style.display = "none";
+}
+
+// Ad privacy choices (Google UMP). In the EEA/UK the native wrapper reports
+// whether a privacy-options entry point is required via
+// window.__onNativeAdPrivacy({ required }); when it is, the side menu shows
+// "Ad privacy choices", which asks native to re-present the consent form so
+// users can change or withdraw ad consent in-app. Hidden on the web and
+// whenever native hasn't said it's required. (.sideNavA sets display:flex,
+// which would beat the hidden attribute, so this toggles style.display.)
+function setAdPrivacyEntryVisible(visible) {
+  const item = document.getElementById("adPrivacyChoices");
+  if (item) item.style.display = visible ? "" : "none";
+}
+window.__onNativeAdPrivacy = (rawPayload) => {
+  const payload = parseNativePayload(rawPayload);
+  const required = payload.required === true || payload.required === "true";
+  setAdPrivacyEntryVisible(IS_NATIVE_APP && required);
+};
+{
+  const adPrivacyItem = document.getElementById("adPrivacyChoices");
+  if (adPrivacyItem) {
+    adPrivacyItem.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (typeof window.closeNav === "function") window.closeNav();
+      if (IS_NATIVE_APP && window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: "adPrivacyOptions" }));
+      }
+    });
+  }
 }
 
 // Shared handling for a signed-in Google user (from either a popup result or
 // a redirect result): create their profile + friend code on first sign-in,
 // then greet them. `verb` is "Signed in" or "Signed up".
 async function provisionGoogleUser(user, verb) {
+  await provisionOAuthUser(user, verb, "Google");
+}
+
+// Shared by Google and Apple: create the profile + friend code the first time
+// this account signs in (exactly what the Google path always did), then greet.
+// `names` lets Apple pass the given/family name it sends only on the very
+// first authorization — Apple never puts the name in the ID token, so
+// user.displayName is usually empty for Apple accounts.
+async function provisionOAuthUser(user, verb, providerLabel, names = {}) {
   const profileRef = ref(database, `users/${user.uid}/profile`);
   const snapshot = await get(profileRef);
+  let greetName = user.displayName || "";
 
   if (!snapshot.exists()) {
-    const displayName = user.displayName || "User";
-    const [firstName, ...rest] = displayName.split(" ");
-    const lastName = rest.join(" ") || "";
+    const given = String(names.givenName || "").trim();
+    const family = String(names.familyName || "").trim();
+    let firstName;
+    let lastName;
+    if (given || family) {
+      firstName = given || "User";
+      lastName = family;
+    } else {
+      const parts = (user.displayName || "User").split(" ");
+      firstName = parts[0] || "User";
+      lastName = parts.slice(1).join(" ");
+    }
 
     const friendCode = await allocateFriendCode();
 
-    await set(profileRef, {
+    const profile = {
       firstName: firstName,
       lastName: lastName,
       phoneNumber: user.phoneNumber || "",
-      email: user.email,
+      // Apple may hand back a private-relay address; it's still the
+      // account's email. Never undefined (RTDB rejects undefined values).
+      email: user.email || "",
       friendCode: friendCode,
-    });
+    };
+    await set(profileRef, profile);
 
     await set(ref(database, `friendCodes/${friendCode}`), {
       userId: user.uid,
       firstName: firstName,
       lastName: lastName,
     });
+
+    // onAuthStateChanged already ran (and found no profile) — show this one.
+    renderProfileInfo(profile);
+    greetName = `${firstName} ${lastName}`.trim();
+  } else if (!greetName) {
+    const existing = snapshot.val() || {};
+    greetName = `${existing.firstName || ""} ${existing.lastName || ""}`.trim();
   }
 
-  showToast(`${verb} with Google as ${user.displayName}`, "success");
-  await logUserAction(`${verb} with Google`);
+  showToast(
+    greetName
+      ? `${verb} with ${providerLabel} as ${greetName}`
+      : `${verb} with ${providerLabel}`,
+    "success"
+  );
+  await logUserAction(`${verb} with ${providerLabel}`);
 }
+
+// ---------------------------------------------------------------------------
+// Sign in with Apple
+//
+// Native app: the page posts {type:"appleSignIn", purpose} to the iOS wrapper,
+// which runs ASAuthorizationController with a SHA-256-hashed nonce and calls
+// back window.__onNativeAppleCredential({ idToken, rawNonce,
+// authorizationCode, givenName, familyName, email, purpose }) or
+// window.__onNativeAppleError({ purpose, cancelled, message }). The native
+// side shows no alert, so all messaging happens here.
+// Browser: Firebase's own popup flow (Apple's JS web flow via the
+// firebaseapp.com auth handler).
+// ---------------------------------------------------------------------------
+function appleProvider() {
+  const provider = new OAuthProvider("apple.com");
+  provider.addScope("email");
+  provider.addScope("name");
+  return provider;
+}
+
+// Waiters for an in-flight native reauth (account deletion), keyed by purpose.
+let pendingNativeAppleReauth = null;
+
+// Ask the native wrapper for a fresh Apple credential and resolve with its
+// payload. Used for the deletion reauth, which has to wait for the result.
+function requestNativeAppleCredential(purpose) {
+  return new Promise((resolve, reject) => {
+    if (!window.ReactNativeWebView) {
+      reject(Object.assign(new Error("Sign in with Apple isn't available here."), { cancelled: false }));
+      return;
+    }
+    // Only one at a time — a second request supersedes the first.
+    if (pendingNativeAppleReauth) {
+      pendingNativeAppleReauth.reject(Object.assign(new Error("Superseded"), { cancelled: true }));
+    }
+    const timer = setTimeout(() => {
+      if (pendingNativeAppleReauth && pendingNativeAppleReauth.timer === timer) {
+        pendingNativeAppleReauth = null;
+        reject(Object.assign(new Error("Sign in with Apple timed out."), { cancelled: false }));
+      }
+    }, 3 * 60 * 1000);
+    pendingNativeAppleReauth = {
+      timer,
+      resolve: (payload) => { clearTimeout(timer); resolve(payload); },
+      reject: (err) => { clearTimeout(timer); reject(err); },
+    };
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: "appleSignIn", purpose }));
+  });
+}
+
+// Native may hand us the payload as an object (evaluated JS literal) or, if a
+// future build changes, as a JSON string — accept both.
+function parseNativePayload(payload) {
+  if (typeof payload === "string") {
+    try { return JSON.parse(payload) || {}; } catch (e) { return {}; }
+  }
+  return payload && typeof payload === "object" ? payload : {};
+}
+
+async function startAppleAuth(verb) {
+  if (IS_NATIVE_APP) {
+    try { sessionStorage.setItem("appleAuthVerb", verb); } catch (e) {}
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(
+        JSON.stringify({ type: "appleSignIn", purpose: "signIn" })
+      );
+    } else {
+      showToast("Sign in with Apple isn't available in this version of the app.", "error");
+    }
+    return; // completion happens in window.__onNativeAppleCredential
+  }
+
+  try {
+    const result = await signInWithPopup(auth, appleProvider());
+    await provisionOAuthUser(result.user, verb, "Apple", appleNamesFromResult(result));
+  } catch (error) {
+    if (isPopupCancel(error)) return; // they closed the Apple window
+    throw error;
+  }
+}
+
+// Browser popup: on the very first authorization Apple includes the user's
+// name, which Firebase surfaces on the result's user (displayName) and, for
+// some SDK versions, in the additional user info profile.
+function appleNamesFromResult(result) {
+  try {
+    const info = getAdditionalUserInfo(result);
+    const name = info?.profile?.name;
+    if (name && typeof name === "object") {
+      return { givenName: name.firstName || "", familyName: name.lastName || "" };
+    }
+  } catch (e) {}
+  return {};
+}
+
+function isPopupCancel(error) {
+  return (
+    error?.code === "auth/popup-closed-by-user" ||
+    error?.code === "auth/cancelled-popup-request" ||
+    error?.code === "auth/user-cancelled"
+  );
+}
+
+window.__onNativeAppleCredential = async (rawPayload) => {
+  const payload = parseNativePayload(rawPayload);
+  const purpose = payload.purpose || "signIn";
+
+  if (purpose === "reauth") {
+    const waiter = pendingNativeAppleReauth;
+    pendingNativeAppleReauth = null;
+    if (waiter) waiter.resolve(payload);
+    return;
+  }
+
+  try {
+    if (!payload.idToken) throw new Error("Apple didn't return an identity token.");
+    const credential = appleProvider().credential({
+      idToken: payload.idToken,
+      rawNonce: payload.rawNonce,
+    });
+    const result = await signInWithCredential(auth, credential);
+
+    // Apple sends the name only on the first authorization — keep it on the
+    // Auth record too, so later sign-ins (and the console) have it.
+    const fullName = [payload.givenName, payload.familyName]
+      .map((s) => String(s || "").trim())
+      .filter(Boolean)
+      .join(" ");
+    if (fullName && !result.user.displayName) {
+      updateProfile(result.user, { displayName: fullName }).catch((e) =>
+        console.warn("Couldn't store Apple display name:", e?.code || e)
+      );
+    }
+
+    let verb = "Signed in";
+    try { verb = sessionStorage.getItem("appleAuthVerb") || verb; } catch (e) {}
+    try { sessionStorage.removeItem("appleAuthVerb"); } catch (e) {}
+    await provisionOAuthUser(result.user, verb, "Apple", {
+      givenName: payload.givenName,
+      familyName: payload.familyName,
+    });
+  } catch (error) {
+    console.error("Native Apple sign-in failed:", error);
+    showToast("Apple sign-in failed: " + (error?.message || error), "error");
+  }
+};
+
+window.__onNativeAppleError = (rawPayload) => {
+  const payload = parseNativePayload(rawPayload);
+  const purpose = payload.purpose || "signIn";
+  const cancelled = payload.cancelled === true || payload.cancelled === "true";
+
+  if (purpose === "reauth") {
+    const waiter = pendingNativeAppleReauth;
+    pendingNativeAppleReauth = null;
+    if (waiter) {
+      waiter.reject(
+        Object.assign(new Error(payload.message || "Sign in with Apple failed."), { cancelled })
+      );
+    }
+    return; // the deletion flow shows the toast
+  }
+
+  try { sessionStorage.removeItem("appleAuthVerb"); } catch (e) {}
+  if (cancelled) return; // they dismissed the Apple sheet — nothing to report
+  console.error("Native Apple sign-in error:", payload.message);
+  showToast(
+    "Apple sign-in failed" + (payload.message ? `: ${payload.message}` : "."),
+    "error"
+  );
+};
+
+[
+  ["appleSignInBtn", "Signed in"],
+  ["appleSignUpBtn", "Signed up"],
+].forEach(([id, verb]) => {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.addEventListener("click", async () => {
+    try {
+      await startAppleAuth(verb);
+    } catch (error) {
+      console.error("Apple sign-in error:", error);
+      showToast("Apple sign-in failed: " + (error?.message || error), "error");
+    }
+  });
+});
 
 // Start Google auth: hand off to the native app's system-browser sign-in when
 // running inside the wrapper, otherwise use a popup on the web.
@@ -1185,10 +1509,116 @@ document.getElementById("delete-account-btn").addEventListener("click", () => {
   deleteAccountAndData();
 })
 // Function to add a person to the list
+// ---------------------------------------------------------------------------
+// Apple token revocation before account deletion (App Store Review Guideline
+// 5.1.1(v)): accounts that use Sign in with Apple must have their Apple
+// tokens revoked when the account is deleted.
+//
+// • Browser: reauthenticateWithPopup returns an OAuth *access token*, which
+//   firebase/auth's revokeAccessToken() revokes (in 10.6.0 it POSTs
+//   /v2/accounts:revokeToken with tokenType "ACCESS_TOKEN").
+// • Native: ASAuthorizationController hands us an *authorization code*, not
+//   an access token, so revokeAccessToken() (hard-wired to ACCESS_TOKEN)
+//   would be the wrong token type. We call the same Identity Toolkit endpoint
+//   directly with tokenType "CODE" — the same request the Firebase iOS SDK's
+//   Auth.revokeToken(withAuthorizationCode:) sends (RevokeTokenRequest:
+//   providerId "apple.com", tokenType = authorizationCode, token, idToken).
+// ---------------------------------------------------------------------------
+async function revokeAppleAuthorizationCode(user, authorizationCode) {
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v2/accounts:revokeToken?key=${encodeURIComponent(firebaseConfig.apiKey)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        providerId: "apple.com",
+        tokenType: "CODE",
+        token: authorizationCode,
+        idToken: await user.getIdToken(),
+      }),
+    }
+  );
+  if (!response.ok) {
+    let detail = "";
+    try { detail = (await response.json())?.error?.message || ""; } catch (e) {}
+    throw new Error(`revokeToken HTTP ${response.status} ${detail}`.trim());
+  }
+}
+
+// Returns true when deletion may proceed, false to abort (toast already
+// shown). Accounts without an apple.com provider pass straight through.
+async function revokeAppleBeforeDeletion() {
+  const user = auth.currentUser;
+  const usesApple = (user?.providerData || []).some((p) => p?.providerId === "apple.com");
+  if (!user || !usesApple) return true;
+
+  const abortToast = (error) => {
+    if (error?.cancelled || isPopupCancel(error)) {
+      showToast("Account not deleted — confirm with Apple to delete your account.", "error");
+    } else if (error?.code === "auth/user-mismatch") {
+      showToast("That Apple ID isn't the one on this account. Account not deleted.", "error");
+    } else {
+      showToast(
+        "Couldn't confirm with Apple, so your account wasn't deleted: " +
+          (error?.message || error),
+        "error"
+      );
+    }
+  };
+
+  if (IS_NATIVE_APP && window.ReactNativeWebView) {
+    let payload;
+    try {
+      payload = await requestNativeAppleCredential("reauth");
+      if (!payload?.idToken) throw new Error("Apple didn't return an identity token.");
+      await reauthenticateWithCredential(
+        user,
+        appleProvider().credential({ idToken: payload.idToken, rawNonce: payload.rawNonce })
+      );
+    } catch (error) {
+      console.error("Apple reauth for deletion failed:", error);
+      abortToast(error);
+      return false;
+    }
+    try {
+      if (!payload.authorizationCode) throw new Error("no authorization code");
+      await revokeAppleAuthorizationCode(user, payload.authorizationCode);
+    } catch (error) {
+      // Deleting the data matters most — carry on.
+      console.warn("Apple token revocation failed; deleting anyway:", error);
+    }
+    return true;
+  }
+
+  let result;
+  try {
+    result = await reauthenticateWithPopup(user, appleProvider());
+  } catch (error) {
+    console.error("Apple reauth for deletion failed:", error);
+    abortToast(error);
+    return false;
+  }
+  try {
+    const credential = OAuthProvider.credentialFromResult(result);
+    if (!credential?.accessToken) throw new Error("no access token on the Apple credential");
+    await revokeAccessToken(auth, credential.accessToken);
+  } catch (error) {
+    console.warn("Apple token revocation failed; deleting anyway:", error);
+  }
+  return true;
+}
+
+let deletionInProgress = false;
+
 async function deleteAccountAndData() {
-  if (!currentUser) return;
+  if (!currentUser || deletionInProgress) return;
+  deletionInProgress = true;
+  const deleteBtn = document.getElementById("delete-account-btn");
+  if (deleteBtn) deleteBtn.disabled = true;
 
   try {
+    if (!(await revokeAppleBeforeDeletion())) return;
+
     // Delete both the database data and the Firebase Auth record server-side.
     // Done on the server (Admin SDK) so it doesn't hit auth/requires-recent-
     // login and actually removes the account from the Firebase Auth console.
@@ -1206,6 +1636,9 @@ async function deleteAccountAndData() {
         : "Error deleting account: " + (error?.message || error),
       "error"
     );
+  } finally {
+    deletionInProgress = false;
+    if (deleteBtn) deleteBtn.disabled = false;
   }
 }
 disableAccount.addEventListener("click", disableUserAccount);
@@ -1239,7 +1672,18 @@ async function exportUserData() {
     const snapshot = await get(ref(database, `users/${currentUser.uid}`));
     if (snapshot.exists()) {
       const data = snapshot.val();
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
+      const json = JSON.stringify(data, null, 2);
+      // WKWebView ignores <a download> blob links, so inside the iOS app hand
+      // the JSON to native, which writes a temp file and opens the share
+      // sheet (save to Files, AirDrop, Mail, ...).
+      if (IS_NATIVE_APP && window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({ type: "exportData", filename: "tabs-export.json", json })
+        );
+        showToast("Choose where to save your TABS export.", "info");
+        return;
+      }
+      const blob = new Blob([json], {
         type: "application/json",
       });
       const url = URL.createObjectURL(blob);
@@ -1247,7 +1691,9 @@ async function exportUserData() {
       a.href = url;
       a.download = "exported_user_data.json";
       a.click();
-      URL.revokeObjectURL(url);
+      // Revoking synchronously can cancel the download in some browsers
+      // before it has read the blob; give it a moment first.
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       showToast("User data exported.");
     } else {
       showToast("No data found to export.", "error");
@@ -1366,7 +1812,9 @@ async function updatePendingCount() {
     // Acceptance markers (type: "accepted") live under pendingRequests too,
     // but they're bookkeeping, not requests awaiting a decision.
     const receivedCount = pendingSnap.exists()
-      ? Object.values(pendingSnap.val()).filter((req) => req.type !== "accepted").length
+      ? Object.entries(pendingSnap.val()).filter(
+          ([uid, req]) => req.type !== "accepted" && !isBlocked(uid)
+        ).length
       : 0;
     const sentCount = sentSnap.exists() ? Object.keys(sentSnap.val()).length : 0;
 
@@ -2467,21 +2915,27 @@ function closeAddFriend() {
 // Bound once (not per-friend-per-render) so it always acts on whichever
 // friend was last clicked via friendPendingRemoval, instead of getting
 // clobbered by the last friend rendered in populateFriendsList's loop.
+// Removes one friendsList entry plus its UID-keyed index entry, so the
+// ex-friend can no longer read our phone number. Shared by "Remove friend"
+// and Block. Throws on failure.
+async function removeFriendship(friendId, friendData) {
+  await remove(
+    ref(database, `users/${currentUser.uid}/friendsList/${friendId}`)
+  );
+  // friendData.userId is the friend's UID.
+  if (friendData.userId) {
+    await remove(
+      ref(database, `users/${currentUser.uid}/friendUids/${friendData.userId}`)
+    );
+  }
+}
+
 document.getElementById("removeFriendBtn").addEventListener("click", async () => {
   if (!friendPendingRemoval) return;
   const { friendId, friendData } = friendPendingRemoval;
 
   try {
-    await remove(
-      ref(database, `users/${currentUser.uid}/friendsList/${friendId}`)
-    );
-    // Also drop the UID-keyed index entry so this ex-friend can no longer read
-    // our phone number (friendData.userId is the friend's UID).
-    if (friendData.userId) {
-      await remove(
-        ref(database, `users/${currentUser.uid}/friendUids/${friendData.userId}`)
-      );
-    }
+    await removeFriendship(friendId, friendData);
   } catch (error) {
     console.error("❌ Error removing friend:", error);
     showToast(`Couldn't remove ${friendData.firstName}. Try again.`, "error");
@@ -2595,12 +3049,31 @@ async function populateFriendsList() {
           saveListToFirebase();
           document.getElementById("addFriendModal").style.display = "none";
         };
+        // "⋯" → Block / Report (App Store Review Guideline 1.2).
+        const moreButton = document.createElement("button");
+        moreButton.type = "button";
+        moreButton.classList.add("safety-more-btn");
+        moreButton.innerHTML =
+          '<span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>';
+        moreButton.setAttribute(
+          "aria-label",
+          `Block or report ${friendData.firstName || ""} ${friendData.lastName || ""}`.trim()
+        );
+        moreButton.title = "Block or report";
+        moreButton.onclick = () =>
+          openUserActions({
+            uid: friendData.userId,
+            firstName: friendData.firstName,
+            lastName: friendData.lastName,
+          });
+
         // Group the action buttons together. The name (added first, and
         // free to grow/wrap) fills the row so the buttons are pushed to the
         // right edge and can never overlap the name.
         const friendActions = document.createElement("div");
         friendActions.classList.add("friend-actions");
         friendActions.appendChild(friendAddButton);
+        if (friendData.userId) friendActions.appendChild(moreButton);
         friendActions.appendChild(removeButton);
 
         friendItem.appendChild(friendName);
@@ -2649,12 +3122,24 @@ export async function sendFriendRequest(friendUserId, friendData) {
   // request — that used to hand your number to anyone you merely *sent* a
   // request to, before they accepted. After acceptance, reminders resolve the
   // phone via the friend-scoped profile read rule (friendUids) instead.
-  await set(theirPendingRef, {
-    fromUserId: currentUserId,
-    firstName: myProfile.firstName,
-    lastName: myProfile.lastName,
-    friendCode: myProfile.friendCode,
-  });
+  //
+  // If the recipient has blocked us, the rules deny this write. Finish exactly
+  // like a normal send (sentRequests entry + "sent" toast) so the block isn't
+  // revealed — the request just never arrives. Any other error goes to the
+  // caller's handler as before.
+  let deliveredRequest = true;
+  try {
+    await set(theirPendingRef, {
+      fromUserId: currentUserId,
+      firstName: myProfile.firstName,
+      lastName: myProfile.lastName,
+      friendCode: myProfile.friendCode,
+    });
+  } catch (err) {
+    // RTDB JS reports rule denials with code "PERMISSION_DENIED".
+    if (err?.code !== "PERMISSION_DENIED") throw err;
+    deliveredRequest = false;
+  }
 
   // Add a request to the current user's sent requests
   const mySentRef = ref(db, `users/${currentUserId}/sentRequests/${friendUserId}`);
@@ -2666,15 +3151,11 @@ export async function sendFriendRequest(friendUserId, friendData) {
 
   showToast("Friend request sent!", "success");
   logUserAction(`Sent friend request to ${friendData.firstName} ${friendData.lastName}`);
-  addNotification(friendUserId, {
-    type: "friend-request",
-    message: `${myProfile.firstName} ${myProfile.lastName} sent you a friend request`,
-    // Carried so the recipient can accept straight from the notification —
-    // it points at users/{recipient}/pendingRequests/{fromUserId}.
-    fromUserId: currentUserId,
-  });
-  // Also push it to their device(s), so they see it even with the app closed.
-  pushFriendEvent(friendUserId, "request");
+  // The sendFriendEventPush function writes the recipient's in-app
+  // notification (cross-user notifications are server-written only) and
+  // pushes it to their device(s), so they see it even with the app closed.
+  // Skipped when the request was silently dropped by a block (above).
+  if (deliveredRequest) pushFriendEvent(friendUserId, "request");
   updatePendingCount();
 }
 
@@ -2696,12 +3177,25 @@ async function loadFriendRequests() {
   ]);
 
   // Incoming Requests
+  let shownIncoming = 0;
   if (incomingSnap.exists()) {
     const incoming = incomingSnap.val();
     Object.entries(incoming).forEach(([id, req]) => {
       if (req.type === "accepted") return; // handled by reconcile above
+      if (isBlocked(id)) return; // hidden client-side; rules stop new ones
+      shownIncoming++;
       const li = document.createElement("li");
       li.textContent = `${req.firstName} ${req.lastName} sent you a friend request`;
+
+      const moreBtn = document.createElement("button");
+      moreBtn.type = "button";
+      moreBtn.classList.add("safety-more-btn");
+      moreBtn.innerHTML =
+        '<span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>';
+      moreBtn.setAttribute("aria-label", `Block or report ${req.firstName || ""} ${req.lastName || ""}`.trim());
+      moreBtn.title = "Block or report";
+      moreBtn.onclick = () =>
+        openUserActions({ uid: id, firstName: req.firstName, lastName: req.lastName });
 
       const acceptBtn = document.createElement("button");
       acceptBtn.textContent = "✔️";
@@ -2736,6 +3230,7 @@ async function loadFriendRequests() {
 
       li.appendChild(acceptBtn);
       li.appendChild(rejectBtn);
+      li.appendChild(moreBtn);
       list.appendChild(li);
     });
   }
@@ -2774,7 +3269,7 @@ async function loadFriendRequests() {
     });
   }
 
-  if (!incomingSnap.exists() && !outgoingSnap.exists()) {
+  if (shownIncoming === 0 && !outgoingSnap.exists()) {
     list.innerHTML = "<li>No pending requests.</li>";
   }
 }
@@ -2830,7 +3325,17 @@ async function approveFriendRequest(requestId, request) {
     // acceptance marker in the sender's pendingRequests — a path we ARE
     // allowed to write, since that's how their request reached us. Their
     // client turns the marker into a real friendship (and clears their own
-    // sentRequest) on next load via reconcileAcceptedRequests().
+    // sentRequest) via reconcileAcceptedRequests() — live if they're online.
+    //
+    // Order matters: push FIRST and wait for it. The callable verifies our
+    // friendUids entry (written above) AND the sender's sentRequests entry for
+    // us; once the marker lands, the sender's live reconcile deletes that
+    // sentRequest, which would make the server check fail. pushFriendEvent
+    // never throws, so a failed push can't block the marker write. The
+    // sender's own client writes their "accepted" inbox entry when it
+    // reconciles (no server inbox copy for accepts).
+    await pushFriendEvent(request.fromUserId, "accept");
+
     try {
       await set(
         ref(database, `users/${request.fromUserId}/pendingRequests/${currentUser.uid}`),
@@ -2839,15 +3344,6 @@ async function approveFriendRequest(requestId, request) {
     } catch (markerError) {
       console.error("❌ Could not leave acceptance marker:", markerError);
     }
-
-    // Let the sender know, best-effort.
-    addNotification(request.fromUserId, {
-      type: "friend-accept",
-      message: `${currentProfile.firstName} ${currentProfile.lastName} accepted your friend request!`,
-    });
-    // And push it to their device(s) — reaches them even with the app closed.
-    // (friendUids was written above, which the callable verifies.)
-    pushFriendEvent(request.fromUserId, "accept");
 
     showToast(
       `${request.firstName} has been added to your friends list!`,
@@ -2867,7 +3363,36 @@ async function approveFriendRequest(requestId, request) {
 // where rules blocked the acceptor from writing into this user's
 // friendsList): the acceptor leaves a {type: "accepted"} marker in our
 // pendingRequests, and this turns it into a real friendsList entry.
+//
+// A marker is only honored if we actually sent that person a request
+// (users/{me}/sentRequests/{markerId} exists — only we can create that) and
+// it's keyed by the uid it claims to be from; anything else is a forged
+// "friendship" and is deleted without befriending anyone.
+//
+// Runs from sign-in, the Pending modal and the live pendingRequests listener,
+// so overlapping calls are coalesced: a call made while one is in flight
+// waits for it and schedules one more pass to pick up anything new.
+let reconcileInFlight = null;
+let reconcileAgain = false;
 async function reconcileAcceptedRequests() {
+  if (reconcileInFlight) {
+    reconcileAgain = true;
+    return reconcileInFlight;
+  }
+  reconcileInFlight = (async () => {
+    do {
+      reconcileAgain = false;
+      await reconcileAcceptedRequestsOnce();
+    } while (reconcileAgain && currentUser);
+  })();
+  try {
+    await reconcileInFlight;
+  } finally {
+    reconcileInFlight = null;
+  }
+}
+
+async function reconcileAcceptedRequestsOnce() {
   if (!currentUser) return;
 
   try {
@@ -2892,6 +3417,24 @@ async function reconcileAcceptedRequests() {
     }
 
     for (const [markerId, req] of accepted) {
+      if (isBlocked(req.fromUserId) || isBlocked(markerId)) {
+        // Someone we blocked — drop the marker instead of befriending them.
+        await remove(
+          ref(database, `users/${currentUser.uid}/pendingRequests/${markerId}`)
+        );
+        continue;
+      }
+      const sentSnap = await get(
+        ref(database, `users/${currentUser.uid}/sentRequests/${markerId}`)
+      );
+      if (!sentSnap.exists() || markerId !== req.fromUserId) {
+        // We never asked this person (or the marker lies about who it's
+        // from) — not a real acceptance. Drop it.
+        await remove(
+          ref(database, `users/${currentUser.uid}/pendingRequests/${markerId}`)
+        );
+        continue;
+      }
       if (!existingFriendIds.has(req.fromUserId)) {
         await set(push(ref(database, `users/${currentUser.uid}/friendsList`)), {
           userId: req.fromUserId,
@@ -2906,6 +3449,9 @@ async function reconcileAcceptedRequests() {
         ref(database, `users/${currentUser.uid}/friendUids/${req.fromUserId}`),
         true
       );
+      // Only now that the friendship is written: clearing the sentRequest
+      // first would make a retry (after a failed write) drop the marker as
+      // unverifiable.
       await remove(
         ref(database, `users/${currentUser.uid}/sentRequests/${req.fromUserId}`)
       );
@@ -3046,11 +3592,14 @@ slider.oninput = function () {
 // ---------------------------------------------------------------------------
 // Notification system
 //
-// Notifications live at users/{uid}/notifications and are written either by
-// the user's own client (reminders, reconciled accepts) or best-effort by
-// other users' clients (friend requests/accepts). A realtime listener keeps
-// the bell badge and the notifications modal in sync and toasts anything
-// that arrives while the app is open.
+// Notifications live at users/{uid}/notifications, which database rules make
+// owner-only. They're written either by the user's own client (own reminder
+// notes, reconciled accepts) or by Cloud Functions (friend requests and
+// reminders from friends — server templates that include only the sender's
+// own display name). No client can write into another user's inbox. A
+// realtime listener keeps the bell badge and the notifications modal in sync
+// and toasts anything that arrives while the app is open. Types the user muted
+// in Manage Notifications are still stored but hidden here (and not toasted).
 // ---------------------------------------------------------------------------
 
 let latestNotifications = {};
@@ -3060,19 +3609,18 @@ let notificationPrefs = { enabled: true, friends: true, reminders: true };
 function notificationAllowed(type) {
   if (!notificationPrefs.enabled) return false;
   if ((type === "friend-request" || type === "friend-accept") && !notificationPrefs.friends) return false;
-  if (type === "sms-reminder" && !notificationPrefs.reminders) return false;
+  // "Payment reminders" covers both your own auto-reminder notes and
+  // reminders friends send you.
+  if ((type === "sms-reminder" || type === "reminder-received") && !notificationPrefs.reminders) return false;
   return true;
 }
 
-// Best-effort delivery: writing into another user's node can be blocked by
-// database rules, and a missed notification should never break the action
-// that triggered it.
+// Writes into the CURRENT user's own inbox (rules deny cross-user writes).
+// Best-effort: a missed notification should never break the action that
+// triggered it.
 async function addNotification(targetUid, notification) {
   try {
     await push(ref(database, `users/${targetUid}/notifications`), {
-      // Database rules require cross-user notifications to be stamped with
-      // the real sender uid (so recipients know who wrote it and senders
-      // can't spoof each other).
       fromUid: currentUser ? currentUser.uid : null,
       ...notification,
       read: false,
@@ -3081,20 +3629,6 @@ async function addNotification(targetUid, notification) {
   } catch (error) {
     console.warn("⚠️ Could not deliver notification:", error);
   }
-}
-
-// Drop an in-app notification into the reminded friend's TABS inbox (in
-// addition to the device push), so they see it inside the app too — and it
-// names who reminded them. Type "reminder-received" is intentionally not
-// "sms-reminder" so it doesn't render a "Remind now" button on their side.
-async function notifyReminderRecipient(friendUid, body) {
-  if (!friendUid) return;
-  const from = currentUserName || "A friend";
-  await addNotification(friendUid, {
-    type: "reminder-received",
-    message: `${from} sent you a reminder: ${body}`,
-    fromUid: currentUser ? currentUser.uid : null,
-  });
 }
 
 function subscribeToNotifications() {
@@ -3110,17 +3644,16 @@ function subscribeToNotifications() {
     // Toast only notifications that arrived after the initial snapshot.
     if (knownNotificationKeys) {
       Object.entries(latestNotifications).forEach(([key, notif]) => {
-        if (!knownNotificationKeys.has(key) && !notif.read && notificationAllowed(notif.type)) {
+        if (
+          !knownNotificationKeys.has(key) &&
+          !notif.read &&
+          notificationAllowed(notif.type) &&
+          !isBlocked(notificationSenderUid(notif))
+        ) {
           showToast(notif.message, "success");
-          // Someone just accepted our request — pull the acceptance marker
-          // through immediately so their name appears in our friends list
-          // without waiting for a reload.
-          if (notif.type === "friend-accept") {
-            reconcileAcceptedRequests().then(() => {
-              populateFriendsList();
-              updatePendingCount();
-            });
-          }
+          // (Live accepts are handled by the pendingRequests listener set up
+          // in onAuthStateChanged — the "friend-accept" entry is written by
+          // our own reconcile, so it arrives after the friendship exists.)
         }
       });
     }
@@ -3134,9 +3667,18 @@ function renderNotifications() {
   const folderBadge = document.getElementById("folderNotificationBadge");
   list.innerHTML = "";
 
-  const entries = Object.entries(latestNotifications).sort(
-    ([, a], [, b]) => (b.timestamp || 0) - (a.timestamp || 0)
-  );
+  // Anything from a blocked person is hidden client-side (the server also
+  // stops delivering new ones once the block exists), as is any type the user
+  // muted in Manage Notifications — the server still stores the inbox copy,
+  // so un-muting brings it back. Applies to the list and the unread badges.
+  const entries = Object.entries(latestNotifications)
+    .filter(
+      ([, notif]) =>
+        notif &&
+        notificationAllowed(notif.type) &&
+        !isBlocked(notificationSenderUid(notif))
+    )
+    .sort(([, a], [, b]) => (b.timestamp || 0) - (a.timestamp || 0));
 
   // Drive both the badge on the Notifications menu item and the count that
   // sits on the folder button itself (so an unread count is visible without
@@ -3180,16 +3722,23 @@ function renderNotifications() {
       textBtn.textContent = "Remind now";
       textBtn.addEventListener("click", async (event) => {
         event.stopPropagation();
-        const body = notif.smsBody || notif.message;
-        const { delivered, reason } = await sendReminderPushViaFCM(
-          notif.friendUid,
-          body
-        );
-        await notifyReminderRecipient(notif.friendUid, body);
-        if (delivered) {
-          showToast("Reminder sent.", "success");
-        } else if (reason === "no-devices") {
-          showToast("Reminded in-app (they have no device notifications on).", "success");
+        textBtn.disabled = true;
+        try {
+          // Built fresh at tap time (current amount, server-validated
+          // template) — the old stored smsBody was free text and is ignored.
+          const reminder = await reminderForFriendUid(notif.friendUid);
+          if (!reminder) {
+            showToast("They're no longer in your friends list.", "error");
+            return;
+          }
+          const { delivered, reason } = await deliverReminder(notif.friendUid, reminder);
+          if (delivered) {
+            showToast("Reminder sent.", "success");
+          } else if (reason === "no-devices") {
+            showToast("Reminded in-app (they have no device notifications on).", "success");
+          }
+        } finally {
+          textBtn.disabled = false;
         }
       });
       li.appendChild(textBtn);
@@ -3233,6 +3782,25 @@ function renderNotifications() {
 
       li.appendChild(acceptBtn);
       li.appendChild(declineBtn);
+    }
+
+    // Any notification another person triggered can be blocked or reported
+    // right from the notification (App Store Review Guideline 1.2). Those are
+    // written server-side with the sender's fromUid, so this keys off the
+    // sender, not the type. notificationSenderUid() is null for our own
+    // (self-written) notifications.
+    const senderUid = notificationSenderUid(notif);
+    if (senderUid) {
+      const safetyBtn = document.createElement("button");
+      safetyBtn.type = "button";
+      safetyBtn.classList.add("notification-action", "safety-notif-btn");
+      safetyBtn.textContent = "Block / Report";
+      safetyBtn.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        const person = await resolvePersonName(senderUid);
+        openUserActions({ uid: senderUid, ...person });
+      });
+      li.appendChild(safetyBtn);
     }
 
     li.addEventListener("click", () => {
@@ -3430,6 +3998,9 @@ async function loadNotificationPrefs() {
   document.getElementById("notifEnabledToggle").checked = notificationPrefs.enabled;
   document.getElementById("notifFriendsToggle").checked = notificationPrefs.friends;
   document.getElementById("notifRemindersToggle").checked = notificationPrefs.reminders;
+  // Muted types are hidden from the inbox, so re-filter now that the real
+  // prefs are in (the listener may have rendered with the defaults).
+  renderNotifications();
 }
 
 async function saveNotificationPrefs() {
@@ -3439,6 +4010,7 @@ async function saveNotificationPrefs() {
     reminders: document.getElementById("notifRemindersToggle").checked,
   };
   if (!currentUser) return;
+  renderNotifications(); // show/hide muted types right away
   try {
     await set(
       ref(database, `users/${currentUser.uid}/settings/notifications`),
@@ -3470,6 +4042,343 @@ manageNotifications.addEventListener("click", () => {
 });
 document.getElementById("closeNotificationSettings").addEventListener("click", () => {
   document.getElementById("notificationSettingsModal").style.display = "none";
+});
+
+// ---------------------------------------------------------------------------
+// Block and report (App Store Review Guideline 1.2)
+//
+// users/{uid}/blocked/{blockedUid} = { firstName, lastName, blockedAt } — owner
+// read/write only. Database rules refuse new friend requests / notifications
+// from a blocked uid, and sendReminderPush / sendFriendEventPush silently skip
+// the push; here we hide anything already delivered and clean up the
+// relationship. Blocking is never announced to the other person.
+// Every user-provided name below goes in with textContent, never innerHTML.
+// ---------------------------------------------------------------------------
+
+function isBlocked(uid) {
+  return !!uid && Object.prototype.hasOwnProperty.call(blockedUsers, uid);
+}
+
+// Who a notification came from (null for our own: auto reminders, reconciled
+// accepts). Cross-user notifications are written only by Cloud Functions,
+// which stamp the sender's fromUid; friend-request ones also carry fromUserId.
+function notificationSenderUid(notif) {
+  const me = currentUser ? currentUser.uid : null;
+  if (!notif) return null;
+  if (notif.fromUid && notif.fromUid !== me) return notif.fromUid;
+  if (notif.fromUserId && notif.fromUserId !== me) return notif.fromUserId;
+  return null;
+}
+
+// Live mirror of our blocked list. Resolves once the first snapshot is in (or
+// after 5s / on error, so sign-in never hangs on it).
+function subscribeToBlockedUsers() {
+  if (blockedUnsub) {
+    blockedUnsub();
+    blockedUnsub = null;
+  }
+  blockedUsers = {};
+  if (!currentUser) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    setTimeout(done, 5000);
+    blockedUnsub = onValue(
+      ref(database, `users/${currentUser.uid}/blocked`),
+      (snapshot) => {
+        blockedUsers = snapshot.exists() ? snapshot.val() || {} : {};
+        if (settled) {
+          // A later change (block/unblock here or on another device):
+          // refresh whatever is filtered on screen.
+          renderNotifications();
+          updatePendingCount();
+        }
+        renderBlockedUsersList();
+        done();
+      },
+      (error) => {
+        console.warn("Couldn't load blocked users:", error?.code || error);
+        done();
+      }
+    );
+  });
+}
+
+const cleanPersonName = (value) => String(value ?? "").trim().slice(0, 50);
+
+function personDisplayName(person) {
+  return `${person?.firstName || ""} ${person?.lastName || ""}`.trim();
+}
+
+// Best-effort name lookup for a uid we only know from a notification.
+async function resolvePersonName(uid) {
+  const empty = { firstName: "", lastName: "" };
+  if (!currentUser || !uid) return empty;
+  const me = currentUser.uid;
+  try {
+    let found = null;
+    const friendsSnap = await get(ref(database, `users/${me}/friendsList`));
+    friendsSnap.forEach((child) => {
+      if (child.val()?.userId === uid) found = child.val();
+    });
+    if (!found) {
+      const pendingSnap = await get(ref(database, `users/${me}/pendingRequests/${uid}`));
+      if (pendingSnap.exists()) found = pendingSnap.val();
+    }
+    if (!found) {
+      const sentSnap = await get(ref(database, `users/${me}/sentRequests/${uid}`));
+      if (sentSnap.exists()) found = sentSnap.val();
+    }
+    if (found) return { firstName: found.firstName || "", lastName: found.lastName || "" };
+  } catch (error) {
+    console.debug("Couldn't resolve a name for", uid, error?.code || error);
+  }
+  return empty;
+}
+
+// The person the open Block / Report dialogs act on.
+let safetyTarget = null;
+
+function openUserActions(person) {
+  if (!currentUser || !person?.uid || person.uid === currentUser.uid) return;
+  safetyTarget = {
+    uid: person.uid,
+    firstName: cleanPersonName(person.firstName),
+    lastName: cleanPersonName(person.lastName),
+  };
+  document.getElementById("userActionsTitle").textContent =
+    personDisplayName(safetyTarget) || "This person";
+  document.getElementById("userActionsModal").style.display = "flex";
+}
+
+function openBlockConfirm() {
+  if (!safetyTarget) return;
+  const name = personDisplayName(safetyTarget);
+  document.getElementById("blockConfirmTitle").textContent = name
+    ? `Block ${name}?`
+    : "Block this person?";
+  document.getElementById("userActionsModal").style.display = "none";
+  document.getElementById("blockConfirmModal").style.display = "flex";
+}
+
+function openReportModal() {
+  if (!safetyTarget) return;
+  const name = personDisplayName(safetyTarget);
+  document.getElementById("reportTitle").textContent = name ? `Report ${name}` : "Report";
+  document.getElementById("reportReason").value = "spam";
+  document.getElementById("reportDetails").value = "";
+  document.getElementById("reportAlsoBlock").checked = true;
+  document.getElementById("userActionsModal").style.display = "none";
+  document.getElementById("reportModal").style.display = "flex";
+}
+
+// Block: write the blocked entry, then end the relationship — remove the
+// friendship (same steps as "Remove friend"), their pending request to us, our
+// sent request to them (both sides), and any auto reminder about them.
+async function blockUser(person) {
+  if (!currentUser || !person?.uid) return false;
+  const me = currentUser.uid;
+  const uid = person.uid;
+  const entry = {
+    firstName: cleanPersonName(person.firstName),
+    lastName: cleanPersonName(person.lastName),
+    blockedAt: Date.now(),
+  };
+
+  try {
+    await set(ref(database, `users/${me}/blocked/${uid}`), entry);
+  } catch (error) {
+    console.error("❌ Error blocking user:", error);
+    showToast("Couldn't block them. Check your connection and try again.", "error");
+    return false;
+  }
+  blockedUsers = { ...blockedUsers, [uid]: entry }; // filter immediately
+
+  const steps = [];
+  try {
+    const friendsSnap = await get(ref(database, `users/${me}/friendsList`));
+    friendsSnap.forEach((child) => {
+      const friendData = child.val();
+      if (friendData?.userId === uid) steps.push(removeFriendship(child.key, friendData));
+    });
+  } catch (error) {
+    console.warn("Block: couldn't read friends list:", error);
+  }
+  steps.push(
+    // Index entry too, even if no friendsList row matched.
+    remove(ref(database, `users/${me}/friendUids/${uid}`)),
+    remove(ref(database, `users/${me}/pendingRequests/${uid}`)),
+    remove(ref(database, `users/${me}/sentRequests/${uid}`)),
+    remove(ref(database, `users/${me}/autoReminders/${uid}`)),
+    // Cross-user halves, allowed by the requester-/recipient-may-delete rules.
+    remove(ref(database, `users/${uid}/pendingRequests/${me}`)),
+    remove(ref(database, `users/${uid}/sentRequests/${me}`))
+  );
+  const results = await Promise.allSettled(steps);
+  results
+    .filter((r) => r.status === "rejected")
+    .forEach((r) => console.warn("Block cleanup step failed:", r.reason));
+
+  logUserAction(`Blocked ${personDisplayName(entry) || "a user"}`);
+  populateFriendsList();
+  updatePendingCount();
+  renderNotifications();
+  if (document.getElementById("pendingRequestsModal").style.display === "flex") {
+    loadFriendRequests();
+  }
+  return true;
+}
+
+async function unblockUser(uid) {
+  if (!currentUser || !uid) return;
+  const entry = blockedUsers[uid] || {};
+  try {
+    await remove(ref(database, `users/${currentUser.uid}/blocked/${uid}`));
+    const name = personDisplayName(entry);
+    showToast(name ? `${name} is unblocked.` : "Unblocked.", "success");
+    logUserAction(`Unblocked ${name || "a user"}`);
+  } catch (error) {
+    console.error("❌ Error unblocking user:", error);
+    showToast("Couldn't unblock them. Try again.", "error");
+  }
+}
+
+function renderBlockedUsersList() {
+  const list = document.getElementById("blockedUsersList");
+  if (!list) return;
+  list.textContent = "";
+
+  const entries = Object.entries(blockedUsers || {}).sort(
+    ([, a], [, b]) => (b?.blockedAt || 0) - (a?.blockedAt || 0)
+  );
+  if (entries.length === 0) {
+    const li = document.createElement("li");
+    li.classList.add("blocked-empty");
+    li.textContent = "You haven't blocked anyone.";
+    list.appendChild(li);
+    return;
+  }
+
+  entries.forEach(([uid, entry]) => {
+    const li = document.createElement("li");
+    const text = document.createElement("span");
+    text.classList.add("blocked-name");
+    text.textContent = personDisplayName(entry) || "Unknown user";
+    if (entry?.blockedAt) {
+      const when = document.createElement("span");
+      when.classList.add("blocked-when");
+      when.textContent = `Blocked ${new Date(entry.blockedAt).toLocaleDateString()}`;
+      text.appendChild(when);
+    }
+    const unblockBtn = document.createElement("button");
+    unblockBtn.type = "button";
+    unblockBtn.textContent = "Unblock";
+    unblockBtn.setAttribute("aria-label", `Unblock ${personDisplayName(entry) || "this user"}`);
+    unblockBtn.addEventListener("click", async () => {
+      unblockBtn.disabled = true;
+      await unblockUser(uid);
+      unblockBtn.disabled = false;
+    });
+    li.appendChild(text);
+    li.appendChild(unblockBtn);
+    list.appendChild(li);
+  });
+}
+
+document.getElementById("userActionsBlockBtn").addEventListener("click", openBlockConfirm);
+document.getElementById("userActionsReportBtn").addEventListener("click", openReportModal);
+document.getElementById("closeUserActions").addEventListener("click", () => {
+  document.getElementById("userActionsModal").style.display = "none";
+});
+
+document.getElementById("cancelBlockBtn").addEventListener("click", () => {
+  document.getElementById("blockConfirmModal").style.display = "none";
+});
+document.getElementById("confirmBlockBtn").addEventListener("click", async () => {
+  if (!safetyTarget) return;
+  const btn = document.getElementById("confirmBlockBtn");
+  btn.disabled = true;
+  try {
+    const target = safetyTarget;
+    if (await blockUser(target)) {
+      const name = personDisplayName(target);
+      showToast(name ? `${name} is blocked.` : "Blocked.", "success");
+      document.getElementById("blockConfirmModal").style.display = "none";
+      safetyTarget = null;
+    }
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("cancelReportBtn").addEventListener("click", () => {
+  document.getElementById("reportModal").style.display = "none";
+});
+document.getElementById("submitReportBtn").addEventListener("click", async () => {
+  if (!currentUser || !safetyTarget) return;
+  const target = safetyTarget;
+  const reason = document.getElementById("reportReason").value;
+  const details = document.getElementById("reportDetails").value.trim().slice(0, 1000);
+  const alsoBlock = document.getElementById("reportAlsoBlock").checked;
+  const btn = document.getElementById("submitReportBtn");
+
+  btn.disabled = true;
+  try {
+    let reportError = null;
+    try {
+      await reportUserFn({ reportedUid: target.uid, reason, details });
+    } catch (error) {
+      reportError = error;
+      console.error("❌ Report failed:", error);
+    }
+
+    // Blocking still happens if they asked for it — getting away from the
+    // person matters even when the report couldn't be filed.
+    const blocked = alsoBlock ? await blockUser(target) : false;
+
+    if (!reportError) {
+      showToast("Thanks. We review reports within 24 hours.", "success");
+      document.getElementById("reportModal").style.display = "none";
+      safetyTarget = null;
+    } else {
+      // reportUser itself throws not-found ("That user doesn't exist.") when
+      // the reported account is gone, e.g. reported from an old notification
+      // after they deleted their account. Only a not-found without that
+      // server message means the function isn't deployed.
+      const serverNotFound =
+        reportError?.code === "functions/not-found" &&
+        /doesn't exist|no longer exists/i.test(reportError?.message || "");
+      const notDeployed =
+        !serverNotFound &&
+        (reportError?.code === "functions/not-found" ||
+          reportError?.code === "functions/internal");
+      const why = serverNotFound
+        ? "That account no longer exists."
+        : notDeployed
+          ? "Reporting isn't available right now."
+          : reportError?.message || "Couldn't send the report.";
+      showToast(blocked ? `They're blocked, but the report wasn't sent: ${why}` : why, "error");
+      if (blocked) {
+        document.getElementById("reportModal").style.display = "none";
+        safetyTarget = null;
+      }
+    }
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("manage-blocked").addEventListener("click", () => {
+  renderBlockedUsersList();
+  document.getElementById("blockedUsersModal").style.display = "flex";
+});
+document.getElementById("closeBlockedUsers").addEventListener("click", () => {
+  document.getElementById("blockedUsersModal").style.display = "none";
 });
 
 // ---------------------------------------------------------------------------
@@ -3709,12 +4618,16 @@ function openSmsComposer(phone, body) {
 }
 
 // Witty, Duolingo-style reminder lines, loaded from reminder-messages.json so
-// they're easy to edit without touching code. Falls back to a couple of
-// built-ins if the file can't be fetched (e.g. offline).
+// they're easy to edit without touching code. The Cloud Function bundles the
+// same file (firebase.json predeploy copy) and the client only sends an INDEX
+// into it, so the indices must line up: the built-in fallback below mirrors
+// the first two entries of reminder-messages.json for when the fetch fails
+// (e.g. offline) — keep them in step if those two lines are ever edited.
 let reminderMessages = [
-  "Hey {name}, friendly reminder that you owe me {amount} — tracked on TABS!",
-  "{name}, your {amount} tab misses you. Reunite them? 🥹",
+  "Hey {name}, your {amount} tab misses you. Pay It? Now? 🥹",
+  "{name}, this is your {amount} speaking. I want to go home. 🏠",
 ];
+let reminderMessagesLoaded = false;
 
 async function loadReminderMessages() {
   try {
@@ -3722,24 +4635,87 @@ async function loadReminderMessages() {
     const data = await res.json();
     if (Array.isArray(data.messages) && data.messages.length) {
       reminderMessages = data.messages;
+      reminderMessagesLoaded = true;
     }
   } catch (error) {
     console.debug("Using built-in reminder messages:", error?.message);
   }
 }
-loadReminderMessages();
+let reminderMessagesReady = loadReminderMessages();
 
-function buildReminderMessage(name, amountText) {
-  const firstName = name.split(" ")[0];
+// Make sure the real template list is in hand before picking an index (one
+// retry if the first fetch failed); falls back to the mirrored built-ins.
+async function ensureReminderMessages() {
+  await reminderMessagesReady;
+  if (!reminderMessagesLoaded) {
+    reminderMessagesReady = loadReminderMessages();
+    await reminderMessagesReady;
+  }
+}
+
+// The amount string the templates show, formatted the way the app always has:
+// currency symbol + two decimals ("$12.50", "Mex$12.50", "kr12.50",
+// "CHF12.50"). This exact string is what sendReminderPush validates. Returns
+// "" when the tab has no numeric amount (an item, e.g. "pizza"): the server
+// never accepts free text there, and renders "" as "what you owe" — so the
+// item text itself is never sent.
+const REMINDER_AMOUNT_FALLBACK = "what you owe"; // must match functions/index.js
+function formatReminderAmount(amountText) {
   const amount = parseFloat(amountText);
-  // Auto-reminders don't carry a dollar amount, so fall back to a phrase that
-  // still reads naturally in every template.
-  const owed = !isNaN(amount)
-    ? `${getSymbol(getSelectedCurrency())}${amount.toFixed(2)}`
-    : (amountText && String(amountText).trim() ? amountText : "what you owe");
-  const template =
-    reminderMessages[Math.floor(Math.random() * reminderMessages.length)];
-  return template.replaceAll("{name}", firstName).replaceAll("{amount}", owed);
+  if (!Number.isFinite(amount)) return "";
+  return `${getSymbol(getSelectedCurrency())}${Math.abs(amount).toFixed(2)}`;
+}
+
+// Picks a template and returns everything needed to send it:
+//   templateIndex / amount → the push request (server builds the text);
+//   text → the same text rendered locally, used for the in-app inbox copy.
+// Single-pass fill (like the server) so a name containing "{amount}" is never
+// expanded twice.
+function pickReminder(name, amountText) {
+  const templateIndex = Math.floor(Math.random() * reminderMessages.length);
+  const amount = formatReminderAmount(amountText);
+  const owed = amount || REMINDER_AMOUNT_FALLBACK;
+  const firstName = String(name || "").trim().split(" ")[0] || "friend";
+  const text = reminderMessages[templateIndex].replace(/\{name\}|\{amount\}/g, (token) =>
+    token === "{name}" ? firstName : owed
+  );
+  return { templateIndex, amount, text };
+}
+
+// Push + in-app inbox copy, both written by sendReminderPush with server-built
+// text. Returns { delivered, reason }.
+async function deliverReminder(friendUid, reminder) {
+  const outcome = await sendReminderPushViaFCM(
+    friendUid,
+    reminder.templateIndex,
+    reminder.amount
+  );
+  return outcome;
+}
+
+// Rebuilds a reminder for a friend from their uid (used by the auto-reminder
+// "Remind now" shortcut): their name from our friends list, the CURRENT
+// amount from our tab list. Null if they're no longer a friend.
+async function reminderForFriendUid(friendUid) {
+  if (!currentUser || !friendUid) return null;
+  await ensureReminderMessages();
+  const snapshot = await get(ref(database, `users/${currentUser.uid}/friendsList`));
+  let friend = null;
+  snapshot.forEach((child) => {
+    if (child.val()?.userId === friendUid) friend = child.val();
+  });
+  if (!friend) return null;
+  const name = `${friend.firstName || ""} ${friend.lastName || ""}`.trim();
+  const person = (latestPeopleData || []).find(
+    (p) => p && String(p.name ?? "").trim() === name
+  );
+  let amountText = "";
+  if (person) {
+    amountText = typeof person.amount === "number"
+      ? String(usdToDisplay(person.amount))
+      : String(person.amount ?? "");
+  }
+  return pickReminder(name, amountText);
 }
 
 async function findFriendByName(fullName) {
@@ -3861,18 +4837,22 @@ async function openSmsReminderModal(listItem) {
 document.getElementById("sendSmsNowBtn").addEventListener("click", async () => {
   if (!currentReminderTarget) return;
   const { name, amountText, phone, friendUserId } = currentReminderTarget;
-  const message = buildReminderMessage(name, amountText);
   const btn = document.getElementById("sendSmsNowBtn");
 
   btn.disabled = true;
   try {
+    if (!friendUserId) {
+      showToast("Reminders only work for people from your friends list.", "error");
+      return;
+    }
+    await ensureReminderMessages();
+    const reminder = pickReminder(name, amountText);
     // Deliver a real push notification to the friend's device via FCM — no
-    // SMS app, no carrier. If they haven't enabled notifications on any device
-    // we tell the sender instead of silently doing nothing.
-    const { delivered, reason } = await sendReminderPushViaFCM(friendUserId, message);
-    // Also leave an in-app notification in their TABS inbox, so they see it
-    // inside the app even if they have no push device.
-    await notifyReminderRecipient(friendUserId, message);
+    // SMS app, no carrier — and also leave an in-app notification in their
+    // TABS inbox, so they see it even if they have no push device. The push
+    // text is chosen server-side from the template index (see
+    // sendReminderPushViaFCM).
+    const { delivered, reason } = await deliverReminder(friendUserId, reminder);
     if (delivered) {
       showToast(`Reminder sent to ${name}.`, "success");
       document.getElementById("smsReminderModal").style.display = "none";
@@ -3969,36 +4949,21 @@ async function checkAutoReminders() {
     const now = Date.now();
     const DAY_MS = 24 * 60 * 60 * 1000;
 
-    // Look up the current amount owed per person from the saved list so the
-    // reminder shows the real number instead of a generic phrase.
-    const amountByName = {};
-    try {
-      const listSnap = await get(
-        ref(database, `users/${currentUser.uid}/peopleList`)
-      );
-      const peopleData = listSnap.exists() ? listSnap.val().peopleData || [] : [];
-      peopleData.forEach((p) => {
-        if (p && p.name != null) amountByName[String(p.name).trim()] = p.amount;
-      });
-    } catch (error) {
-      // No saved list yet — fall back to the generic wording.
-    }
-
     for (const [friendUserId, reminder] of Object.entries(snapshot.val())) {
       if (!reminder.enabled) continue;
+      if (blockedUsers[friendUserId]) continue; // blocked — never nudge about them
       const frequencyMs = (reminder.frequencyDays || 7) * DAY_MS;
       if (now - (reminder.lastSent || 0) < frequencyMs) continue;
 
-      const owedAmount = amountByName[String(reminder.friendName).trim()];
+      // No pre-built message text is stored any more: the "Remind now"
+      // shortcut builds the reminder at tap time (template index + current
+      // amount) via reminderForFriendUid, and the push text is chosen
+      // server-side.
       await addNotification(currentUser.uid, {
         type: "sms-reminder",
         message: `Reminder: time to text ${reminder.friendName} about what they owe you.`,
         friendUid: friendUserId, // lets the "Remind now" shortcut send a push
         phone: reminder.phone ?? null,
-        smsBody: buildReminderMessage(
-          reminder.friendName,
-          owedAmount != null ? String(usdToDisplay(owedAmount)) : ""
-        ),
       });
       await update(
         ref(database, `users/${currentUser.uid}/autoReminders/${friendUserId}`),
